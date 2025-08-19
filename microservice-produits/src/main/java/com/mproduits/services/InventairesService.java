@@ -1,0 +1,128 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+package com.mproduits.services;
+
+import com.mproduits.dto.InventaireDto;
+import com.mproduits.dto.PointVenteDto;
+import com.mproduits.mappers.MapperDtoImpl;
+import com.mproduits.model.Boutique;
+import com.mproduits.model.Categories;
+import com.mproduits.model.DetailCommandeEntree;
+import com.mproduits.model.Entreprise;
+import com.mproduits.model.PrixArticles;
+import com.mproduits.model.Produit;
+import com.mproduits.repositories.BoutiqueRepositories;
+import com.mproduits.repositories.CategorieRepositories;
+import com.mproduits.repositories.EntrepriseRepositories;
+import com.mproduits.repositories.PointVenteRepositories;
+import com.mproduits.repositories.PrixAchatRepositories;
+import com.mproduits.repositories.PrixArticlesRepositories;
+import jakarta.persistence.EntityNotFoundException;
+import java.math.BigDecimal;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+/**
+ *
+ * @author USER01
+ */
+@Service
+public class InventairesService {
+    BoutiqueRepositories boutiqueRepositories;
+    CategorieRepositories categorieRepositories;
+    EntrepriseRepositories entrepriseRepositories;
+    PrixArticlesRepositories prixArticlesRepositories;
+    PointVenteRepositories pointVenteRepositories;
+    
+      @Autowired
+      MapperDtoImpl mapperDto;
+    
+    @Autowired
+    public InventairesService(BoutiqueRepositories boutiqueRepositories, CategorieRepositories categorieRepositories, EntrepriseRepositories entrepriseRepositories,  PrixArticlesRepositories prixArticlesRepositories, PointVenteRepositories pointVenteRepositories) {
+        this.boutiqueRepositories = boutiqueRepositories;
+        this.categorieRepositories = categorieRepositories;
+        this.entrepriseRepositories = entrepriseRepositories;
+        this.prixArticlesRepositories=prixArticlesRepositories;
+        this .pointVenteRepositories=pointVenteRepositories;
+    }
+
+    
+    public List<PointVenteDto> chargeStockeForUpdate(Long boutiqueid,Long categorieid){
+        Boutique boutique =boutiqueRepositories.findById(boutiqueid)
+                .orElseThrow(() -> new EntityNotFoundException("Boutique non trouvée avec l'ID: " + boutiqueid));
+        
+        Categories cat= categorieRepositories.findById(categorieid)
+                .orElseThrow(() -> new EntityNotFoundException("Categorie non trouvée avec l'ID: " + categorieid));
+        Entreprise e= entrepriseRepositories.findByActif(Boolean.TRUE);
+        
+        
+        List<PointVenteDto> allStockByPointVente= prixArticlesRepositories.chargeStockPointVente(e.getAnnee().getId(), Boolean.TRUE, boutiqueid, categorieid).stream()
+                .map(pv -> mapperDto.mapperPointVentByPointVentDtoi(pv))
+                .collect(Collectors.toList());
+        System.out.println("sizs:"+allStockByPointVente.size());
+       allStockByPointVente.forEach(System.out::print);
+        
+        return allStockByPointVente;
+        
+        
+    }
+
+ public List<InventaireDto> chargeInventaire(Long boutiqueid,Long categorieid){
+        Boutique boutique =boutiqueRepositories.findById(boutiqueid)
+                .orElseThrow(() -> new EntityNotFoundException("Boutique non trouvée avec l'ID: " + boutiqueid));
+        
+        Categories cat= categorieRepositories.findById(categorieid)
+                .orElseThrow(() -> new EntityNotFoundException("Categorie non trouvée avec l'ID: " + categorieid));
+        Entreprise e= entrepriseRepositories.findByActif(Boolean.TRUE);
+        
+        
+        List<InventaireDto> allStockByPointVente= prixArticlesRepositories.chargeStockPointVente(e.getAnnee().getId(), Boolean.TRUE, boutiqueid, categorieid).stream()
+                .map(pv -> mapperDto.mapperPointVentByInventaireDtto(pv))
+                .collect(Collectors.toList());
+       
+       allStockByPointVente.forEach(System.out::print);
+        
+        return allStockByPointVente;
+        
+        
+    }    
+    public void saveStockInventaire( List<PointVenteDto> allStock){
+        allStock.stream()
+                .filter(pv -> pv.getStockFinalTheorie().intValue()!=0)
+                .map(pvc-> saveStock(pvc,pvc.getStockFinalTheorie()))
+                .collect(Collectors.toList());
+        
+        
+    }
+    
+    private PointVenteDto saveStock(PointVenteDto pointVenteDto ,BigDecimal quantite){
+            Entreprise e= entrepriseRepositories.findByActif(Boolean.TRUE);
+        Optional<PrixArticles> paNew=prixArticlesRepositories.findLastActiveByEntrepriseAndProduit(e, mapperDto.mapperProduit(pointVenteDto.getProduit()));
+        if (paNew.isEmpty()) {
+            throw  new EntityNotFoundException("Produit non trouvée avec l'ID: " + pointVenteDto.getId());
+        }
+        PrixArticles prixArticles=paNew.get();
+        if (prixArticles.getPrixVenteNet().intValue()!=pointVenteDto.getPrix().intValue()) {
+            prixArticles.setPrixVenteNet(pointVenteDto.getPrix());
+                  prixArticlesRepositories.save(prixArticles);
+        }
+        prixArticles.getPointVente().setStockFinalTheorie(quantite);
+        prixArticles.getPointVente().setEntreeProduit(quantite);
+        prixArticles.getPointVente().setSortiProduit(BigDecimal.ZERO);
+        prixArticles.setDatemiseajour(new Date());
+      pointVenteRepositories.save(prixArticles.getPointVente());
+       if (prixArticles.getPrixVenteNet().intValue()!=pointVenteDto.getPrix().intValue()) {
+            prixArticles.setPrixVenteNet(pointVenteDto.getPrix());
+                  prixArticlesRepositories.save(prixArticles);
+        }
+
+      return pointVenteDto;
+       
+    }
+}

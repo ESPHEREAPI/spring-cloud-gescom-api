@@ -1,0 +1,65 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+package com.mproduits.web.controller;
+
+import com.mproduits.dto.ApiResponse;
+import com.mproduits.dto.InventaireDto;
+import com.mproduits.dto.PointVenteDto;
+import com.mproduits.services.InventairesService;
+import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ *
+ * @author USER01
+ */
+@RestController
+@RequestMapping("/microservice-produits")
+public class InventairesControllers {
+    @Autowired
+    InventairesService inventairesService;
+     //recuperation des annee pour les ventes
+    @GetMapping("/inventaires/boutique/{boutiqueid}/categorie/{categorieid}")
+    public ResponseEntity<List<InventaireDto>> listePointVente(@PathVariable("boutiqueid") Long  boutiqueid,@PathVariable("categorieid") Long  categorieid) {
+     List<InventaireDto> allStockPv=inventairesService.chargeInventaire(boutiqueid, categorieid);
+        return ResponseEntity.ok(allStockPv);
+    }
+    
+     @PostMapping("/corrections-stock")
+    public ResponseEntity<ApiResponse<Void>> saveCorrections(@RequestBody List<PointVenteDto> pointsVente) {
+        try {
+            // Traitement ici : par exemple, mise à jour des stocks
+            this.inventairesService.saveStockInventaire(pointsVente);
+
+            ApiResponse<Void> response = new ApiResponse<>(true, "Corrections enregistrées avec succès", null);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            ApiResponse<Void> response = new ApiResponse<>();
+            response.setSuccess(false);
+            response.setMessage("Échec de l'enregistrement des corrections");
+            response.setErrors(List.of(e.getMessage()));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+    
+      //recuperation des annee pour les ventes
+    @GetMapping("/points-vente/{boutiqueid}/{categorieid}")
+    public ResponseEntity<List<PointVenteDto>> chargechargeStockForUpdate(@PathVariable("boutiqueid") Long  boutiqueid,@PathVariable("categorieid") Long  categorieid) {
+     List<PointVenteDto> allStockPv=inventairesService.chargeStockeForUpdate(boutiqueid, categorieid);
+        return ResponseEntity.ok(allStockPv);
+    }
+    
+}
+    
+

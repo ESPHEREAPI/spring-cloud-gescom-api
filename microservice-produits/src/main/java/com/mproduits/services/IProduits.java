@@ -5,6 +5,8 @@
 package com.mproduits.services;
 
 import com.mproduits.dto.ProduitDto;
+import com.mproduits.model.Annee;
+import com.mproduits.model.Boutique;
 import com.mproduits.model.Entreprise;
 import com.mproduits.model.Produit;
 import java.util.List;
@@ -30,6 +32,8 @@ public interface IProduits {
     public List<ProduitDto> getAllProduit();
 
     public Produit save(Produit produit);
+     public boolean existsByReference(String reference);
+        public List<ProduitDto> getAllProduitHaveStock(int boutique,int annee);
 
   
 }

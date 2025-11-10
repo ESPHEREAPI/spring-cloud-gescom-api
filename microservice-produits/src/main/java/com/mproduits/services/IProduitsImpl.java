@@ -6,10 +6,16 @@ package com.mproduits.services;
 
 import com.mproduits.dto.ProduitDto;
 import com.mproduits.mappers.MapperDtoImpl;
+import com.mproduits.model.Annee;
+import com.mproduits.model.Boutique;
 import com.mproduits.model.Entreprise;
 import com.mproduits.model.Produit;
+import com.mproduits.repositories.BoutiqueRepositories;
+import com.mproduits.repositories.PointVenteRepositories;
 import com.mproduits.repositories.ProduitRepositories;
 import jakarta.transaction.Transactional;
+import java.awt.PointerInfo;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
@@ -19,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 /**
  *
@@ -30,6 +37,8 @@ import org.springframework.stereotype.Service;
 @Transactional
 public class IProduitsImpl implements IProduits{
      private final ProduitRepositories produitRepository;
+     private final PointVenteRepositories  pvRepositories;
+     private final BoutiqueRepositories btRepositories;
      @Autowired
      MapperDtoImpl mapperDto;
 
@@ -85,5 +94,25 @@ public class IProduitsImpl implements IProduits{
     }
      private ProduitDto convertToDto(Produit produit) {
         return mapperDto.mapperProduitDto(produit);
+    }
+
+     @Override
+    public boolean existsByReference(String reference) {
+        if (!StringUtils.hasText(reference)) {
+            return false;
+        }
+        return produitRepository.findByReference(reference.trim()).isPresent();
+    }
+
+    @Override
+    public List<ProduitDto> getAllProduitHaveStock(int boutique,int annee) {
+      long  boutiqueid=Long.parseLong(""+boutique);
+        Boutique b=btRepositories.findById(boutiqueid).orElse(null);
+        System.out.println("boutique.."+b);
+      return pvRepositories.listeProduitHaveStockByBoutiqueAndAnnee(b!= null ? b.getId():null, annee,BigDecimal.ZERO).stream()
+            .filter(pd-> pd.getDeletes()==false)
+            .map(this::convertToDto)
+            .collect(Collectors.toList()); 
+    
     }
 }

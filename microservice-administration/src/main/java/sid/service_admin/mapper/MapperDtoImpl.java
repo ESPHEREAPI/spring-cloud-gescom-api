@@ -47,6 +47,7 @@ public class MapperDtoImpl {
     public UserDTO mapToDTO(Personne user) {
         UserDTO userDTO = new UserDTO();
         BeanUtils.copyProperties(user, userDTO);
+        userDTO.setBoutiqueid(user.getBoutique().getId());
 
         // Map roles
         if (user.getRoleid() != null && user.getRoleid().getId() != null) {

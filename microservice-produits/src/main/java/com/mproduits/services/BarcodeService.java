@@ -43,7 +43,7 @@ import com.mproduits.repositories.ProfilRepositories;
 import com.mproduits.repositories.VenteRepositories;
 import com.mproduits.utiles.GlobalFonctions;
 import com.mproduits.utiles.IdleDate;
-import com.mproduits.web.exceptions.ResourceNotFoundException;
+import com.mproduits.exceptions.ResourceNotFoundException;
 import jakarta.persistence.EntityNotFoundException;
 import java.io.IOException;
 import java.io.Serializable;

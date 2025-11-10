@@ -12,11 +12,18 @@ import lombok.Data;
  */
 @Data
 public class ClientDto {
+
     private Long id;
+    private String code;
     private String nom;
     private String telephone;
     private String email;
     private boolean fidelite;
     private String adresse;
     private String statut;
+    private String region;
+    private String ville;
+    private String quartier;
+    private String bp;
+    private String fax;
 }

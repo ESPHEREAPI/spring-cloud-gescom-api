@@ -60,9 +60,9 @@ public class Modulesecurite implements Serializable {
         this.id = id;
     }
 
-    public Modulesecurite(Long id, String code) {
-        this.id = id;
-        this.code = code;
+    public Modulesecurite(String code,String description ) {
+     this.code=code;
+     this.description=description;
     }
 
     public Long getId() {

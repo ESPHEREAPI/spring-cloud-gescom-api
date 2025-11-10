@@ -5,6 +5,8 @@
 
 package com.mproduits;
 
+
+import java.math.BigDecimal;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
@@ -15,9 +17,9 @@ import org.springframework.stereotype.Component;
  * @author USER01
  */
 @Component
-@ConfigurationProperties("mes-configs")
+@ConfigurationProperties("app.produit")
 @RefreshScope
 @Data
 public class ApplicationPropertiesConfiguration {
- private int limitDeProduits;
+ private BigDecimal tva=BigDecimal.ZERO;
 }

@@ -63,10 +63,10 @@ public class AuthController {
             anneeRepository.save(an);
         }
         //date = new Date();
-
+       
         Mois mois = moisRepositories.findOneByAnneeAndNumero(dateCurent, nombre);
         Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
-
+       userSessionDTO.setAnneeid(dateCurent);
         session.setAttribute("mois", mois);
         session.setAttribute("entreprise", e); // si nécessaire
         return ResponseEntity.ok(userSessionDTO);

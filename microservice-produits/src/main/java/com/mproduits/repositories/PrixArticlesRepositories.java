@@ -134,4 +134,6 @@ public interface PrixArticlesRepositories extends JpaRepository<PrixArticles, Lo
       @Query("SELECT p FROM PrixArticles p WHERE p.pointVente.produit.categories.id= :idCategorie and p.actif= true and p.entreprise.annee.id= :anneeid")
      public List<PrixArticles> searchProduitBycategories(@Param(value ="idCategorie") Long id,@Param("anneeid") int anneeid);
      
+      @Query("SELECT pa FROM PrixArticles pa WHERE pa.actif = true ORDER BY pa.dateCreation DESC LIMIT 1")
+    Optional<PrixArticles> findCurrentPrice(Long produitId);
 }

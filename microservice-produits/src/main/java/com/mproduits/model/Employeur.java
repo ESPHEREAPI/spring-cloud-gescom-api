@@ -56,6 +56,8 @@ public class Employeur implements Serializable {
     private String societe;
     @Column(name = "numero_caisse_cotissation")
     private String numeroCaisseCotissation;
+    @Column(name = "numero_iddentifiant_unique")
+    private String nui;
     @Id
     @Basic(optional = false)
     @Column(name = "Id")
@@ -178,6 +180,14 @@ public class Employeur implements Serializable {
 
     public void setLogos(byte[] logos) {
         this.logos = logos;
+    }
+
+    public String getNui() {
+        return nui;
+    }
+
+    public void setNui(String nui) {
+        this.nui = nui;
     }
 
 }

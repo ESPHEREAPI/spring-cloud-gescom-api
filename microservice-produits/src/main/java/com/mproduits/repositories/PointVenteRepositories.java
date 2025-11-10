@@ -8,16 +8,15 @@ import com.mproduits.model.Annee;
 import com.mproduits.model.Boutique;
 import com.mproduits.model.Categories;
 import com.mproduits.model.Entreprise;
-import com.mproduits.model.Magasin;
-import com.mproduits.model.Mois;
 import com.mproduits.model.PointVente;
 import com.mproduits.model.Produit;
 import feign.Param;
-import java.math.BigDecimal;
+import java.math.*;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -91,4 +90,15 @@ public interface PointVenteRepositories extends JpaRepository<PointVente, Long> 
     Optional<BigDecimal> stockFinalProduit(@Param("produit") Produit produit,
             @Param("boutique") Boutique boutique,
             @Param("entreprise") Entreprise entreprise);
+    
+    @Query("SELECT SUM(pv.stockFinalTheorie) FROM PointVente pv WHERE pv.produit.id = :produitId")
+    Optional<BigDecimal> sumStockByProduit(@Param("produitId") Long produitId);
+    
+     @Query("SELECT pv.produit FROM PointVente pv WHERE  pv.boutique.id = :boutique "
+            + "AND pv.entreprise.annee.id = :annee  and pv.stockFinalTheorie > :qte ")
+    List<Produit> listeProduitHaveStockByBoutiqueAndAnnee(
+            @Param("boutique") Long boutique,
+            @Param("annee") int annee,
+            @Param("qte") BigDecimal qte);
+     Optional<PointVente>findByProduitId(Long ProduitId);
 }

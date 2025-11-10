@@ -35,6 +35,8 @@ public class UserDTO {
     private String createdBy;
     private String updateByUserName;
     private String messageEcheck;
+  
+    private Long boutiqueid;
 
     private Boolean autorisationDeletes;
 

@@ -7,12 +7,16 @@ package com.mproduits.dto;
 import com.mproduits.model.Categories;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  *
  * @author USER01
  */
+@AllArgsConstructor
+@NoArgsConstructor
 @Data
 public class ProduitDto {
      private Long id;

@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
+
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
@@ -30,6 +30,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+
+import com.mproduits.dto.ApiResponse;
+import org.springframework.http.HttpStatus;
 
 /**
  *
@@ -60,7 +63,7 @@ public class ArticleController {
     @GetMapping("/produits/autocomplete")
     @Operation(summary = "Recherche rapide pour autocomplétion",
             description = "Retourne une liste limitée d'articles pour l'autocomplétion. Optimisé pour la performance.")
-    @ApiResponse(responseCode = "200", description = "Liste des articles trouvés")
+   // @ApiResponse(responseCode = "200", description = "Liste des articles trouvés")
     public ResponseEntity<List<ProduitDto>> autocomplete(
             @Parameter(description = "Terme de recherche (minimum 2 caractères)")
             @RequestParam(value = "q", required = false)
@@ -95,7 +98,7 @@ public class ArticleController {
     @GetMapping("/articles/search")
     @Operation(summary = "Recherche complète avec pagination",
             description = "Recherche avancée avec filtres et pagination")
-    @ApiResponse(responseCode = "200", description = "Résultats de recherche paginés")
+  //  @ApiResponse(responseCode = "200", description = "Résultats de recherche paginés")
     public ResponseEntity<ArticleSearchResponse> search(
 //            @Parameter(description = "Terme de recherche")
 //            @RequestParam(value = "q", required = false)
@@ -134,7 +137,7 @@ public class ArticleController {
     @GetMapping("/top")
     @Operation(summary = "Articles populaires",
             description = "Retourne les 50 articles les plus populaires pour l'affichage initial")
-    @ApiResponse(responseCode = "200", description = "Liste des articles populaires")
+   // @ApiResponse(responseCode = "200", description = "Liste des articles populaires")
     public ResponseEntity<List<ProduitDto>> getTopArticles() {
         List<ProduitDto> articles = articleService.getTopArticles();
 
@@ -154,7 +157,7 @@ public class ArticleController {
     @GetMapping("/categories-auto")
     @Operation(summary = "Liste des catégories",
             description = "Retourne toutes les catégories disponibles")
-    @ApiResponse(responseCode = "200", description = "Liste des catégories")
+    //@ApiResponse(responseCode = "200", description = "Liste des catégories")
     public ResponseEntity<List<String>> getCategories() {
         List<String> categories = articleService.getAllCategories();
 
@@ -176,8 +179,8 @@ public class ArticleController {
     @GetMapping("/by-code/{code}")
     @Operation(summary = "Recherche par code",
             description = "Trouve un article par son code exact")
-    @ApiResponse(responseCode = "200", description = "Article trouvé")
-    @ApiResponse(responseCode = "404", description = "Article non trouvé")
+  //  @ApiResponse(responseCode = "200", description = "Article trouvé")
+    //@ApiResponse(responseCode = "404", description = "Article non trouvé")
     public ResponseEntity<ProduitDto> findByCode(
             @Parameter(description = "Code de l'article")
             @PathVariable
@@ -201,7 +204,7 @@ public class ArticleController {
     @GetMapping("/exists/{code}")
     @Operation(summary = "Vérifier l'existence d'un code",
             description = "Vérifie si un code article existe déjà")
-    @ApiResponse(responseCode = "200", description = "Résultat de la vérification")
+   // @ApiResponse(responseCode = "200", description = "Résultat de la vérification")
     public ResponseEntity<Boolean> existsByCode(
             @Parameter(description = "Code à vérifier")
             @PathVariable
@@ -222,7 +225,7 @@ public class ArticleController {
     @GetMapping("/fulltext")
     @Operation(summary = "Recherche full-text",
             description = "Recherche full-text avancée (si supportée par la base de données)")
-    @ApiResponse(responseCode = "200", description = "Résultats de la recherche full-text")
+   // @ApiResponse(responseCode = "200", description = "Résultats de la recherche full-text")
     public ResponseEntity<List<ProduitDto>> fullTextSearch(
             @Parameter(description = "Terme de recherche pour full-text")
             @RequestParam(value = "q", required = true)
@@ -256,11 +259,14 @@ public class ArticleController {
      * @return
      */
     @PostMapping("/articles")
-    public ResponseEntity<ProduitDto> createArticles(@RequestBody ProduitDto produitDto) {
-        ProduitDto produitDtoCreate = articleService.createArticles(produitDto);
-
-        return ResponseEntity.ok(produitDtoCreate);
-    }
+   public ResponseEntity<ApiResponse<ProduitDto>> createArticles( @RequestBody ProduitDto produitDto) {
+    
+    ApiResponse<ProduitDto> response = articleService.createArticles(produitDto);
+    
+    return ResponseEntity
+        .status(HttpStatus.CREATED)  // ✅ 201 au lieu de 200
+        .body(response);
+}
 
     @PutMapping("/articles/{id}")
     public ResponseEntity<ProduitDto> updateArticles(@PathVariable Long id, @RequestBody ProduitDto produitDto) {

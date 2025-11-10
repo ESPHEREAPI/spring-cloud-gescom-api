@@ -90,4 +90,10 @@ public interface ProduitRepositories extends JpaRepository<Produit, Long>{
 //    boolean existsByCodeAndActiveTrue(@Param("searchTerm")String code);
       @Query("SELECT p FROM Produit p WHERE p.reference= :code")
     Produit findByCodeAndActiveTrue(@Param("searchTerm")String code);
+    //✅ CORRECTION : Vérifier seulement les produits actifs (deletes = false)
+    Optional<Produit> findByReferenceAndDeletesFalse(String reference);
+    
+    // ✅ Plus performant pour vérifier l'existence
+    boolean existsByReferenceAndDeletesFalse(String reference);
+   
 }

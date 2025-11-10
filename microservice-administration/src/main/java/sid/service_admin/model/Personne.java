@@ -186,6 +186,10 @@ public class Personne implements Serializable {
     @Temporal(TemporalType.TIMESTAMP)
     private Date lastModifiedDate;
 
+      @JoinColumn(name = "Boutiqueid", referencedColumnName = "Id")
+    @ManyToOne(optional = false)
+    //@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Boutique boutique;
     
 
     public Personne(String userName) {

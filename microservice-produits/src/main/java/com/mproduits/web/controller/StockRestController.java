@@ -8,7 +8,7 @@ import com.mproduits.dto.StockUpdateRequest;
 import com.mproduits.dto.StockUpdateResponse;
 import com.mproduits.exceptions.InsufficientStockException;
 import com.mproduits.services.StockService;
-import com.mproduits.web.exceptions.ProductNotFoundException;
+import com.mproduits.exceptions.ProductNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

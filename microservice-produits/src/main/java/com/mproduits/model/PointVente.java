@@ -34,7 +34,7 @@ import lombok.NoArgsConstructor;
  * @author USER01
  */
 @Entity
-@Data
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "pointvente_easy")
@@ -49,6 +49,7 @@ import lombok.NoArgsConstructor;
     @NamedQuery(name = "PointVente.findBySoortiProduit", query = "SELECT p FROM PointVente p WHERE p.sortiProduit = :sortiProduit"),
     @NamedQuery(name = "PointVente.findByStockFinalTheorie", query = "SELECT p FROM PointVente p WHERE p.stockFinalTheorie = :stockFinalTheorie"),
     @NamedQuery(name = "PointVente.findByStockInitial", query = "SELECT p FROM PointVente p WHERE p.stockInitial = :stockInitial")})
+@Data
 public class PointVente implements Serializable {
 
     private static final long serialVersionUID = 1L;

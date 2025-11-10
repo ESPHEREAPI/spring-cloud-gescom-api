@@ -8,12 +8,16 @@ import com.mproduits.model.Boutique;
 import com.mproduits.model.Categories;
 import java.math.BigDecimal;
 import java.util.Date;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  *
  * @author USER01
  */
+@AllArgsConstructor
+@NoArgsConstructor
 @Data
 public class InventaireDto {
 

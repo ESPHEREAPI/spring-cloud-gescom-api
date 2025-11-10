@@ -42,7 +42,7 @@ import com.mproduits.repositories.PrixVenteRepositories;
 import com.mproduits.repositories.ProduitRepositories;
 import com.mproduits.utiles.GlobalFonctions;
 import com.mproduits.utiles.IdleDate;
-import com.mproduits.web.exceptions.GlobalException;
+import com.mproduits.exceptions.GlobalException;
 import jakarta.servlet.http.HttpSession;
 
 import java.math.BigDecimal;

@@ -66,6 +66,14 @@ import java.util.stream.Collectors;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import org.springframework.http.CacheControl;
+import java.util.concurrent.TimeUnit;
+import org.springframework.util.StringUtils;
 
 @RestController
 @RequestMapping("/microservice-produits")
@@ -239,6 +247,12 @@ public class CommandeController implements Serializable {
         ProduitDto pdto = produitService.findByReference(reference);
         return ResponseEntity.ok(pdto);
     }
+   @GetMapping("/produits/id/{produitid}")
+    public ResponseEntity<ProduitDto> produitsByReference(@PathVariable Long produitid) {
+
+        Produit pdto = produitService.findById(produitid);
+        return ResponseEntity.ok(mapperDto.mapperProduitDto(pdto));
+    }
 
     @GetMapping("/produits/reference/{barcode}")
     public ResponseEntity<ProduitDto> produitsBycodeBar(@PathVariable String barcode) {
@@ -344,6 +358,13 @@ public class CommandeController implements Serializable {
     public ResponseEntity<List<ProduitDto>> produits() {
 
         List<ProduitDto> allProduits = produitService.getAllProduit();
+        return ResponseEntity.ok(allProduits);
+    }
+    
+    @GetMapping("/produits/have-stock/{anneeid}/{boutiqueid}")
+    public ResponseEntity<List<ProduitDto>> produitsHaveStock(@PathVariable int anneeid,@PathVariable int boutiqueid) {
+
+        List<ProduitDto> allProduits = produitService.getAllProduitHaveStock(boutiqueid, anneeid);
         return ResponseEntity.ok(allProduits);
     }
 
@@ -573,6 +594,94 @@ public class CommandeController implements Serializable {
             throw new RuntimeException("Aucun mois actif dans la session");
         }
         return mois;
+    }
+    
+    /**
+     * Vérifie si une référence produit existe déjà
+     * 
+     * GET /microservice-produits/exists/{reference}
+     * 
+     * @param reference Référence à vérifier
+     * @return true si la référence existe, false sinon
+     */
+    @GetMapping("produit/exists/{reference}")
+    @Operation(
+        summary = "Vérifier l'existence d'une référence",
+        description = "Vérifie si une référence produit existe déjà dans le système. " +
+                     "La vérification est insensible à la casse et aux espaces."
+    )
+    @ApiResponse(responseCode = "200", description = "Vérification effectuée avec succès")
+    @ApiResponse(responseCode = "400", description = "Référence invalide")
+    public ResponseEntity<Boolean> existsByReference(
+            @Parameter(description = "Référence à vérifier (2-50 caractères)", required = true)
+            @PathVariable
+            @NotBlank(message = "La référence ne peut pas être vide")
+            @Size(min = 2, max = 50, message = "La référence doit contenir entre 2 et 50 caractères")
+            String reference) {
+
+        log.debug("🔍 Vérification existence référence: {}", reference);
+
+        try {
+            // Validation et nettoyage
+            String cleanReference = validateAndCleanReference(reference);
+            
+            // Vérification de l'existence
+            boolean exists = produitService.existsByReference(cleanReference);
+            
+            log.debug("✅ Résultat vérification '{}': {}", cleanReference, exists);
+
+            // Cache côté client pendant 1 minute
+            CacheControl cacheControl = CacheControl.maxAge(1, TimeUnit.MINUTES)
+                    .cachePublic();
+
+            return ResponseEntity.ok()
+                    .cacheControl(cacheControl)
+                    .header("X-Reference-Checked", cleanReference)
+                    .header("X-Reference-Exists", String.valueOf(exists))
+                    .body(exists);
+
+        } catch (IllegalArgumentException e) {
+            log.warn("⚠️ Référence invalide: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(false);
+        } catch (Exception e) {
+            log.error("❌ Erreur lors de la vérification de la référence", e);
+            // En cas d'erreur serveur, retourner false pour ne pas bloquer l'utilisateur
+            return ResponseEntity.ok(false);
+        }
+    }
+    
+    /**
+     * Valide et nettoie une référence
+     * 
+     * @param reference Référence brute
+     * @return Référence nettoyée
+     * @throws IllegalArgumentException si la référence est invalide
+     */
+    private String validateAndCleanReference(String reference) {
+        if (!StringUtils.hasText(reference)) {
+            throw new IllegalArgumentException("La référence ne peut pas être vide");
+        }
+
+        // Nettoyer la référence (trim, normaliser)
+        String cleaned = reference.trim();
+
+        // Vérifier la longueur
+        if (cleaned.length() < 2) {
+            throw new IllegalArgumentException("La référence doit contenir au moins 2 caractères");
+        }
+
+        if (cleaned.length() > 50) {
+            throw new IllegalArgumentException("La référence ne peut pas dépasser 50 caractères");
+        }
+
+        // Vérifier les caractères autorisés (optionnel)
+        // Pattern: lettres, chiffres, tirets, underscores
+        if (!cleaned.matches("^[a-zA-Z0-9_-]+$")) {
+            log.warn("⚠️ Référence contient des caractères non autorisés: {}", cleaned);
+            // On peut soit rejeter, soit accepter selon les règles métier
+        }
+
+        return cleaned;
     }
 
 }

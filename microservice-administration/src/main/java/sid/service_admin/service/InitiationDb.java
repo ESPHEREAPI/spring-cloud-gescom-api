@@ -26,6 +26,8 @@ import sid.service_admin.dto.UserDTO;
 import sid.service_admin.enums.OperationType;
 import sid.service_admin.exceptions.ResourceNotFoundException;
 import sid.service_admin.model.Indicatifpays;
+import sid.service_admin.model.Menu;
+import sid.service_admin.model.Modulesecurite;
 import sid.service_admin.model.Pays;
 import sid.service_admin.model.Permission;
 import sid.service_admin.model.Profil;
@@ -35,10 +37,13 @@ import sid.service_admin.model.RolePermissions;
 import sid.service_admin.model.Roles;
 import sid.service_admin.model.Titre;
 import sid.service_admin.repository.IndicatifpaysRepository;
+import sid.service_admin.repository.MenuRepository;
+import sid.service_admin.repository.ModulesecuriteRepository;
 import sid.service_admin.repository.PaysRepository;
 import sid.service_admin.repository.ProfilRepository;
 import sid.service_admin.repository.ReligionRepository;
 import sid.service_admin.repository.TitreRepository;
+import java.util.*;
 
 /**
  *
@@ -63,6 +68,8 @@ public class InitiationDb implements InitDB {
     private ReligionRepository religionRepository;
     private TitreRepository titreRepository;
     ProfilRepository profilRepository;
+    private ModulesecuriteRepository modulesecuriteRepository;
+    private MenuRepository menuRepository;
 //    public InitiationDb(RoleRepository roleRepository, PermissionRepository permissionRepository, UserRepository userRepository, UserService UserService,
 //           RolePermissionsRepositorie rolePermissionsRepositorie) {
 //        this.roleRepository = roleRepository;
@@ -73,16 +80,16 @@ public class InitiationDb implements InitDB {
 //        this.rolePermissionsRepositorie = rolePermissionsRepositorie;
 //
 //    }
-    
+
     public InitiationDb(RoleRepository roleRepository,
-                        PermissionRepository permissionRepository,
-                        UserService userService,
-                        IndicatifpaysRepository indicatifpaysRepository,
-                        RolePermissionsRepositorie rolePermissionsRepositorie,
-                        PaysRepository paysRepository,
-                        ReligionRepository religionRepository,
-                        TitreRepository titreRepository,
-                        ProfilRepository profilRepository) {
+            PermissionRepository permissionRepository,
+            UserService userService,
+            IndicatifpaysRepository indicatifpaysRepository,
+            RolePermissionsRepositorie rolePermissionsRepositorie,
+            PaysRepository paysRepository,
+            ReligionRepository religionRepository,
+            TitreRepository titreRepository,
+            ProfilRepository profilRepository, ModulesecuriteRepository modulesecuriteRepository, MenuRepository menuRepository) {
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
         this.UserService = userService;
@@ -92,6 +99,8 @@ public class InitiationDb implements InitDB {
         this.religionRepository = religionRepository;
         this.titreRepository = titreRepository;
         this.profilRepository = profilRepository;
+        this.modulesecuriteRepository = modulesecuriteRepository;
+        this.menuRepository = menuRepository;
     }
 
     @Override
@@ -127,7 +136,7 @@ public class InitiationDb implements InitDB {
 //    public UserDTO createAdmin() {
 //        Optional<Role> role_admin = roleRepository.findByName("ADMIN");
 //        List<Permission> allPermission = new ArrayList<>();
-////        if (role_admin.isPresent() == Boolean.FALSE) {
+    ////        if (role_admin.isPresent() == Boolean.FALSE) {
 //// ajoute des permissions
 //        Stream.of(OperationType.WRITE, OperationType.READ,
 //                OperationType.UPDATE, OperationType.DELETE)
@@ -275,8 +284,6 @@ public class InitiationDb implements InitDB {
 
     }
 
-   
-
     @Override
     public UserDTO getAdmin() {
 
@@ -290,7 +297,6 @@ public class InitiationDb implements InitDB {
             profil.setPwdDuration(0);
             profilRepository.save(profil);
         }
-    
 
         profil = new Profil();
         profil = profilRepository.findByCode("CAISSE");
@@ -331,7 +337,7 @@ public class InitiationDb implements InitDB {
 //            userDao.create(user);
 //        }
 
- Optional<Roles> role_admin = roleRepository.findByName("admin");
+        Optional<Roles> role_admin = roleRepository.findByName("admin");
         List<Permission> allPermission = new ArrayList<>();
 //        if (role_admin.isPresent() == Boolean.FALSE) {
 // ajoute des permissions
@@ -363,16 +369,68 @@ public class InitiationDb implements InitDB {
         userCreateDTO.setFirstName("Ndeugoe");
         userCreateDTO.setLastname("Samuel");
         userCreateDTO.setPassword("jiatou14101987");
-       // userCreateDTO.setPhoneNumber("694923568");
-       // userCreateDTO.setAddress("Bonamoussadi");
+        // userCreateDTO.setPhoneNumber("694923568");
+        // userCreateDTO.setAddress("Bonamoussadi");
         //userCreateDTO.setRole(Ma);
-        
 
         return UserService.createUser(userCreateDTO);
 
+    }
+
+    @Override
+    public Collection<Modulesecurite> getAllModuleSecurite() {
+        Collection<Modulesecurite> modsec = new ArrayList<>();
+
+        modsec.add(new Modulesecurite("facturation", "Facturation clients"));
+        modsec.add(new Modulesecurite("securite", "gestion Securite"));
+        modsec.add(new Modulesecurite("stock", "gestion des stocks"));
+        modsec.add(new Modulesecurite("comptabilite", "gestion de la comptabilite"));
+
+        modsec.add(new Modulesecurite("vente", "Gestion des ventes"));
+        modsec.add(new Modulesecurite("administration", "administration de l entreprise"));
+        // modsec.add(new Modulesecurite("securite", "securite  de l entreprise"));
+        modsec.add(new Modulesecurite("parametrage", "parametrage de  l entreprise"));
+        modsec.add(new Modulesecurite("photocophie", "gestion photocopie "));
+//            modsec.add(new Modulesecurite(ModuleMenu.mdsNotification, "gestion des sms et mail"));
+//            modsec.add(new Modulesecurite(ModuleMenu.mdsMtn, "maintenance"));
+//            modsec.add(new Modulesecurite(ModuleMenu.mdsEtats, "Reporting"));
+
+//        this.modulesecuriteRepository.saveAll(modsec);
+        return modsec.stream()
+                .filter(md -> this.modulesecuriteRepository.findByCode(md.getCode()) == null)
+                .map(mds -> this.modulesecuriteRepository.save(mds)).toList();
 
     }
 
-   
+    @Override
+    public Collection<Menu> getMenuByModuleFacturation() {
+        Modulesecurite modsec5 = this.modulesecuriteRepository.findByCode("facturation");
+        Map<String, Object> parMap = new HashMap<>();
+        parMap.put("moduleid", modsec5.getId());
+        Collection<Menu> menuone = new ArrayList<>();
+        //menuone = menudao.findAllEntitiesByUsingQueryName(Menu.FIND_BY_MODULEID, parMap);
+        if (modsec5 != null) {
+
+            menuone.add(new Menu("Client", "gestion client", modsec5));
+            menuone.add(new Menu("Devise Client", "Gestion devis client", modsec5));
+            menuone.add(new Menu("Facture", "Facture client", modsec5));
+            menuone.add(new Menu("Rapport", "Rapport Facturation", modsec5));
+            menuone.add(new Menu("Versement", "Versement client", modsec5));
+//            menuone.add(new Menu("salaire", "gestion de la paie", false, "/paiement/gestionPaie", modsec5));
+//            menuone.add(new Menu("caisse", "gestion de la caisse", false, "/paiement/gestioncaisse", modsec5));
+//            menuone.add(new Menu(ModuleMenu.mPaGestionAnnciennette, "ANCIENNETE", false, "/paiement/gestionAnciennette", modsec5));
+//            menuone.add(new Menu(ModuleMenu.mPOperationDivert, "Operqtion Diverts", false, "/paiement/operationDiverts", modsec5));
+//            menuone.add(new Menu(ModuleMenu.Impot_Salarier, "impot Salarier", false, "/paiement/gestionImpot", modsec5));
+
+        }
+        for (Menu menu : menuone) {
+            if (this.menuRepository.findByCode(menu.getCode()) == null) {
+                menu.setEtat(false);
+                this.menuRepository.save(menu);
+            }
+        }
+        return menuone;
+
+    }
 
 }

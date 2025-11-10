@@ -56,7 +56,7 @@ import java.util.Date;
     @NamedQuery(name = "Personne.findByNom", query = "SELECT p FROM Personne p WHERE p.nom = :nom"),
     @NamedQuery(name = "Personne.findByPrenom", query = "SELECT p FROM Personne p WHERE p.prenom = :prenom"),
     @NamedQuery(name = "Personne.findByProfession", query = "SELECT p FROM Personne p WHERE p.profession = :profession"),
-   // @NamedQuery(name = "Personne.findByPwd", query = "SELECT p FROM Personne p WHERE p.pwd = :pwd"),
+    // @NamedQuery(name = "Personne.findByPwd", query = "SELECT p FROM Personne p WHERE p.pwd = :pwd"),
     @NamedQuery(name = "Personne.findByRemarques", query = "SELECT p FROM Personne p WHERE p.remarques = :remarques"),
     @NamedQuery(name = "Personne.findBySexe", query = "SELECT p FROM Personne p WHERE p.sexe = :sexe"),
     @NamedQuery(name = "Personne.findBySituationMatrimoniale", query = "SELECT p FROM Personne p WHERE p.situationMatrimoniale = :situationMatrimoniale"),
@@ -64,24 +64,23 @@ import java.util.Date;
     @NamedQuery(name = "Personne.findByUserCreate", query = "SELECT p FROM Personne p WHERE p.userCreate = :userCreate"),
     @NamedQuery(name = "Personne.findByUserDelete", query = "SELECT p FROM Personne p WHERE p.userDelete = :userDelete"),
     @NamedQuery(name = "Personne.findByAutorisationDeletes", query = "SELECT p FROM Personne p WHERE p.autorisationDeletes = :autorisationDeletes"),
-   // @NamedQuery(name = "Personne.findByAutorisationDeletes1", query = "SELECT p FROM Personne p WHERE p.autorisationDeletes1 = :autorisationDeletes1"),
+    // @NamedQuery(name = "Personne.findByAutorisationDeletes1", query = "SELECT p FROM Personne p WHERE p.autorisationDeletes1 = :autorisationDeletes1"),
     //@NamedQuery(name = "Personne.findByDateEnregistrement1", query = "SELECT p FROM Personne p WHERE p.dateEnregistrement1 = :dateEnregistrement1"),
-   // @NamedQuery(name = "Personne.findByUserCreate1", query = "SELECT p FROM Personne p WHERE p.userCreate1 = :userCreate1"),
-   // @NamedQuery(name = "Personne.findByDateNaissance1", query = "SELECT p FROM Personne p WHERE p.dateNaissance1 = :dateNaissance1"),
-   // @NamedQuery(name = "Personne.findByDeleteDate1", query = "SELECT p FROM Personne p WHERE p.deleteDate1 = :deleteDate1"),
-   // @NamedQuery(name = "Personne.findByIndicatifPays1", query = "SELECT p FROM Personne p WHERE p.indicatifPays1 = :indicatifPays1"),
-   // @NamedQuery(name = "Personne.findByCompteActif1", query = "SELECT p FROM Personne p WHERE p.compteActif1 = :compteActif1"),
+    // @NamedQuery(name = "Personne.findByUserCreate1", query = "SELECT p FROM Personne p WHERE p.userCreate1 = :userCreate1"),
+    // @NamedQuery(name = "Personne.findByDateNaissance1", query = "SELECT p FROM Personne p WHERE p.dateNaissance1 = :dateNaissance1"),
+    // @NamedQuery(name = "Personne.findByDeleteDate1", query = "SELECT p FROM Personne p WHERE p.deleteDate1 = :deleteDate1"),
+    // @NamedQuery(name = "Personne.findByIndicatifPays1", query = "SELECT p FROM Personne p WHERE p.indicatifPays1 = :indicatifPays1"),
+    // @NamedQuery(name = "Personne.findByCompteActif1", query = "SELECT p FROM Personne p WHERE p.compteActif1 = :compteActif1"),
     //@NamedQuery(name = "Personne.findByLastDatePwdModif1", query = "SELECT p FROM Personne p WHERE p.lastDatePwdModif1 = :lastDatePwdModif1"),
-   // @NamedQuery(name = "Personne.findByLastModifDate1", query = "SELECT p FROM Personne p WHERE p.lastModifDate1 = :lastModifDate1"),
+    // @NamedQuery(name = "Personne.findByLastModifDate1", query = "SELECT p FROM Personne p WHERE p.lastModifDate1 = :lastModifDate1"),
     @NamedQuery(name = "Personne.findByLastModifiedBy", query = "SELECT p FROM Personne p WHERE p.lastModifiedBy = :lastModifiedBy"),
     @NamedQuery(name = "Personne.findByLastModifiedDate", query = "SELECT p FROM Personne p WHERE p.lastModifiedDate = :lastModifiedDate"),
     //@NamedQuery(name = "Personne.findByLastUserModif1", query = "SELECT p FROM Personne p WHERE p.lastUserModif1 = :lastUserModif1"),
     @NamedQuery(name = "Personne.findByLastlogin", query = "SELECT p FROM Personne p WHERE p.lastlogin = :lastlogin"),
-   // @NamedQuery(name = "Personne.findByLieuNaissance1", query = "SELECT p FROM Personne p WHERE p.lieuNaissance1 = :lieuNaissance1"),
+    // @NamedQuery(name = "Personne.findByLieuNaissance1", query = "SELECT p FROM Personne p WHERE p.lieuNaissance1 = :lieuNaissance1"),
     //@NamedQuery(name = "Personne.findByNbreEnfant1", query = "SELECT p FROM Personne p WHERE p.nbreEnfant1 = :nbreEnfant1"),
-   // @NamedQuery(name = "Personne.findBySituationMatrimoniale1", query = "SELECT p FROM Personne p WHERE p.situationMatrimoniale1 = :situationMatrimoniale1"),
-    @NamedQuery(name = "Personne.findByUpdatedAt", query = "SELECT p FROM Personne p WHERE p.updatedAt = :updatedAt"),
-   // @NamedQuery(name = "Personne.findByUserDelete1", query = "SELECT p FROM Personne p WHERE p.userDelete1 = :userDelete1")
+    // @NamedQuery(name = "Personne.findBySituationMatrimoniale1", query = "SELECT p FROM Personne p WHERE p.situationMatrimoniale1 = :situationMatrimoniale1"),
+    @NamedQuery(name = "Personne.findByUpdatedAt", query = "SELECT p FROM Personne p WHERE p.updatedAt = :updatedAt"), // @NamedQuery(name = "Personne.findByUserDelete1", query = "SELECT p FROM Personne p WHERE p.userDelete1 = :userDelete1")
 })
 public class Personne implements Serializable {
 
@@ -134,7 +133,7 @@ public class Personne implements Serializable {
     private String lieuNaissance;
     @Basic(optional = false)
     @Column(name = "Matricule")
-     private String userName;
+    private String userName;
     @Column(name = "nbre_enfant")
     private Integer nbreEnfant;
     @Column(name = "nom")
@@ -155,25 +154,22 @@ public class Personne implements Serializable {
     private String statut;
     @Column(name = "user_create")
     private String userCreate;
-  
+
     @Column(name = "autorisation_deletes")
     private Boolean autorisationDeletes;
-   
- 
-   
+
     @Basic(optional = false)
-  
-   
+
     @Column(name = "last_modified_by")
     private String lastModifiedBy;
     @Column(name = "last_modified_date")
     @Temporal(TemporalType.TIMESTAMP)
     private Date lastModifiedDate;
- 
+
     @Column(name = "lastlogin")
     @Temporal(TemporalType.TIMESTAMP)
     private Date lastlogin;
- ;
+    ;
 
    
     @Column(name = "updated_at")
@@ -201,6 +197,9 @@ public class Personne implements Serializable {
     @JsonIgnore
     @OneToMany(mappedBy = "personneid")
     private Collection<Photo> photoCollection;
+    @JoinColumn(name = "Boutiqueid", referencedColumnName = "id")
+    @ManyToOne
+    private Boutique boutique;
 
     public Personne() {
     }
@@ -359,7 +358,6 @@ public class Personne implements Serializable {
         this.userName = userName;
     }
 
-
     public void setNbreEnfant(Integer nbreEnfant) {
         this.nbreEnfant = nbreEnfant;
     }
@@ -395,7 +393,6 @@ public class Personne implements Serializable {
 //    public void setPwd(String pwd) {
 //        this.pwd = pwd;
 //    }
-
     public String getRemarques() {
         return remarques;
     }
@@ -452,16 +449,6 @@ public class Personne implements Serializable {
         this.autorisationDeletes = autorisationDeletes;
     }
 
-    
-
-  
-
-
-
-    
-
-
-
     public String getLastModifiedBy() {
         return lastModifiedBy;
     }
@@ -478,8 +465,6 @@ public class Personne implements Serializable {
         this.lastModifiedDate = lastModifiedDate;
     }
 
-   
-
     public Date getLastlogin() {
         return lastlogin;
     }
@@ -488,9 +473,6 @@ public class Personne implements Serializable {
         this.lastlogin = lastlogin;
     }
 
-   
-
-
     public Date getUpdatedAt() {
         return updatedAt;
     }
@@ -498,8 +480,6 @@ public class Personne implements Serializable {
     public void setUpdatedAt(Date updatedAt) {
         this.updatedAt = updatedAt;
     }
-
-   
 
     public byte[] getUsermenuList() {
         return usermenuList;
@@ -572,6 +552,16 @@ public class Personne implements Serializable {
         return hash;
     }
 
+    public Boutique getBoutique() {
+        return boutique;
+    }
+
+    public void setBoutique(Boutique boutique) {
+        this.boutique = boutique;
+    }
+    
+    
+
     @Override
     public boolean equals(Object object) {
         // TODO: Warning - this method won't work in the case the id fields are not set
@@ -590,9 +580,4 @@ public class Personne implements Serializable {
         return "com.mproduits.model.Personne[ id=" + id + " ]";
     }
 
-  
-
-
- 
-    
 }

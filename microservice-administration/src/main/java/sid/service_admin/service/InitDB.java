@@ -7,6 +7,8 @@ package sid.service_admin.service;
 import java.util.Collection;
 import java.util.List;
 import sid.service_admin.dto.UserDTO;
+import sid.service_admin.model.Menu;
+import sid.service_admin.model.Modulesecurite;
 import sid.service_admin.model.Pays;
 import sid.service_admin.model.Permission;
 import sid.service_admin.model.Personne;
@@ -41,11 +43,11 @@ public interface InitDB {
 //     public Collection<Regime> getAllRegime();
 //     public Collection<Jour> getAllJour();
 //     public ConfigGrilleHoraire getConfigGrilleHoraire();
-//    public Collection<Modulesecurite> getAllModuleSecurite();
+   public Collection<Modulesecurite> getAllModuleSecurite();
 
 ////     public Collection<Groupe> getAllGroupe(); 
 //
-//    public Collection<Menu> getMenuByModuleVente();
+    public Collection<Menu> getMenuByModuleFacturation();
 //
 //    public Collection<Menu> getMenuByModuleParametrage();
 //

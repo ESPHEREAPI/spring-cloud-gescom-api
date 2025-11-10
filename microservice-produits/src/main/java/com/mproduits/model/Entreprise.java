@@ -48,7 +48,8 @@ import java.util.Date;
 // @NamedQuery(name = "Entreprise.findByTypeResponsable1", query = "SELECT e FROM Entreprise e WHERE e.typeResponsable1 = :typeResponsable1")
 })
 public class Entreprise implements Serializable {
-@JsonIgnore
+
+    @JsonIgnore
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "entreprise")
     private Collection<Taxeproduit> taxproduitCollection;
 
@@ -82,9 +83,9 @@ public class Entreprise implements Serializable {
     @OneToMany(mappedBy = "entreprise")
     @JsonIgnore
     private Collection<MagasinFournisseur> magasinFournisseurCollection;
-   
+
     @OneToMany(mappedBy = "entreprise")
- 
+
     @JsonIgnore
     private Collection<PrixArticles> prixarticlesCollection;
     @JoinColumn(name = "Anneeid", referencedColumnName = "Id", insertable = false, updatable = false)
@@ -96,6 +97,7 @@ public class Entreprise implements Serializable {
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "entreprise")
     @JsonIgnore
     private Collection<Verrouillage> verrouillageCollection;
+    private String capital = "10 000 000 XFA";
 
     public Entreprise() {
     }
@@ -192,8 +194,6 @@ public class Entreprise implements Serializable {
         this.magasinFournisseurCollection = magasinFournisseurCollection;
     }
 
-  
-  
     public Collection<PrixArticles> getPrixarticlesCollection() {
         return prixarticlesCollection;
     }
@@ -257,6 +257,14 @@ public class Entreprise implements Serializable {
 
     public void setTaxproduitCollection(Collection<Taxeproduit> taxproduitCollection) {
         this.taxproduitCollection = taxproduitCollection;
+    }
+
+    public String getCapital() {
+        return capital;
+    }
+
+    public void setCapital(String capital) {
+        this.capital = capital;
     }
 
 }

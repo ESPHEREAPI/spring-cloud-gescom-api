@@ -41,4 +41,5 @@ public interface MenuRepository extends JpaRepository<Menu, Long>{
     @Query("SELECT m FROM Menu m JOIN m.usermenuCollection u WHERE " +
            "u.usermenuPK.userid = :userId AND (u.autorisation = false )")
     List<Menu> findMenusByUserIdWithoutAuthorization(@Param("userId") Long userId);
+    public Menu findByCode(String code);
 }

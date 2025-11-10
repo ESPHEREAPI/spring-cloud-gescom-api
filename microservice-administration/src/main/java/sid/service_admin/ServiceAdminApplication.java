@@ -33,6 +33,8 @@ public class ServiceAdminApplication {
             initiationDb.getAllPays();
             initiationDb.getAllReligions();
             initiationDb.getAllTitres();
+            initiationDb.getAllModuleSecurite();
+            initiationDb.getMenuByModuleFacturation();
            // if (personneRepository.findByUserName("admin").isPresent()==Boolean.FALSE) {
               // initiationDb.getAdmin(); 
            //}

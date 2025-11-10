@@ -15,7 +15,7 @@ import com.mproduits.model.Mois;
 import com.mproduits.model.PointVente;
 import com.mproduits.model.PrixArticles;
 import com.mproduits.model.Produit;
-import com.mproduits.web.exceptions.GlobalException;
+import com.mproduits.exceptions.GlobalException;
 import jakarta.servlet.http.HttpSession;
 import java.math.BigDecimal;
 import java.math.BigInteger;

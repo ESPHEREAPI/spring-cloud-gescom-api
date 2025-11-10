@@ -70,11 +70,13 @@ public class Menu implements Serializable {
         this.id = id;
     }
 
-    public Menu(Long id, String code) {
-        this.id = id;
+    public Menu(String code, String description, Modulesecurite moduleid) {
         this.code = code;
+        this.description = description;
+        this.moduleid = moduleid;
     }
 
+   
     public Long getId() {
         return id;
     }

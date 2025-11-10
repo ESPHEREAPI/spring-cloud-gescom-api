@@ -24,4 +24,5 @@ public interface ModulesecuriteRepository extends JpaRepository<Modulesecurite, 
            "(SELECT mod.id FROM Modulesecurite mod JOIN mod.usermoduleCollection u WHERE u.usermodulePK.userid = :user_id)")
     List<Modulesecurite> findModulesNotAssignedToUser(@Param("user_id") Long user_id);
    
+    Modulesecurite findByCode(String code);
 }

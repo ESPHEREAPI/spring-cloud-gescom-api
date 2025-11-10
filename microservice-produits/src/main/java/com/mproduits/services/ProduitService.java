@@ -4,6 +4,7 @@
  */
 package com.mproduits.services;
 
+import com.mproduits.dto.ApiResponse;
 import com.mproduits.dto.ArticleSearchResponse;
 import com.mproduits.dto.ProduitDto;
 import com.mproduits.mappers.MapperDtoImpl;
@@ -11,7 +12,7 @@ import com.mproduits.model.Categories;
 import com.mproduits.model.Produit;
 import com.mproduits.repositories.CategorieRepositories;
 import com.mproduits.repositories.ProduitRepositories;
-import com.mproduits.web.exceptions.GlobalException;
+import com.mproduits.exceptions.GlobalException;
 import java.math.BigDecimal;
 import java.util.Date;
 
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
@@ -35,6 +37,10 @@ import org.springframework.util.StringUtils;
  */
 @Service
 @Transactional(readOnly = true)
+
+@Slf4j
+
+
 public class ProduitService {
 
     @Autowired
@@ -73,6 +79,16 @@ public class ProduitService {
         return (List<ProduitDto>) articles.stream()
                 .map(a -> mapperdto.mapperProduitDto(a))
                 .collect(Collectors.toList());
+    }
+    
+     // ==================== VALIDATION ======g==============
+
+    
+    public boolean existsByReference(String reference) {
+        if (!StringUtils.hasText(reference)) {
+            return false;
+        }
+        return articleRepository.findByReference(reference.trim()).isPresent();
     }
 
     /**
@@ -148,12 +164,12 @@ public class ProduitService {
     /**
      * Vérifie si un code existe déjà
      */
-    public boolean existsByReference(String code) {
-        if (!StringUtils.hasText(code)) {
-            return false;
-        }
-        return articleRepository.findByCodeAndActiveTrue(code.trim()) != null;
-    }
+//    public boolean existsByReference(String code) {
+//        if (!StringUtils.hasText(code)) {
+//            return false;
+//        }
+//        return articleRepository.findByCodeAndActiveTrue(code.trim()) != null;
+//    }
 
     /**
      * Recherche full-text (si supportée par la base de données)
@@ -185,34 +201,63 @@ public class ProduitService {
      * @param produitDto
      * @return
      */
-    @Transactional(readOnly = false)
-    public ProduitDto createArticles(ProduitDto produitDto) {
-        Optional<Produit> p = articleRepository.findByReference(produitDto.getReference());
-        if (p.isPresent()) {
-            throw new GlobalException("Erreur de Creation", "Articles existe deja");
-        }
-        Optional<Categories> cat = categorieRepositories.findById(produitDto.getCategories().getId());
-        if (cat.isEmpty()) {
-            throw new GlobalException("Erreur sur la categorie ", "categorie non existant");
 
+    
+    /**
+     * Crée un nouveau produit
+     * @param produitDto Données du produit
+     * @return Produit créé
+     */
+    @Transactional
+    public ApiResponse<ProduitDto> createArticles(ProduitDto produitDto) {
+        log.info("Création du produit avec référence: {}", produitDto.getReference());
+        
+        // ✅ Vérifier si la référence existe (seulement produits actifs)
+        if (articleRepository.existsByReferenceAndDeletesFalse(produitDto.getReference())) {
+            log.error("La référence {} existe déjà", produitDto.getReference());
+            throw new GlobalException("Erreur de création", 
+                "Un produit avec la référence '" + produitDto.getReference() + "' existe déjà");
         }
-        Produit prd = new Produit();
-        prd.setCategorie(cat.get());
-        prd.setReference(produitDto.getReference());
-        prd.setDescription(produitDto.getDescription());
-        prd.setLibelle(produitDto.getLibelle());
-        prd.setPacquets(produitDto.getPacquets());
-        prd.setQuantiteByPacquet(BigDecimal.valueOf(produitDto.getQuantiteByPacquet().doubleValue()));
-        prd.setPrixVenteModifiable(produitDto.getPrixVenteModifiable());
-        prd.setPrixVenteModifiableAccepter(produitDto.getPrixVenteModifiableAccepter());
-        prd.setUsername(produitDto.getUsername());
-        prd.setQuantiteByPacquet(BigDecimal.valueOf(produitDto.getQuantiteByPacquet().doubleValue()));
-        prd.setDeletes(Boolean.FALSE);
-        Produit prodtSave = articleRepository.save(prd);
-        System.out.println("produit save " + prodtSave);
-        ProduitDto pdto = mapperdto.mapperProduitDto(prodtSave);
-        return pdto;
-
+        
+        // ✅ Vérifier la catégorie
+        Categories categorie = categorieRepositories.findById(produitDto.getCategories().getId())
+            .orElseThrow(() -> new GlobalException("Erreur sur la catégorie", "Catégorie non existante"));
+        
+        // ✅ Créer et configurer le produit
+        Produit produit = buildProduitFromDto(produitDto, categorie);
+        
+        // ✅ Sauvegarder
+        Produit produitSave = articleRepository.save(produit);
+        log.info("✅ Produit créé avec succès - ID: {}, Référence: {}", 
+            produitSave.getId(), produitSave.getReference());
+        
+        // ✅ Retourner le DTO
+        ProduitDto produitDtoSaved = mapperdto.mapperProduitDto(produitSave);
+         // ✅ NOUVELLE LIGNE
+    return ApiResponse.created(produitDtoSaved, "Produit créé avec succès");
+    }
+    
+    /**
+     * ✅ Méthode privée pour construire le produit (réutilisable)
+     */
+    private Produit buildProduitFromDto(ProduitDto dto, Categories categorie) {
+        Produit produit = new Produit();
+        produit.setCategorie(categorie);
+        produit.setReference(dto.getReference());
+        produit.setDescription(dto.getDescription());
+        produit.setLibelle(dto.getLibelle());
+        produit.setPacquets(dto.getPacquets());
+        produit.setPrixVenteModifiable(dto.getPrixVenteModifiable());
+        produit.setPrixVenteModifiableAccepter(dto.getPrixVenteModifiableAccepter());
+        produit.setUsername(dto.getUsername());
+        produit.setDeletes(Boolean.FALSE);
+        
+        // ✅ UNE SEULE FOIS (corrigé la duplication)
+        if (dto.getQuantiteByPacquet() != null) {
+            produit.setQuantiteByPacquet(BigDecimal.valueOf(dto.getQuantiteByPacquet().doubleValue()));
+        }
+        
+        return produit;
     }
 
     @Transactional(readOnly = false)
@@ -260,4 +305,5 @@ public class ProduitService {
         }
         articleRepository.delete(p.get());
     }
+    
 }

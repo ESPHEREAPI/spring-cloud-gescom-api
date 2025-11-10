@@ -391,7 +391,7 @@ public class UserService implements Serializable {
 
             //retire les liste deja lier a l utilisateur 
             menus.removeAll(menusUsers);
-            menusUsers.stream()
+            menus.stream()
                     .map(md -> saveMenuser(md, p, CurrentUsername))
                     .collect(Collectors.toList());
 

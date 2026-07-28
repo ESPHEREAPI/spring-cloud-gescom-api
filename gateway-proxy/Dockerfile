@@ -32,7 +32,7 @@ EXPOSE 8080
 
 # Variables d'environnement par défaut
 ENV JAVA_OPTS="-Xms512m -Xmx1024m"
-ENV SPRING_PROFILES_ACTIVE=docker
+ENV SPRING_PROFILES_ACTIVE=prod
 
 # Point d'entrée avec options JVM
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]

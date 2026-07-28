@@ -12,6 +12,6 @@ USER spring:spring
 COPY --from=build /app/target/*.jar app.jar
 EXPOSE 9001
 ENV JAVA_OPTS="-Xms256m -Xmx512m"
-ENV SPRING_PROFILES_ACTIVE=docker
+ENV SPRING_PROFILES_ACTIVE=prod
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 CMD wget --no-verbose --tries=1 --spider http://localhost:9001/actuator/health || exit 1

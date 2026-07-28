@@ -1,6 +1,24 @@
 @echo off
 SETLOCAL ENABLEDELAYEDEXPANSION
 
+REM ============================================
+REM  Ce script lance les services en profil PROD par defaut
+REM  (JAR deja construits = scenario de deploiement).
+REM  Variables d'environnement Windows a definir AVANT d'executer
+REM  ce script - elles ne sont JAMAIS codees en dur ici :
+REM    SPRING_CLOUD_CONFIG_URI     (optionnel, defaut http://localhost:9101)
+REM    SPRING_DATASOURCE_URL       (ex: jdbc:mysql://localhost:3306/librairie?...)
+REM    SPRING_DATASOURCE_USERNAME
+REM    SPRING_DATASOURCE_PASSWORD
+REM    APP_JWTSECRET               (secret JWT du service-admin)
+REM  Exemple (PowerShell, avant de lancer start.bat) :
+REM    $env:SPRING_DATASOURCE_PASSWORD = "..."
+REM    $env:APP_JWTSECRET = "..."
+REM  Pour repasser en profil dev (config/BDD locales), definir avant :
+REM    SET SPRING_PROFILES_ACTIVE=dev
+REM ============================================
+IF NOT DEFINED SPRING_PROFILES_ACTIVE SET "SPRING_PROFILES_ACTIVE=prod"
+
 REM Configuration
 SET "JAR_DIR=%~dp0"
 SET "JAVA_OPTS=-Xmx1024m -Xms512m"

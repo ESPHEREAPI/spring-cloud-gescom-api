@@ -1,3 +1,6 @@
 [submodule "web/easycompro-gescom/AdminLTE-3_2_0-angular/adminlte-angular-app"]
 	path = web/easycompro-gescom/AdminLTE-3_2_0-angular/adminlte-angular-app
 	url = https://github.com/ESPHEREAPI/template-angular.git
+[submodule "cloud-config-gescom"]
+	path = cloud-config-gescom
+	url = https://github.com/ESPHEREAPI/cloud-config-gescom.git

@@ -11,7 +11,7 @@ services:
     container_name: easycom-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-DeepWater@2021}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Definissez MYSQL_ROOT_PASSWORD dans .env}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-librairie}
     ports:
       - "3307:3306"
@@ -21,7 +21,7 @@ services:
     networks:
       - easycom-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-DeepWater@2021}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -63,8 +63,9 @@ services:
       - "8761:8761"
     environment:
       JAVA_OPTS: "-Xms256m -Xmx512m"
-      SPRING_PROFILES_ACTIVE: docker
+      SPRING_PROFILES_ACTIVE: prod
       SPRING_CLOUD_CONFIG_URI: http://config-server:9101
+      EUREKA_HOSTNAME: eureka-server
     networks:
       - easycom-network
     depends_on:
@@ -90,7 +91,7 @@ services:
       - "8080:8080"
     environment:
       JAVA_OPTS: "-Xms512m -Xmx1024m"
-      SPRING_PROFILES_ACTIVE: docker
+      SPRING_PROFILES_ACTIVE: prod
       SPRING_CLOUD_CONFIG_URI: http://config-server:9101
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
     networks:
@@ -120,12 +121,12 @@ services:
       - "9001:9001"
     environment:
       JAVA_OPTS: "-Xms256m -Xmx512m"
-      SPRING_PROFILES_ACTIVE: docker
+      SPRING_PROFILES_ACTIVE: prod
       SPRING_CLOUD_CONFIG_URI: http://config-server:9101
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/librairie?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-DeepWater@2021}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     networks:
       - easycom-network
     depends_on:
@@ -157,12 +158,13 @@ services:
       - "9008:9008"
     environment:
       JAVA_OPTS: "-Xms256m -Xmx512m"
-      SPRING_PROFILES_ACTIVE: docker
+      SPRING_PROFILES_ACTIVE: prod
       SPRING_CLOUD_CONFIG_URI: http://config-server:9101
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/librairie?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-DeepWater@2021}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      APP_JWTSECRET: ${APP_JWTSECRET:?Definissez APP_JWTSECRET dans .env}
     networks:
       - easycom-network
     depends_on:
@@ -194,8 +196,8 @@ services:
       PMA_HOST: mysql
       PMA_PORT: 3306
       PMA_USER: root
-      PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD:-DeepWater@2021}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-DeepWater@2021}
+      PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     networks:
       - easycom-network
     depends_on:

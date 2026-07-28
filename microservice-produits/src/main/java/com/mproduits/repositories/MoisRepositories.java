@@ -6,9 +6,11 @@ package com.mproduits.repositories;
 
 import com.mproduits.model.Entreprise;
 import com.mproduits.model.Fournisseur;
+import com.mproduits.model.Magasin;
 import com.mproduits.model.Mois;
 import feign.Param;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -33,7 +35,7 @@ public interface MoisRepositories extends JpaRepository<Mois, Long> {
     List<Mois> findByEntrepriseAndNumero(@Param("anneeId") Integer anneeId, @Param("numero") int numero);
 
     @Query("SELECT m FROM Mois m WHERE m.annee.id = :anneeId AND m.numero = :numero ")
-    Mois findByAnneeAndNumeroAndType(@Param("anneeId") Integer anneeId, @Param("numero") int numero);
+    Optional<Mois> findByAnneeAndNumeroAndType(@Param("anneeId") Integer anneeId, @Param("numero") int numero);
 
     @Query("SELECT m FROM Mois m WHERE m.annee.id = :anneeId  AND m.code = :code")
     Mois findByAnneeAndTypeAndCode(@Param("anneeId") Integer anneeId, @Param("code") String code);
@@ -44,6 +46,6 @@ public interface MoisRepositories extends JpaRepository<Mois, Long> {
 //    List<Mois> findAllMoisByCommandeFournisseur(@Param("fournisseur") Fournisseur fournisseur, @Param("anneeId") Integer anneeId);
 
     @Query("SELECT m FROM Mois m WHERE m.annee.id = :anneeId AND m.numero = :numero")
-    Mois findOneByAnneeAndNumero(@Param("annee") int anneeId, @Param("numero") int numero);
+    Optional<Mois>  findOneByAnneeAndNumero(@Param("annee") int anneeId, @Param("numero") int numero);
 
 }

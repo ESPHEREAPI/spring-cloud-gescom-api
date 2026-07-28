@@ -42,14 +42,14 @@ public class VenteController {
           @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss") LocalDateTime dateDebut,
     @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss") LocalDateTime dateFin,
 
-         @RequestParam(required = false) String search
+         @RequestParam(required = false) String search, @RequestParam(required = true) Long boutiqueid
     ) {
-        return venteService.getVentes(page, size, statut, dateDebut, dateFin,search);
+        return venteService.getVentes(page, size, statut, dateDebut, dateFin,search,boutiqueid);
     }
 
-    @PatchMapping("/{venteId}/{username}/statut")
-    public VenteDto updateStatut(@PathVariable Long venteId,@PathVariable String username, @RequestBody Map<String, String> body) {
-        return venteService.updateStatut(venteId,username, body.get("statut"));
+    @PatchMapping("/{venteId}/{username}/statut/{boutiqueid}")
+    public VenteDto updateStatut(@PathVariable Long venteId,@PathVariable String username,@PathVariable Long boutiqueid, @RequestBody Map<String, String> body) {
+        return venteService.updateStatut(venteId,username, body.get("statut"),boutiqueid);
     }
 
     @GetMapping("/{id}")
@@ -57,15 +57,17 @@ public class VenteController {
         return venteService.getVente(id);
     }
   
-    @GetMapping("/vente/{numeTicket}")
-    public ResponseEntity<VenteDto> getVente(@PathVariable String numeTicket){
-        VenteDto venteDto=  venteService.getVente(numeTicket);
+    @GetMapping("/vente/{numeTicket}/{boutiqueid}")
+    public ResponseEntity<VenteDto> getVente(@PathVariable String numeTicket,@PathVariable Long boutiqueid){
+        VenteDto venteDto=  venteService.getVente(numeTicket,boutiqueid);
         return venteDto==null ? ResponseEntity.ok(new VenteDto()):ResponseEntity.ok(venteDto);
     }
-     @GetMapping("/vente/e-com/{numeTicket}")
-    public ResponseEntity<VenteDto> getVentes(@PathVariable long numeTicket){
-        VenteDto venteDto=  venteService.getVenteForECom(numeTicket);
+     @GetMapping("/vente/e-com/{numeTicket}/{boutiqueid}")
+    public ResponseEntity<VenteDto> getVentes(@PathVariable long numeTicket,@PathVariable Long boutiqueid){
+        VenteDto venteDto=  venteService.getVenteForECom(numeTicket,boutiqueid);
         return venteDto==null ? ResponseEntity.ok(new VenteDto()):ResponseEntity.ok(venteDto);
     }
+    
+   
     
 }

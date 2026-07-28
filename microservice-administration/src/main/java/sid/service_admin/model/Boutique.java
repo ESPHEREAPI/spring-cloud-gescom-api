@@ -61,7 +61,7 @@ public class Boutique implements Serializable {
     private String nom;
     @Column(name = "quartier")
     private String quartier;
-
+    //@JsonIgnore
     @JoinColumn(name = "Villeid", referencedColumnName = "id")
     @ManyToOne
     private Ville ville;

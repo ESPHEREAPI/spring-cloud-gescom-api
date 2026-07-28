@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
  * @author USER01
  */
 @AllArgsConstructor
-@NoArgsConstructor
+//@NoArgsConstructor
 @Data
 public class ProduitDto {
      private Long id;
@@ -37,6 +37,7 @@ public class ProduitDto {
      private BigDecimal prixVenteTTC;
      private BigDecimal stockFinal,quantitePrete,quantiteLivree,remise,tva;
      private  String  barcode;
+     // private BigDecimal stockFinal;
      
      
         
@@ -48,5 +49,17 @@ public class ProduitDto {
 
 //
 //    // Constructeur depuis entité
+
+    public ProduitDto(Long id, String reference, String libelle, Categories categories, BigDecimal prixVente, BigDecimal stock) {
+        this.id = id;
+        this.reference = reference;
+        this.libelle = libelle;
+        this.categories = categories;
+        this.prixVente = prixVente;
+        this.stock = stock.toBigInteger();
+    }
+
+    public ProduitDto() {
+    }
    
 }

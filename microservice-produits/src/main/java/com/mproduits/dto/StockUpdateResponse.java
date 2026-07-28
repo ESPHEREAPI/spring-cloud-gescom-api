@@ -4,13 +4,16 @@
  */
 package com.mproduits.dto;
 
+import lombok.Builder;
 import lombok.Data;
 
 /**
  *
  * @author USER01
  */
+@Builder
 @Data
+
 public class StockUpdateResponse {
     private boolean success;
     private String message;

@@ -43,4 +43,5 @@ public class DevisToFactureRequest {
     @Valid
     private List<FactureItemRequest> items;
      private String username;
+     private Long boutiqueid;
 }

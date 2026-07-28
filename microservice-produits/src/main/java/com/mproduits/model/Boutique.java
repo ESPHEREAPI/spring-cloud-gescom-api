@@ -30,7 +30,7 @@ import java.util.Date;
  */
 @Entity
 @Table(name = "boutique")
-@JsonIgnoreProperties({"magasinCollection", "inventaireCollection", "pointventeCollection"})
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler","magasinCollection", "inventaireCollection", "pointventeCollection"})
 @NamedQueries({
     @NamedQuery(name = "Boutique.findAll", query = "SELECT b FROM Boutique b"),
     @NamedQuery(name = "Boutique.findById", query = "SELECT b FROM Boutique b WHERE b.id = :id"),

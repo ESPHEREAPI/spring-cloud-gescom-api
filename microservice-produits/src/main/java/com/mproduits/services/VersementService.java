@@ -32,8 +32,8 @@ import com.mproduits.repositories.FactureRepository;
 import com.mproduits.repositories.VersementClientRepository;
 import com.mproduits.specifications.VersementSpecifications;
 import com.mproduits.utiles.PDFGenerator;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
+//import jakarta.mail.MessagingException;
+//import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -58,8 +58,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+
 
 /**
  * Service de gestion des versements clients
@@ -92,7 +91,7 @@ public class VersementService {
     private final HistoriquePaiementService historiquePaiementService;
     private final VersementStatistiqueService versementStatistiqueService;
     private final PDFGenerator pdfGenerator;
-    private final JavaMailSender mailSender;
+    //private final JavaMailSender mailSender;
     
     @Autowired
     private MapperDtoImpl mappers;
@@ -679,24 +678,24 @@ public class VersementService {
                     request.getDateFin());
 
             // Créer le message email
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            
-            helper.setTo(request.getEmail());
-            helper.setSubject("Rapport de versements - " + LocalDate.now());
-            helper.setText(construireCorpsEmail(clientId, request.getDateDebut(), request.getDateFin()), true);
+//            MimeMessage message = mailSender.createMimeMessage();
+//            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+//            
+//            helper.setTo(request.getEmail());
+//            helper.setSubject("Rapport de versements - " + LocalDate.now());
+//            helper.setText(construireCorpsEmail(clientId, request.getDateDebut(), request.getDateFin()), true);
 
             // Ajouter le PDF en pièce jointe
             String filename = String.format("rapport-versements-%s-%s.pdf",
                     request.getDateDebut().toLocalDate(),
                     request.getDateFin().toLocalDate());
-            helper.addAttachment(filename, () -> new java.io.ByteArrayInputStream(pdfContent));
+           // helper.addAttachment(filename, () -> new java.io.ByteArrayInputStream(pdfContent));
 
             // Envoyer l'email
-            mailSender.send(message);
+          //  mailSender.send(message);
             log.info("Rapport envoyé avec succès à {}", request.getEmail());
             
-        } catch (MessagingException e) {
+        } catch (Exception e) {
             log.error("Erreur lors de l'envoi de l'email", e);
             throw new ErrorResponse("Erreur lors de l'envoi du rapport par email");
         }

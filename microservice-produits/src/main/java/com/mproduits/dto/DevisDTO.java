@@ -276,6 +276,8 @@ public class DevisDTO {
      * Utilisateur ayant validé le devis
      */
     private String usernameValidation;
+    private int anneeid;
+    private Long boutiqueid;
 
     // ========== OPTIONS ==========
     

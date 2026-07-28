@@ -58,6 +58,9 @@ public class DevisService {
     private final ProduitRepositories produitRepo;
     private final NotificationService notificationService;
     private final StockService stockService;
+    private final BoutiqueRepositories boutiqueRepositories;
+  
+    private final  DevisSequenceRepository sequenceRepo;
     private final DevisMapper mapper;
 
     // Constantes métier
@@ -81,7 +84,7 @@ public class DevisService {
      * @return Devis créé
      * @throws MetierException Si validation échoue
      */
-    public Devis creerDevis(DevisDTO dto, String username) {
+    public Devis creerDevis(DevisDTO dto, String username, Long boutiqueid, int anneeid) {
         log.info("═══════════════════════════════════════");
         log.info("DÉBUT CRÉATION DEVIS - Client ID: {}", dto.getClient().getNom());
         log.info("═══════════════════════════════════════");
@@ -95,13 +98,13 @@ public class DevisService {
             if (dto.getItems() == null || dto.getItems().isEmpty()) {
                 throw new DevisException("Le devis doit contenir au moins un article");
             }
-
+            Optional<Boutique> boutique = boutiqueRepositories.findById(boutiqueid);
             validerArticles(dto.getItems());
             log.debug("✓ {} article(s) validé(s)", dto.getItems().size());
 
             // 3. VÉRIFIER STOCK (optionnel selon configuration)
             if (dto.isVerifierStock()) {
-                verifierStockDisponible(dto.getItems());
+                verifierStockDisponible(dto.getItems(), boutiqueid, anneeid);
                 log.debug("✓ Stock vérifié et disponible");
             }
 
@@ -123,6 +126,7 @@ public class DevisService {
                     .validiteJours(dto.getValiditeJours() != null ? dto.getValiditeJours() : VALIDITE_DEFAUT_JOURS)
                     .totalRemise(dto.getTotalRemise())
                     .items(new ArrayList<>())
+                    .boutique(boutique.get())
                     .build();
 
             // 5. CALCULER DATE EXPIRATION
@@ -207,122 +211,123 @@ public class DevisService {
 
     }
 
-   public Devis modifierDevis(Long devisId, DevisDTO dto, String username) {
-    log.info("DÉBUT MODIFICATION DEVIS - ID: {}", devisId);
+    public Devis modifierDevis(Long devisId, DevisDTO dto, String username) {
+        log.info("DÉBUT MODIFICATION DEVIS - ID: {}", devisId);
 
-    try {
-        Devis devis = devisRepo.findById(devisId)
-                .orElseThrow(() -> new DevisException("Devis non trouvé: " + devisId));
+        try {
+            Devis devis = devisRepo.findById(devisId)
+                    .orElseThrow(() -> new DevisException("Devis non trouvé: " + devisId));
 
-        // Vérifier que le devis peut être modifié
-        if (!devis.isModifiable()) {
-            throw new DevisException(
-                    "Impossible de modifier le devis. Statut actuel: " + devis.getStatut());
-        }
-
-        // Mise à jour des informations générales
-        if (dto.getRemarques() != null) {
-            devis.setRemarques(dto.getRemarques());
-        }
-        if (dto.getConditions() != null) {
-            devis.setConditions(dto.getConditions());
-        }
-        if (dto.getTauxTVA() != null) {
-            devis.setTauxTVA(dto.getTauxTVA());
-            devis.setTotalTVA(dto.getTotalTVA());
-        }
-        devis.setAppliquerTVA(dto.isAppliquerTVA());
-        devis.setUsernameUpdate(username);
-        devis.setDateModification(new Date());
-        devis.setMontantHT(dto.getMontantHT());
-        devis.setTotal(dto.getTotal());
-        devis.setTotalRemise(dto.getTotalRemise());
-        //devis = devisRepo.save(devis);
-
-        // Mise à jour des articles si fournis
-        if (dto.getItems() != null && !dto.getItems().isEmpty()) {
-            // ✅ SOLUTION 1 : Créer une Map des items existants
-            Map<Long, DevisItem> itemsExistantsMap = devis.getItems().stream()
-                    .filter(item -> item.getId() != null)
-                    .collect(Collectors.toMap(DevisItem::getId, item -> item));
-
-            // Supprimer tous les items (ils seront recréés/réutilisés)
-            devis.getItems().clear();
-
-            int ordre = 1;
-            for (DevisItemDTO itemDto : dto.getItems()) {
-                Produit produit = produitRepo.findById(itemDto.getProduitId())
-                        .orElseThrow(() -> new DevisException(
-                                "Produit non trouvé: " + itemDto.getProduitId()));
-
-                DevisItem item;
-
-                // ✅ Item existant : récupérer depuis la map
-                if (itemDto.getId() != null && itemsExistantsMap.containsKey(itemDto.getId())) {
-                    item = itemsExistantsMap.get(itemDto.getId());
-                    
-                    // Mettre à jour les propriétés
-                    item.setProduit(produit);
-                    item.setProduitCode(produit.getCode());
-                    item.setProduitLibelle(produit.getLibelle());
-                    item.setQuantite(itemDto.getQuantite());
-                    item.setPrixUnitaire(itemDto.getPrixUnitaire());
-                    item.setTauxRemise(itemDto.getTauxRemise() != null 
-                            ? itemDto.getTauxRemise() : BigDecimal.ZERO);
-                    item.setTauxTVA(devis.getAppliquerTVA() ? devis.getTauxTVA() : BigDecimal.ZERO);
-                    item.setOrdre(ordre++);
-                    item.setMontantRemise(itemDto.getTauxRemise() != null
-                            ? montantremise(itemDto, devis.getTauxTVA()) : itemDto.getMontantRemise());
-                    
-                } else {
-                    // ✅ Nouvel item : créer sans ID
-                    item = DevisItem.builder()
-                            // .id(itemDto.getId())  ← NE PAS DÉFINIR L'ID !
-                            .produit(produit)
-                            .produitCode(produit.getCode())
-                            .produitLibelle(produit.getLibelle())
-                            .quantite(itemDto.getQuantite())
-                            .prixUnitaire(itemDto.getPrixUnitaire())
-                            .tauxRemise(itemDto.getTauxRemise() != null
-                                    ? itemDto.getTauxRemise() : BigDecimal.ZERO)
-                            .tauxTVA(devis.getAppliquerTVA() ? devis.getTauxTVA() : BigDecimal.ZERO)
-                            .ordre(ordre++)
-                            .montantRemise(itemDto.getTauxRemise() != null
-                                    ? montantremise(itemDto, devis.getTauxTVA()) : itemDto.getMontantRemise())
-                            .build();
-                }
-
-                // Ajouter l'item au devis (gère la relation bidirectionnelle)
-                devis.addItem(item);
-                //devisItemRepo.save(item);
+            // Vérifier que le devis peut être modifié
+            if (!devis.isModifiable()) {
+                throw new DevisException(
+                        "Impossible de modifier le devis. Statut actuel: " + devis.getStatut());
             }
+
+            // Mise à jour des informations générales
+            if (dto.getRemarques() != null) {
+                devis.setRemarques(dto.getRemarques());
+            }
+            if (dto.getConditions() != null) {
+                devis.setConditions(dto.getConditions());
+            }
+            if (dto.getTauxTVA() != null) {
+                devis.setTauxTVA(dto.getTauxTVA());
+                devis.setTotalTVA(dto.getTotalTVA());
+            }
+            devis.setAppliquerTVA(dto.isAppliquerTVA());
+            devis.setUsernameUpdate(username);
+            devis.setDateModification(new Date());
+            devis.setMontantHT(dto.getMontantHT());
+            devis.setTotal(dto.getTotal());
+            devis.setTotalRemise(dto.getTotalRemise());
+            //devis = devisRepo.save(devis);
+
+            // Mise à jour des articles si fournis
+            if (dto.getItems() != null && !dto.getItems().isEmpty()) {
+                // ✅ SOLUTION 1 : Créer une Map des items existants
+                Map<Long, DevisItem> itemsExistantsMap = devis.getItems().stream()
+                        .filter(item -> item.getId() != null)
+                        .collect(Collectors.toMap(DevisItem::getId, item -> item));
+
+                // Supprimer tous les items (ils seront recréés/réutilisés)
+                devis.getItems().clear();
+
+                int ordre = 1;
+                for (DevisItemDTO itemDto : dto.getItems()) {
+                    Produit produit = produitRepo.findById(itemDto.getProduitId())
+                            .orElseThrow(() -> new DevisException(
+                            "Produit non trouvé: " + itemDto.getProduitId()));
+
+                    DevisItem item;
+
+                    // ✅ Item existant : récupérer depuis la map
+                    if (itemDto.getId() != null && itemsExistantsMap.containsKey(itemDto.getId())) {
+                        item = itemsExistantsMap.get(itemDto.getId());
+
+                        // Mettre à jour les propriétés
+                        item.setProduit(produit);
+                        item.setProduitCode(produit.getCode());
+                        item.setProduitLibelle(produit.getLibelle());
+                        item.setQuantite(itemDto.getQuantite());
+                        item.setPrixUnitaire(itemDto.getPrixUnitaire());
+                        item.setTauxRemise(itemDto.getTauxRemise() != null
+                                ? itemDto.getTauxRemise() : BigDecimal.ZERO);
+                        item.setTauxTVA(devis.getAppliquerTVA() ? devis.getTauxTVA() : BigDecimal.ZERO);
+                        item.setOrdre(ordre++);
+                        item.setMontantRemise(itemDto.getTauxRemise() != null
+                                ? montantremise(itemDto, devis.getTauxTVA()) : itemDto.getMontantRemise());
+
+                    } else {
+                        // ✅ Nouvel item : créer sans ID
+                        item = DevisItem.builder()
+                                // .id(itemDto.getId())  ← NE PAS DÉFINIR L'ID !
+                                .produit(produit)
+                                .produitCode(produit.getCode())
+                                .produitLibelle(produit.getLibelle())
+                                .quantite(itemDto.getQuantite())
+                                .prixUnitaire(itemDto.getPrixUnitaire())
+                                .tauxRemise(itemDto.getTauxRemise() != null
+                                        ? itemDto.getTauxRemise() : BigDecimal.ZERO)
+                                .tauxTVA(devis.getAppliquerTVA() ? devis.getTauxTVA() : BigDecimal.ZERO)
+                                .ordre(ordre++)
+                                .montantRemise(itemDto.getTauxRemise() != null
+                                        ? montantremise(itemDto, devis.getTauxTVA()) : itemDto.getMontantRemise())
+                                .build();
+                    }
+
+                    // Ajouter l'item au devis (gère la relation bidirectionnelle)
+                    devis.addItem(item);
+                    //devisItemRepo.save(item);
+                }
+            }
+
+            // Sauvegarder (le cascade s'occupe des items)
+            log.debug("Devis avant sauvegarde: {}", devis);
+            devis.getItems().forEach(i -> log.debug("Item: id={}, produit={}, montant={}",
+                    i.getId(), i.getProduit(), i.getPrixUnitaire()));
+
+            devis = devisRepo.save(devis);
+
+            log.info("✓ Devis modifié - ID: {}, Version: {}", devis.getId(), devis.getVersion());
+
+            notificationService.ajouter(
+                    "Devis Modifié",
+                    String.format("Le devis %s a été modifié", devis.getNumeroDevis()),
+                    "info"
+            );
+
+            return devis;
+
+        } catch (DevisException e) {
+            log.error("❌ Erreur: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("❌ Erreur lors de la modification", e);
+            throw new MetierException("Erreur lors de la modification: " + e.getMessage(), e);
         }
-
-        // Sauvegarder (le cascade s'occupe des items)
-        log.debug("Devis avant sauvegarde: {}", devis);
-       devis.getItems().forEach(i -> log.debug("Item: id={}, produit={}, montant={}", 
-               i.getId(), i.getProduit(), i.getPrixUnitaire()));
-
-        devis = devisRepo.save(devis);
-
-        log.info("✓ Devis modifié - ID: {}, Version: {}", devis.getId(), devis.getVersion());
-
-        notificationService.ajouter(
-                "Devis Modifié",
-                String.format("Le devis %s a été modifié", devis.getNumeroDevis()),
-                "info"
-        );
-
-        return devis;
-
-    } catch (DevisException e) {
-        log.error("❌ Erreur: {}", e.getMessage());
-        throw e;
-    } catch (Exception e) {
-        log.error("❌ Erreur lors de la modification", e);
-        throw new MetierException("Erreur lors de la modification: " + e.getMessage(), e);
     }
-}
+
     /**
      * Duplique un devis existant Crée une copie avec un nouveau numéro et
      * statut EN_ATTENTE
@@ -413,7 +418,7 @@ public class DevisService {
      * @param devisId ID du devis
      * @return DevisDTO accepté
      */
-    public DevisDTO accepterDevis(Long devisId) {
+    public DevisDTO accepterDevis(Long devisId, int anneeid) {
         log.info("═══════════════════════════════════════");
         log.info("ACCEPTATION DEVIS - ID: {}", devisId);
         log.info("═══════════════════════════════════════");
@@ -438,7 +443,7 @@ public class DevisService {
                     .map(this::convertirEnDTO)
                     .collect(Collectors.toList());
 
-            List<String> erreursStock = validerStockDisponible(itemsDto);
+            List<String> erreursStock = validerStockDisponible(itemsDto, devis.getBoutique().getId(), anneeid);
             if (!erreursStock.isEmpty()) {
                 throw new DevisException("Stock insuffisant: " + String.join(", ", erreursStock));
             }
@@ -567,7 +572,7 @@ public class DevisService {
         log.info("BATCH: Vérification des devis expirés");
 
         try {
-            List<Devis> devisEnAttente = devisRepo.findByStatut(StatutDevis.EN_ATTENTE);
+            List<Devis> devisEnAttente = devisRepo.findByStatut(StatutDevis.EN_ATTENTE.name());
             int count = 0;
 
             for (Devis devis : devisEnAttente) {
@@ -623,9 +628,9 @@ public class DevisService {
      * Liste tous les devis
      */
     @Transactional(readOnly = true)
-    public List<Devis> findAll() {
+    public List<Devis> findAll(Long boutiqueid) {
         log.debug("Récupération de tous les devis");
-        return devisRepo.findAll();
+        return devisRepo.findByBoutiqueId(boutiqueid);
     }
 
     /**
@@ -644,9 +649,9 @@ public class DevisService {
      * Liste les devis d'un client
      */
     @Transactional(readOnly = true)
-    public List<DevisDTO> findByClientId(Long clientId) {
+    public List<DevisDTO> findByClientId(Long clientId, Long boutiqueid) {
         log.debug("Recherche devis du client: {}", clientId);
-        return devisRepo.findByClientId(clientId).stream()
+        return devisRepo.findByClientId(clientId, boutiqueid).stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
     }
@@ -655,11 +660,11 @@ public class DevisService {
      * Liste les devis par statut
      */
     @Transactional(readOnly = true)
-    public List<DevisDTO> findByStatut(String statut) {
+    public List<DevisDTO> findByStatut(String statut, Long boutiqueid) {
         log.debug("Recherche devis avec statut: {}", statut);
         try {
             StatutDevis statutEnum = StatutDevis.valueOf(statut.toUpperCase());
-            return devisRepo.findByStatut(statutEnum).stream()
+            return devisRepo.findByStatutAndBoutiqueId(statutEnum, boutiqueid).stream()
                     .map(mapper::toDto)
                     .collect(Collectors.toList());
         } catch (IllegalArgumentException e) {
@@ -671,11 +676,11 @@ public class DevisService {
      * Recherche devis par client et statut
      */
     @Transactional(readOnly = true)
-    public List<DevisDTO> findByClientIdAndStatut(Long clientId, String statut) {
+    public List<DevisDTO> findByClientIdAndStatut(Long clientId, String statut, Long boutiqueid) {
         log.debug("Recherche devis - Client: {}, Statut: {}", clientId, statut);
 
         StatutDevis statutEnum = StatutDevis.valueOf(statut.toUpperCase());
-        return devisRepo.findByClientIdAndStatut(clientId, statutEnum).stream()
+        return devisRepo.findByClientIdAndStatut(clientId, statutEnum, boutiqueid).stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
     }
@@ -701,7 +706,7 @@ public class DevisService {
     public List<DevisDTO> findDevisProchesExpiration() {
         log.debug("Recherche devis proches de l'expiration");
 
-        List<Devis> allDevis = devisRepo.findByStatut(StatutDevis.EN_ATTENTE);
+        List<Devis> allDevis = devisRepo.findByStatut(StatutDevis.EN_ATTENTE.name());
         Date maintenant = new Date();
         Calendar cal = Calendar.getInstance();
         cal.add(Calendar.DAY_OF_MONTH, JOURS_ALERTE_EXPIRATION);
@@ -722,7 +727,7 @@ public class DevisService {
     public List<DevisDTO> findDevisExpires() {
         log.debug("Recherche devis expirés");
 
-        List<Devis> allDevis = devisRepo.findByStatut(StatutDevis.EN_ATTENTE);
+        List<Devis> allDevis = devisRepo.findByStatut(StatutDevis.EN_ATTENTE.name());
         Date maintenant = new Date();
 
         return allDevis.stream()
@@ -779,8 +784,8 @@ public class DevisService {
     @Transactional(readOnly = true)
     public BigDecimal calculerChiffreAffairesPotentiel() {
         List<Devis> devisActifs = new ArrayList<>();
-        devisActifs.addAll(devisRepo.findByStatut(StatutDevis.EN_ATTENTE));
-        devisActifs.addAll(devisRepo.findByStatut(StatutDevis.ACCEPTE));
+        devisActifs.addAll(devisRepo.findByStatut(StatutDevis.EN_ATTENTE.name()));
+        devisActifs.addAll(devisRepo.findByStatut(StatutDevis.ACCEPTE.name()));
 
         BigDecimal total = devisActifs.stream()
                 .map(Devis::getTotal)
@@ -861,8 +866,8 @@ public class DevisService {
     /**
      * Vérifie la disponibilité du stock
      */
-    private void verifierStockDisponible(List<DevisItemDTO> items) {
-        List<String> erreurs = validerStockDisponible(items);
+    private void verifierStockDisponible(List<DevisItemDTO> items, Long boutiqueid, int anneeid) {
+        List<String> erreurs = validerStockDisponible(items, boutiqueid, anneeid);
         if (!erreurs.isEmpty()) {
             throw new DevisException("Stock insuffisant: " + String.join(", ", erreurs));
         }
@@ -871,7 +876,7 @@ public class DevisService {
     /**
      * Valide le stock pour une liste d'articles
      */
-    private List<String> validerStockDisponible(List<DevisItemDTO> items) {
+    private List<String> validerStockDisponible(List<DevisItemDTO> items, Long boutiqueid, int anneeid) {
         List<String> erreurs = new ArrayList<>();
 
         for (DevisItemDTO item : items) {
@@ -880,8 +885,8 @@ public class DevisService {
                 erreurs.add("Produit introuvable: " + item.getProduitId());
                 continue;
             }
-
-            BigDecimal stockDispo = stockService.getStockTotal(produit.getId());
+            //Optional<Boutique>boutique =boutiqueRepositories.findById(boutiqueid);
+            BigDecimal stockDispo = stockService.getStockTotal(produit.getId(), boutiqueid, anneeid);
             BigDecimal quantiteDemandee = new BigDecimal(item.getQuantite());
 
             if (stockDispo.compareTo(quantiteDemandee) < 0) {
@@ -917,7 +922,7 @@ public class DevisService {
     /**
      * Génère un numéro de devis unique (Format: DEV-2025-0001)
      */
-    private String genererNumeroDevis() {
+    private String genererNumeroDevis_old() {
         Calendar cal = Calendar.getInstance();
         int annee = cal.get(Calendar.YEAR);
 
@@ -939,7 +944,91 @@ public class DevisService {
         long count = devisRepo.countByDateDevisBetween(debutAnnee, finAnnee);
         int numero = (int) (count + 1);
 
-        return String.format("%s-%d-%04d", PREFIX_NUMERO_DEVIS, annee, numero);
+        String numeros_devis= String.format("%s-%d-%04d", PREFIX_NUMERO_DEVIS, annee, numero);
+        do {            
+             numero++;
+        } while (devisRepo.existsByNumeroDevis(numeros_devis)==Boolean.TRUE);
+        
+       return String.format("%s-%d-%04d", PREFIX_NUMERO_DEVIS, annee, numero);
+    }
+
+     @Transactional
+    public String genererNumeroDevis() {
+        Calendar cal = Calendar.getInstance();
+        int annee = cal.get(Calendar.YEAR);
+        
+        // Récupérer ou créer la séquence de l'année avec verrou pessimiste
+        DevisSequence sequence = sequenceRepo.findByAnneeWithLock(annee)
+            .orElseGet(() -> {
+                // Première fois : vérifier s'il existe déjà des devis pour cette année
+                DevisSequence nouvelleSequence = new DevisSequence(annee);
+                int maxNumeroExistant = obtenirMaxNumeroDevisAnnee(annee);
+                nouvelleSequence.setDernierNumero(maxNumeroExistant);
+                return sequenceRepo.save(nouvelleSequence);
+            });
+        
+        // Vérifier si la séquence est bien synchronisée avec les données
+        int maxNumeroExistant = obtenirMaxNumeroDevisAnnee(annee);
+        if (maxNumeroExistant > sequence.getDernierNumero()) {
+            // Corriger la séquence si nécessaire
+            sequence.setDernierNumero(maxNumeroExistant);
+            sequenceRepo.save(sequence);
+        }
+        
+        // Incrémenter et générer le numéro
+        int nouveauNumero = sequence.getDernierNumero() + 1;
+        String numeroDevis = String.format("%s-%d-%04d", PREFIX_NUMERO_DEVIS, annee, nouveauNumero);
+        
+        // Double vérification pour éviter les doublons (sécurité supplémentaire)
+        int tentatives = 0;
+        while (devisRepo.existsByNumeroDevis(numeroDevis) && tentatives < 100) {
+            nouveauNumero++;
+            numeroDevis = String.format("%s-%d-%04d", PREFIX_NUMERO_DEVIS, annee, nouveauNumero);
+            tentatives++;
+        }
+        
+        if (tentatives >= 100) {
+            throw new RuntimeException("Impossible de générer un numéro de devis unique après 100 tentatives");
+        }
+        
+        // Sauvegarder le nouveau dernier numéro
+        sequence.setDernierNumero(nouveauNumero);
+        sequenceRepo.save(sequence);
+        
+        return numeroDevis;
+    }
+    
+    
+    /**
+     * Récupère le numéro maximum existant dans la base pour une année donnée
+     */
+    private int obtenirMaxNumeroDevisAnnee(int annee) {
+        String pattern = PREFIX_NUMERO_DEVIS + "-" + annee + "-%";
+        Integer maxNumero = devisRepo.findMaxNumeroByPattern(pattern);
+        return (maxNumero != null) ? maxNumero : 0;
+    }
+    
+    /**
+     * Méthode utilitaire pour initialiser ou réparer les séquences
+     * À exécuter une seule fois pour synchroniser avec les données existantes
+     */
+    @Transactional
+    public void initialiserSequences() {
+        Calendar cal = Calendar.getInstance();
+        int anneeActuelle = cal.get(Calendar.YEAR);
+        
+        // Initialiser pour les 3 dernières années
+        for (int annee = anneeActuelle - 2; annee <= anneeActuelle; annee++) {
+            int maxNumero = obtenirMaxNumeroDevisAnnee(annee);
+            
+            DevisSequence sequence = sequenceRepo.findById(annee)
+                .orElse(new DevisSequence(annee));
+            
+            sequence.setDernierNumero(maxNumero);
+            sequenceRepo.save(sequence);
+            
+            System.out.println("Séquence initialisée pour " + annee + " : dernier numéro = " + maxNumero);
+        }
     }
 
     /**

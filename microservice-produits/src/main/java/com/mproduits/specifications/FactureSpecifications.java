@@ -15,6 +15,11 @@ public class FactureSpecifications {
     public static Specification<Facture> withCriteria(FactureSearchCriteria criteria) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+            
+            // Filtre par boutique ID
+            if (criteria.getBoutiqueid() != null) {
+                predicates.add(cb.equal(root.get("boutique").get("id"), criteria.getBoutiqueid()));
+            }
 
             // 🔹 Filtrer par client
             if (criteria.getClientId() != null) {

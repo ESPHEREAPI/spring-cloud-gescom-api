@@ -32,13 +32,23 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import com.mproduits.dto.ApiResponse;
+import com.mproduits.dto.BatchValeur;
+import com.mproduits.dto.DecrementStockRequest;
+import com.mproduits.dto.StockDecrementItem;
+import com.mproduits.mappers.MapperDtoImpl;
+import com.mproduits.services.StockService;
+import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import java.util.*;
+
 
 /**
  *
  * @author USER01
  */
 @RestController
+@Slf4j
 @RequestMapping("/microservice-produits")
 //@CrossOrigin(origins = "*", maxAge = 3600)
 @Validated
@@ -47,11 +57,15 @@ public class ArticleController {
 
     private final ProduitService articleService;
     private final SpecifiqueRepositories specifiqueRepositories;
+    private final StockService stockService;
+    @Autowired
+    MapperDtoImpl mapperdto;
 
     @Autowired
-    public ArticleController(ProduitService articleService, SpecifiqueRepositories specifiqueRepositories) {
+    public ArticleController(ProduitService articleService, SpecifiqueRepositories specifiqueRepositories, StockService stockService) {
         this.articleService = articleService;
         this.specifiqueRepositories = specifiqueRepositories;
+        this.stockService = stockService;
     }
 
     /**
@@ -60,10 +74,10 @@ public class ArticleController {
      *
      * @return
      */
-    @GetMapping("/produits/autocomplete")
+    @GetMapping("/produits/autocomplete/{boutiqueid}")
     @Operation(summary = "Recherche rapide pour autocomplétion",
             description = "Retourne une liste limitée d'articles pour l'autocomplétion. Optimisé pour la performance.")
-   // @ApiResponse(responseCode = "200", description = "Liste des articles trouvés")
+    // @ApiResponse(responseCode = "200", description = "Liste des articles trouvés")
     public ResponseEntity<List<ProduitDto>> autocomplete(
             @Parameter(description = "Terme de recherche (minimum 2 caractères)")
             @RequestParam(value = "q", required = false)
@@ -71,9 +85,9 @@ public class ArticleController {
             @Parameter(description = "Nombre maximum de résultats (max 10000)")
             @RequestParam(value = "limit", defaultValue = "1000")
             @Min(value = 1, message = "La limite doit être au moins 1")
-            @Max(value = 10000, message = "La limite ne peut pas dépasser 10000") Integer limit) {
+            @Max(value = 10000, message = "La limite ne peut pas dépasser 10000") Integer limit, @PathVariable Long boutiqueid) {
 
-        List<ProduitDto> articles = articleService.searchForAutocomplete(query, limit);
+        List<ProduitDto> articles = articleService.searchForAutocomplete(query, limit, boutiqueid);
 
         // Cache côté client pendant 2 minutes pour les requêtes fréquentes
         CacheControl cacheControl = CacheControl.maxAge(2, TimeUnit.MINUTES)
@@ -95,28 +109,27 @@ public class ArticleController {
      * @param size
      * @return
      */
-    @GetMapping("/articles/search")
+    @GetMapping("/articles/search/{boutiqueid}")
     @Operation(summary = "Recherche complète avec pagination",
             description = "Recherche avancée avec filtres et pagination")
-  //  @ApiResponse(responseCode = "200", description = "Résultats de recherche paginés")
+    //  @ApiResponse(responseCode = "200", description = "Résultats de recherche paginés")
     public ResponseEntity<ArticleSearchResponse> search(
-//            @Parameter(description = "Terme de recherche")
-//            @RequestParam(value = "q", required = false)
-//            @Size(max = 100, message = "Le terme de recherche ne peut pas dépasser 100 caractères") String query,
-//            @Parameter(description = "Catégorie à filtrer")
-//            @RequestParam(value = "category", required = false) String category,
-//            @Parameter(description = "Numéro de page (commence à 0)")
-//            @RequestParam(value = "page", defaultValue = "0")
-//            @Min(value = 0, message = "Le numéro de page doit être positif") Integer page,
-//            @Parameter(description = "Taille de la page (max 5000)")
-//            @RequestParam(value = "size", defaultValue = "20")
-//            @Min(value = 1, message = "La taille de page doit être au moins 1")
-//            @Max(value = 5000, message = "La taille de page ne peut pas dépasser 5000") Integer size
+            //            @Parameter(description = "Terme de recherche")
+            //            @RequestParam(value = "q", required = false)
+            //            @Size(max = 100, message = "Le terme de recherche ne peut pas dépasser 100 caractères") String query,
+            //            @Parameter(description = "Catégorie à filtrer")
+            //            @RequestParam(value = "category", required = false) String category,
+            //            @Parameter(description = "Numéro de page (commence à 0)")
+            //            @RequestParam(value = "page", defaultValue = "0")
+            //            @Min(value = 0, message = "Le numéro de page doit être positif") Integer page,
+            //            @Parameter(description = "Taille de la page (max 5000)")
+            //            @RequestParam(value = "size", defaultValue = "20")
+            //            @Min(value = 1, message = "La taille de page doit être au moins 1")
+            //            @Max(value = 5000, message = "La taille de page ne peut pas dépasser 5000") Integer size
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String query,
-             @RequestParam(required = false) String category) 
-    {
+            @RequestParam(required = false) String category) {
 
         ArticleSearchResponse response = articleService.searchArticles(query, "", page, size);
 
@@ -134,12 +147,12 @@ public class ArticleController {
      *
      * @return
      */
-    @GetMapping("/top")
+    @GetMapping("/top/{boutiqueid}")
     @Operation(summary = "Articles populaires",
             description = "Retourne les 50 articles les plus populaires pour l'affichage initial")
-   // @ApiResponse(responseCode = "200", description = "Liste des articles populaires")
-    public ResponseEntity<List<ProduitDto>> getTopArticles() {
-        List<ProduitDto> articles = articleService.getTopArticles();
+    // @ApiResponse(responseCode = "200", description = "Liste des articles populaires")
+    public ResponseEntity<List<ProduitDto>> getTopArticles(@PathVariable Long boutiqueid) {
+        List<ProduitDto> articles = articleService.getTopArticles(boutiqueid);
 
         // Cache plus long pour les articles populaires
         CacheControl cacheControl = CacheControl.maxAge(10, TimeUnit.MINUTES)
@@ -179,14 +192,14 @@ public class ArticleController {
     @GetMapping("/by-code/{code}")
     @Operation(summary = "Recherche par code",
             description = "Trouve un article par son code exact")
-  //  @ApiResponse(responseCode = "200", description = "Article trouvé")
+    //  @ApiResponse(responseCode = "200", description = "Article trouvé")
     //@ApiResponse(responseCode = "404", description = "Article non trouvé")
     public ResponseEntity<ProduitDto> findByCode(
             @Parameter(description = "Code de l'article")
             @PathVariable
             @Size(min = 1, max = 50, message = "Le code doit contenir entre 1 et 50 caractères") String code) {
 
-        ProduitDto article = articleService.findByReference(code);
+        ProduitDto article = articleService.findByReference(code, 0l);
 
         if (article != null) {
             return ResponseEntity.ok()
@@ -204,7 +217,7 @@ public class ArticleController {
     @GetMapping("/exists/{code}")
     @Operation(summary = "Vérifier l'existence d'un code",
             description = "Vérifie si un code article existe déjà")
-   // @ApiResponse(responseCode = "200", description = "Résultat de la vérification")
+    // @ApiResponse(responseCode = "200", description = "Résultat de la vérification")
     public ResponseEntity<Boolean> existsByCode(
             @Parameter(description = "Code à vérifier")
             @PathVariable
@@ -225,7 +238,7 @@ public class ArticleController {
     @GetMapping("/fulltext")
     @Operation(summary = "Recherche full-text",
             description = "Recherche full-text avancée (si supportée par la base de données)")
-   // @ApiResponse(responseCode = "200", description = "Résultats de la recherche full-text")
+    // @ApiResponse(responseCode = "200", description = "Résultats de la recherche full-text")
     public ResponseEntity<List<ProduitDto>> fullTextSearch(
             @Parameter(description = "Terme de recherche pour full-text")
             @RequestParam(value = "q", required = true)
@@ -259,14 +272,14 @@ public class ArticleController {
      * @return
      */
     @PostMapping("/articles")
-   public ResponseEntity<ApiResponse<ProduitDto>> createArticles( @RequestBody ProduitDto produitDto) {
-    
-    ApiResponse<ProduitDto> response = articleService.createArticles(produitDto);
-    
-    return ResponseEntity
-        .status(HttpStatus.CREATED)  // ✅ 201 au lieu de 200
-        .body(response);
-}
+    public ResponseEntity<ApiResponse<ProduitDto>> createArticles(@RequestBody ProduitDto produitDto) {
+
+        ApiResponse<ProduitDto> response = articleService.createArticles(produitDto);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED) // ✅ 201 au lieu de 200
+                .body(response);
+    }
 
     @PutMapping("/articles/{id}")
     public ResponseEntity<ProduitDto> updateArticles(@PathVariable Long id, @RequestBody ProduitDto produitDto) {
@@ -277,8 +290,217 @@ public class ArticleController {
 
     @DeleteMapping("/articles/{id}")
     public void selectArticles(@PathVariable Long id) {
-       articleService.delesteArticles(id);
+        articleService.delesteArticles(id);
 
         //return ResponseEntity.ok();
     }
+
+    // ========================================
+    // MÉTHODE 1: DÉCRÉMENTATION STOCK UNITAIRE
+    // ========================================
+    /**
+     * Décrémente le stock d'un article spécifique
+     *
+     * Frontend appelle: PUT /stock/{articleId}/decrement Body: { "quantite": 2
+     * }
+     *
+     * @param articleId ID de l'article
+     * @param request Objet contenant la quantité à décrémenter
+     * @return Le nouveau stock après décrémentation
+     */
+    @PutMapping("/stock/{articleId}/{boutiqueid}/decrement")
+    public ResponseEntity<Integer> decrementStock(
+            @PathVariable Long articleId, @PathVariable Long boutiqueid,
+            @RequestBody DecrementStockRequest request) {
+
+        try {
+            // Validation
+            if (request.getQuantite() == null || request.getQuantite() <= 0) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            // Décrémentation du stock
+            Integer newStock = stockService.decrementStock(articleId, request.getQuantite(), boutiqueid);
+
+            return ResponseEntity.ok(newStock);
+
+        } catch (IllegalArgumentException e) {
+            // Article non trouvé ou stock insuffisant
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    // ========================================
+    // MÉTHODE 2: RAFRAÎCHISSEMENT BATCH PRODUITS
+    // ========================================
+    /**
+     * Récupère les détails complets de plusieurs produits
+     *
+     * Frontend appelle: POST /produits/batch Body: [1, 2, 3, 45, 67]
+     *
+     * @param articleIds Liste des IDs d'articles à récupérer
+     * @return Liste des produits avec leurs détails complets
+     */
+    @PostMapping("/produits/batch/{boutiqueid}")
+    public ResponseEntity<List<ProduitDto>> getProductsBatch(@PathVariable Long boutiqueid,
+            @RequestBody List<Long> articleIds) {
+
+        try {
+            // Validation
+            if (articleIds == null || articleIds.isEmpty()) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            // Récupération des produits
+            List<ProduitDto> produits = stockService.getProductsByIds(articleIds, boutiqueid);
+
+            return ResponseEntity.ok(produits);
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Décrémente les stocks de plusieurs articles en une seule transaction
+     *
+     * POST /api/microservice-produits/stocks/batch/decrement Body: [ {
+     * "articleId": 1, "quantite": 2 }, { "articleId": 2, "quantite": 1 }, {
+     * "articleId": 3, "quantite": 5 } ]
+     *
+     * Response: { "1": 48, "2": 22, "3": 15 }
+     */
+    @PostMapping("/stocks/batch/decrement/{boutiqueid}")
+    public ResponseEntity<?> decrementStocksBatch(
+            @RequestBody List<StockDecrementItem> items,
+            @PathVariable Long boutiqueid) {
+
+        try {
+            List<BatchValeur> listbatchValeur=new ArrayList<>();
+            Map<String, Integer> newStocks = new HashMap<>();
+            
+
+            for (StockDecrementItem item : items) {
+                Long articleId = item.getArticleId();
+                Integer quantite = item.getQuantite() == null ? 0 : item.getQuantite();
+
+                // ✅ Si quantite = 0, juste lire le stock
+                if (quantite == null || quantite == 0) {
+                    Integer stock = stockService.getCurrentStock(articleId, boutiqueid);
+                    newStocks.put(String.valueOf(articleId), stock);
+                } else {
+                    // Décrémenter normalement
+                    Integer stock = stockService.decrementStock(articleId, quantite, boutiqueid);
+                    newStocks.put(String.valueOf(articleId), stock);
+                }
+            }
+
+            return ResponseEntity.ok(newStocks);
+
+        } catch (Exception e) {
+            log.error("❌ Erreur", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @PostMapping("/stocks/batch/decrement/prix/{boutiqueid}")
+    public ResponseEntity<?> decrementStocksAndPrixBatch(
+            @RequestBody List<StockDecrementItem> items,
+            @PathVariable Long boutiqueid) {
+
+        try {
+            List<BatchValeur> listbatchValeur=new ArrayList<>();
+            Map<String, Integer> newStocks = new HashMap<>();
+            
+
+            for (StockDecrementItem item : items) {
+                Long articleId = item.getArticleId();
+               // Integer quantite = item.getQuantite() == null ? 0 : item.getQuantite();
+
+                // ✅ Si quantite = 0, juste lire le stock
+               // if (quantite == null || quantite == 0) {
+                    Integer prix = stockService.getCurrentPrix(articleId, boutiqueid);
+                    newStocks.put(String.valueOf(articleId), prix);
+//                } else {
+//                    // Décrémenter normalement
+//                    Integer stock = stockService.decrementStock(articleId, quantite, boutiqueid);
+//                    newStocks.put(String.valueOf(articleId), stock);
+//                }
+            }
+
+            return ResponseEntity.ok(newStocks);
+
+        } catch (Exception e) {
+            log.error("❌ Erreur", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+
+    /**
+     * ✅ NOUVEL ENDPOINT : Récupérer les stocks de plusieurs articles
+     *
+     * GET /stocks/batch/{boutiqueid} Body: [1, 2, 3, 45, 67]
+     *
+     * Response: { "1": 50, "2": 23, "3": 100 }
+     */
+    @PostMapping("/stocks/batch/{boutiqueid}")
+    public ResponseEntity<Map<String, Integer>> getStocksBatch(
+            @PathVariable Long boutiqueid,
+            @RequestBody List<Long> articleIds) {
+
+        try {
+            log.info("📦 Récupération stocks pour {} articles", articleIds.size());
+
+            // Validation
+            if (articleIds == null || articleIds.isEmpty()) {
+                log.warn("⚠️ Liste vide");
+                return ResponseEntity.badRequest().build();
+            }
+
+            // Récupérer les stocks (SANS décrémenter)
+            Map<String, Integer> stocks = stockService.getStocksBatch(articleIds, boutiqueid);
+
+            log.info("✅ {} stocks récupérés", stocks.size());
+
+            return ResponseEntity.ok(stocks);
+
+        } catch (Exception e) {
+            log.error("❌ Erreur récupération stocks batch", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/produits/search/{boutiqueid}")
+    public ResponseEntity<List<ProduitDto>> searchProduits(
+            @PathVariable Long boutiqueid,
+            @RequestParam String search
+    ) {
+        List<ProduitDto> results = articleService.searchProduitsByBoutique(boutiqueid, search);
+        return ResponseEntity.ok(results);
+    }
+//recuper le prix
+
+    @GetMapping("/produits/currentPrix/{articleId}/{boutiqueid}")
+    public ResponseEntity<Integer> currentPrix(
+            @PathVariable Long boutiqueid, @PathVariable Long articleId
+    ) {
+        return ResponseEntity.ok(stockService.getCurrentPrix(articleId, boutiqueid));
+
+    }
+    
+    @PostMapping("/produits/currentPrix/batch/{boutiqueid}")
+public ResponseEntity<Map<String, Integer>> currentPrixBatch(
+        @PathVariable Long boutiqueid,
+        @RequestBody List<Long> articleIds
+) {
+    if (articleIds == null || articleIds.isEmpty()) {
+        return ResponseEntity.ok(Collections.emptyMap());
+    }
+ 
+    Map<String, Integer> prixMap = stockService.getCurrentPrixBatch(articleIds, boutiqueid);
+    return ResponseEntity.ok(prixMap);
+}
 }

@@ -1,0 +1,241 @@
+# ============================================
+# DOCKER COMPOSE - EASYCOM-PRO CORRIGÉ
+# ============================================
+
+services:
+  # ==========================================
+  # BASE DE DONNÉES MYSQL
+  # ==========================================
+  mysql:
+    image: mysql:9.0
+    container_name: easycom-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-DeepWater@2021}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-librairie}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./init-db:/docker-entrypoint-initdb.d
+    networks:
+      - easycom-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-DeepWater@2021}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ==========================================
+  # CONFIG SERVER
+  # ==========================================
+  config-server:
+    build:
+      context: ./config-serveur
+      dockerfile: Dockerfile
+    container_name: easycom-config-server
+    restart: unless-stopped
+    ports:
+      - "9101:9101"
+    environment:
+      JAVA_OPTS: "-Xms256m -Xmx512m"
+      SPRING_PROFILES_ACTIVE: git
+    networks:
+      - easycom-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9101/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ==========================================
+  # EUREKA SERVER
+  # ==========================================
+  eureka-server:
+    build:
+      context: ./eureka-server
+      dockerfile: Dockerfile
+    container_name: easycom-eureka
+    restart: unless-stopped
+    ports:
+      - "8761:8761"
+    environment:
+      JAVA_OPTS: "-Xms256m -Xmx512m"
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_CLOUD_CONFIG_URI: http://config-server:9101
+    networks:
+      - easycom-network
+    depends_on:
+      config-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  # ==========================================
+  # API GATEWAY
+  # ==========================================
+  gateway:
+    build:
+      context: ./gateway-proxy
+      dockerfile: Dockerfile
+    container_name: easycom-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      JAVA_OPTS: "-Xms512m -Xmx1024m"
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_CLOUD_CONFIG_URI: http://config-server:9101
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    networks:
+      - easycom-network
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  # ==========================================
+  # MICROSERVICE PRODUITS
+  # ==========================================
+  microservice-produits:
+    build:
+      context: ./microservice-produits
+      dockerfile: Dockerfile
+    container_name: easycom-produits
+    restart: unless-stopped
+    ports:
+      - "9001:9001"
+    environment:
+      JAVA_OPTS: "-Xms256m -Xmx512m"
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_CLOUD_CONFIG_URI: http://config-server:9101
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/librairie?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-DeepWater@2021}
+    networks:
+      - easycom-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9001/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  # ==========================================
+  # MICROSERVICE ADMIN
+  # ==========================================
+  microservice-admin:
+    build:
+      context: ./microservice-administration
+      dockerfile: Dockerfile
+    container_name: easycom-admin
+    restart: unless-stopped
+    ports:
+      - "9008:9008"
+    environment:
+      JAVA_OPTS: "-Xms256m -Xmx512m"
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_CLOUD_CONFIG_URI: http://config-server:9101
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/librairie?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-DeepWater@2021}
+    networks:
+      - easycom-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9008/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  # ==========================================
+  # PHPMYADMIN - Interface Web MySQL
+  # ==========================================
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: easycom-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD:-DeepWater@2021}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-DeepWater@2021}
+    networks:
+      - easycom-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+        
+  # ==========================================
+  # FRONTEND ANGULAR
+  # ==========================================
+  frontend:
+    build:
+      context: E:/projectAngular/easycompro-gescom/AdminLTE-3_2_0-angular/adminlte-angular-app
+      dockerfile: Dockerfile
+    container_name: easycom-frontend
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    networks:
+      - easycom-network
+    depends_on:
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+# ==========================================
+# RÉSEAUX
+# ==========================================
+networks:
+  easycom-network:
+    driver: bridge
+    name: easycom-network
+
+# ==========================================
+# VOLUMES PERSISTANTS
+# ==========================================
+volumes:
+  mysql-data:
+    name: easycom-mysql-data

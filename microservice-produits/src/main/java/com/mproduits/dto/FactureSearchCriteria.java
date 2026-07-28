@@ -33,10 +33,13 @@ import java.math.BigDecimal;
     private BigDecimal montantMax;
     private Boolean enRetard;
     private String referenceExterne;
+    private Long boutiqueid;
     
     // Pagination
     private Integer page;
     private Integer size;
     private String sortBy;
     private String sortDirection;    
+    
+    
 }

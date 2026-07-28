@@ -25,7 +25,7 @@ import java.util.Collection;
  */
 @Entity
 @Table(name = "fournisseur")
-@JsonIgnoreProperties({"magasinFournisseurCollection","factureCollection"})
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler","magasinFournisseurCollection","factureCollection"})
 @NamedQueries({
     @NamedQuery(name = "Fournisseur.findAll", query = "SELECT f FROM Fournisseur f"),
     @NamedQuery(name = "Fournisseur.findById", query = "SELECT f FROM Fournisseur f WHERE f.id = :id"),
@@ -70,7 +70,7 @@ public class Fournisseur implements Serializable {
     private String codeSociete;
     @Column(name = "nom")
     private String nom;
-    
+   
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "fournisseur")
     private Collection<MagasinFournisseur> magasinFournisseurCollection;
  

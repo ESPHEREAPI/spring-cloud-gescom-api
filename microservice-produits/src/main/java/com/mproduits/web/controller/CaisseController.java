@@ -64,6 +64,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import java.nio.file.Paths;
+import java.sql.Date;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.ContentDisposition;
@@ -79,12 +80,12 @@ public class CaisseController {
     @Autowired
     BarcodeService barcodeService;
 
-    @GetMapping("/top-articles")
+    @GetMapping("/top-articles/{boutiqueid}")
     @Operation(summary = "Articles populaires",
             description = "Retourne les 50 articles les plus populaires pour l'affichage initial")
     @ApiResponse(responseCode = "200", description = "Liste des articles populaires")
-    public ResponseEntity<List<ProduitDto>> getTopArticles() {
-        List<ProduitDto> articles = barcodeService.getTopArticles();
+    public ResponseEntity<List<ProduitDto>> getTopArticles(@PathVariable(name = "boutiqueid") long boutiqueid) {
+        List<ProduitDto> articles = barcodeService.getTopArticles(boutiqueid);
 
         // Cache plus long pour les articles populaires
         CacheControl cacheControl = CacheControl.maxAge(10, TimeUnit.MINUTES)
@@ -121,25 +122,25 @@ public class CaisseController {
     @PostMapping("/vente/{numerocommande}")
     public ResponseEntity<Long> getByBarcode(@PathVariable(name = "numerocommande") long numerocommande,@RequestBody VenteDto venteDto) {
        
-        Long vendid =  numerocommande==0L ? barcodeService.valideVente(venteDto): barcodeService.valideVente(venteDto, numerocommande);
+        Long vendid =  numerocommande==0L ? barcodeService.valideVente(venteDto): barcodeService.valideVente(venteDto, numerocommande,venteDto.getBoutiqueid());
         return ResponseEntity.ok(vendid);
     }
      @PostMapping("/vente/e-com/{numerocommande}")
     public ResponseEntity<Long> getVenteByEcom(@PathVariable(name = "numerocommande") long numerocommande,@RequestBody VenteDto venteDto) {
-        Long vendid = barcodeService.valideVente(venteDto,numerocommande);
+        Long vendid = barcodeService.valideVente(venteDto,numerocommande,venteDto.getBoutiqueid());
         return ResponseEntity.ok(vendid);
     }
 
-    @GetMapping("/reference")
-    public ResponseEntity<ProduitDto> getProduitByReferenceSearch(@RequestParam String reference) {
-        ProduitDto pdto = barcodeService.getArticlesByReference(reference);
+    @GetMapping("/reference/{boutiqueid}")
+    public ResponseEntity<ProduitDto> getProduitByReferenceSearch(@PathVariable Long boutiqueid,@RequestParam String reference) {
+        ProduitDto pdto = barcodeService.getArticlesByReference(reference,boutiqueid);
         return ResponseEntity.ok(pdto);
 
     }
 
-    @GetMapping("/produit/{produitid}")
-    public ResponseEntity<ProduitDto> getProduitById(@PathVariable Long produitid) {
-        ProduitDto pdto = barcodeService.getArticlesByProduitId(produitid);
+    @GetMapping("/produit/{produitid}/{boutiqueid}")
+    public ResponseEntity<ProduitDto> getProduitById(@PathVariable Long produitid,@PathVariable Long boutiqueid) {
+        ProduitDto pdto = barcodeService.getArticlesByProduitId(produitid,boutiqueid);
         return ResponseEntity.ok(pdto);
 
     }
@@ -150,7 +151,7 @@ public class CaisseController {
         try {
             Vente vente = barcodeService.getVenteById(venteId);
             if ("".equals(vente.getCheminPatheTicket()) || vente.getCheminPatheTicket() == null) {
-                barcodeService.createTicaisseTXT(vente);
+                barcodeService.createTicketCaisseTXT(vente);
                 vente = barcodeService.getVenteById(venteId);
             }
 
@@ -1351,10 +1352,12 @@ public class CaisseController {
         }
     }
 
-     @GetMapping("/allcaissier")
-     public ResponseEntity<List<UserDTO>> allCaissier(){
-        List<UserDTO> caissiers= barcodeService.listeCaissiers();
+     @GetMapping("/allcaissier/{boutiqueid}")
+     public ResponseEntity<List<UserDTO>> allCaissier(@PathVariable Long boutiqueid){
+        List<UserDTO> caissiers= barcodeService.listeCaissiers(boutiqueid);
             return ResponseEntity.ok(caissiers);
      }
-      
+     
+     
+
 }

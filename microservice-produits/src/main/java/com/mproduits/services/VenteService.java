@@ -7,10 +7,12 @@ package com.mproduits.services;
 import com.mproduits.dto.VenteDto;
 import com.mproduits.enums.StatutVente;
 import com.mproduits.mappers.MapperDtoImpl;
+import com.mproduits.model.Boutique;
 import com.mproduits.model.Entreprise;
 import com.mproduits.model.LigneVente;
 import com.mproduits.model.PointVente;
 import com.mproduits.model.Vente;
+import com.mproduits.repositories.BoutiqueRepositories;
 import com.mproduits.repositories.EntrepriseRepositories;
 import com.mproduits.repositories.LigneVenteRepositories;
 import com.mproduits.repositories.PointVenteRepositories;
@@ -44,13 +46,20 @@ public class VenteService {
     private final LigneVenteRepositories ligneVenteRepositories;
     private final EntrepriseRepositories entrepriseRepositories;
     private final PointVenteRepositories pointVenteRepositories;
+    private final BoutiqueRepositories boutiqueRepositories;
     @Autowired
     MapperDtoImpl mapperDtoImpl;
 
-    public Page<VenteDto> getVentes(int page, int size, String statut, LocalDateTime dateDebut, LocalDateTime dateFin, String search) {
+    public Page<VenteDto> getVentes(int page, int size, String statut, LocalDateTime dateDebut, LocalDateTime dateFin, String search,Long boutiqueid) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("dateVente").descending());
         Specification<Vente> spec = Specification.where(null);
 
+        // ✅ Ajout du filtre boutique DANS la spécification (plus performant)
+    if (boutiqueid != null) {
+        spec = spec.and((root, query, cb) -> 
+            cb.equal(root.get("boutique").get("id"), boutiqueid)
+        );
+    }
         if (statut != null && !statut.isEmpty()) {
             spec = spec.and(VenteSpecification.hasStatut(StatutVente.valueOf(statut)));
         }
@@ -74,8 +83,10 @@ public class VenteService {
         Page<Vente> ventePage = venteRepository.findAll(spec, pageable);
 
         // ✔️ conversion de contenu vers DTO
+         Optional<Boutique>boutique=boutiqueRepositories.findById(boutiqueid);
         List<VenteDto> venteDtos = ventePage.getContent().stream()
-                //.filter(ve-> (ve.getVendeur().getUserName().equals(vendeur)==true))
+                //.filter(ve-> (ve.getBoutique().equals(boutique)==Boolean.TRUE))
+               
                 .map(v -> mapperDtoImpl.mapperVentByVenteDto(v))
                 .collect(Collectors.toList());
 
@@ -83,9 +94,11 @@ public class VenteService {
         return new PageImpl<>(venteDtos, pageable, ventePage.getTotalElements());
     }
 
-    public VenteDto updateStatut(Long id, String username, String statut) {
+    public VenteDto updateStatut(Long id, String username, String statut, Long boutiqueid) {
         Vente vente = venteRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Vente non trouvée"));
+         // ✅ Vérification de la boutique
+    
 
         vente.setStatut(StatutVente.valueOf(statut));
 
@@ -95,6 +108,7 @@ public class VenteService {
             restaurationStock(vente);
         }
         Vente saveVente = venteRepository.save(vente);
+        // Optional<Boutique>boutique=boutiqueRepositories.findById(boutiqueid);
         System.out.println("satatut:" + saveVente.getStatut().toString());
         return this.mapperDtoImpl.mapperVentByVenteDto(saveVente);
     }
@@ -123,25 +137,28 @@ public class VenteService {
     public VenteDto getVente(Long id) {
         Vente v = venteRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Vente non trouvée"));
+        // Optional<Boutique>boutique=boutiqueRepositories.findById(boutiqueid);
         return this.mapperDtoImpl.mapperVentByVenteDto(v);
     }
 
-    public VenteDto getVente(String numeTicket) {
+    public VenteDto getVente(String numeTicket,Long boutiqueid) {
         System.err.println("numero ticket:" + numeTicket);
         Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
+        Optional<Boutique>boutique=boutiqueRepositories.findById(boutiqueid);
 
-        Optional<Vente> vente = venteRepository.findByEntrepriseAndNumeroTicket(e, numeTicket);
+        Optional<Vente> vente = venteRepository.findByEntrepriseAndNumeroTicketAndBoutiqueId(e, numeTicket,boutiqueid);
 
         //  .orElseThrow(() -> new EntityNotFoundException("Vente introuvable pour le ticket " + numeTicket));
         return vente.isEmpty() ? null : this.mapperDtoImpl.mapperVentByVenteDto(vente.get());
 
     }
 
-    public VenteDto getVenteForECom(long numerocommande) {
+    public VenteDto getVenteForECom(long numerocommande,Long boutiqueid) {
         Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
         System.err.println("numero ticket:" + numerocommande);
-        Vente vente = venteRepository.findByNumeroTicketAndStatutForCommande(numerocommande, StatutVente.EN_COURS, e.getAnnee().getId())
+        Vente vente = venteRepository.findByNumeroTicketAndStatutForCommande(numerocommande, StatutVente.EN_COURS, e.getAnnee().getId(),boutiqueid)
                 .orElseThrow(() -> new EntityNotFoundException("Vente introuvable pour le ticket " + numerocommande));
+         //Optional<Boutique>boutique=boutiqueRepositories.findById(boutiqueid);
         return vente == null ? null : this.mapperDtoImpl.mapperVentByVenteDto(vente);
 
     }

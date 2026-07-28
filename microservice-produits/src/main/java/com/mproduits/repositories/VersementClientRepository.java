@@ -341,4 +341,8 @@ List<VersementClient> findByClientIdAndDateVersementBetweenOrderByDateVersementD
 //lister les clients qui ont deja effectuer un versement  
 @Query("SELECT DISTINCT v.client FROM VersementClient v")
 List<Client> listeClientVersement();
+
+@Query("SELECT vcl FROM VersementClient vcl WHERE vcl.facture.boutique.id= :boutiqueid and YEAR(vcl.dateVersement)= :anneeid and MONTH(vcl.dateVersement) = :mois")
+List<VersementClient> listeClientVersementByDateVersement(@Param("boutiqueid")Long boutiqueid,@Param("anneeid") int anneeid,@Param("mois") int mois);
+        
 }

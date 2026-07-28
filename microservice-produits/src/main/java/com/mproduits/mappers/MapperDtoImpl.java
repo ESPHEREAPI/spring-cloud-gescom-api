@@ -8,27 +8,28 @@ import com.mproduits.dto.Caissedto;
 import com.mproduits.dto.ClientDto;
 import com.mproduits.dto.ProduitDto;
 import com.mproduits.dto.DepoteDto;
-import com.mproduits.dto.DevisDTO;
-import com.mproduits.dto.DevisItemDTO;
 import com.mproduits.dto.InventaireDto;
 import com.mproduits.dto.MargeVenteDto;
 import com.mproduits.dto.PointVenteDto;
+import com.mproduits.dto.UserDTO;
 import com.mproduits.dto.VenteDto;
 import com.mproduits.ecommerce.dto.DTO.OrdersDTO;
 import com.mproduits.ecommerce.dto.DTO.Orders_detailsDTO;
 import com.mproduits.ecommerce.dto.entites.ClientOrder;
 import com.mproduits.ecommerce.dto.repositories.ArticlesRepository;
+import com.mproduits.model.Boutique;
 import com.mproduits.model.Client;
-import com.mproduits.model.Devis;
-import com.mproduits.model.DevisItem;
+import com.mproduits.model.Entreprise;
 import com.mproduits.model.LigneVente;
 import com.mproduits.model.Magasin;
 import com.mproduits.model.MagasinFournisseur;
 import com.mproduits.model.Paiement;
+import com.mproduits.model.Personne;
 import com.mproduits.model.PointVente;
 import com.mproduits.model.PrixAchat;
 import com.mproduits.model.Produit;
 import com.mproduits.model.Vente;
+import com.mproduits.repositories.EntrepriseRepositories;
 import com.mproduits.repositories.LigneVenteRepositories;
 import com.mproduits.repositories.PaiementRepositories;
 import com.mproduits.repositories.PointVenteRepositories;
@@ -68,10 +69,46 @@ public class MapperDtoImpl {
     LigneVenteRepositories ligneVenteRepositories1;
     @Autowired
     ArticlesRepository articlesRepository;
+    @Autowired
+    EntrepriseRepositories entrepriseRepositories;
+    Entreprise e=null;
+    public ProduitDto mapperProduitDto(Produit p,Boutique boutiqueid) {
+        ProduitDto produitDto = new ProduitDto();
+        BeanUtils.copyProperties(p, produitDto);
+        e=entrepriseRepositories.findByActif(Boolean.TRUE);
+        Optional<PointVente> pv=pointVenteRepositories.findLatestActiveByProduitBoutiqueAndEntreprise(p, boutiqueid, e);
+        BigDecimal stock=pv.isPresent() ? pv.get().getStockFinalTheorie():BigDecimal.ZERO;
+        produitDto.setStockFinal(stock);
+        
+        return produitDto;
+    }
+    
+     public UserDTO mapToDTO(Personne user) {
+        UserDTO userDTO = new UserDTO();
+        BeanUtils.copyProperties(user, userDTO);
+      // userDTO.setId(user.getId());
+       userDTO.setLastname(user.getNom());
+       userDTO.setFirstName(user.getPrenom());
+      
+
+        // Map roles
+        if (user.getRoleid() != null && user.getRoleid().getId() != null) {
+           // userDTO.setRoleid(user.getRoleid().getId());
+          //  userDTO.setRole(mapRoleToDTO(user.getRoleid()));
+           // userDTO.setProfil(mapToDTOProfil(user.getProfilid()));
+        }
+        System.out.println("userDto :"+userDTO.toString() );
+     // userDTO.setBoutiqueid(user.getBoutique().getId());
+        return userDTO;
+    }
     
     public ProduitDto mapperProduitDto(Produit p) {
         ProduitDto produitDto = new ProduitDto();
         BeanUtils.copyProperties(p, produitDto);
+       // e=entrepriseRepositories.findByActif(Boolean.TRUE);
+       // Optional<PointVente> pv=pointVenteRepositories.findLatestActiveByProduitBoutiqueAndEntreprise(p, boutiqueid, e);
+       // BigDecimal stock=pv.isPresent() ? pv.get().getStockFinalTheorie():BigDecimal.ZERO;
+        produitDto.setStockFinal(BigDecimal.ZERO);
         
         return produitDto;
     }
@@ -153,7 +190,7 @@ public class MapperDtoImpl {
     public VenteDto mapperVentByVenteDto(Vente vente) {
         VenteDto venteDto = new VenteDto();
         venteDto.setId(vente.getId());
-        venteDto.setClient(vente.getClient());
+        venteDto.setClient(mapperClientByClientDto(vente.getClient()));
         venteDto.setDate(vente.getDateVente());
         venteDto.setMontantNet(vente.getTotalNet());
         venteDto.setMontantRecu(vente.getTotalrecu());
@@ -196,7 +233,7 @@ public class MapperDtoImpl {
     
     public Caissedto mapperLigneVenteByCaisseDto(LigneVente ligneVente, String numeroticket, Paiement paiement) {
         Caissedto caissedto = new Caissedto();
-        caissedto.setArticle(mapperProduitDto(ligneVente.getProduit()));
+        caissedto.setArticle(mapperProduitDto(ligneVente.getProduit(),ligneVente.getVente().getBoutique()));
         caissedto.setMontantTotal(ligneVente.getTotalLigne());
         caissedto.setPrixUnitaire(ligneVente.getPrixUnitaire());
         caissedto.setQuantite(ligneVente.getQuantite());
@@ -224,7 +261,7 @@ public class MapperDtoImpl {
         MargeVenteDto margeVenteDto = new MargeVenteDto();
         PrixAchat pachat = null;
         BigDecimal achat = BigDecimal.ZERO;
-        margeVenteDto.setP(mapperProduitDto(lv.getProduit()));
+        margeVenteDto.setP(mapperProduitDto(lv.getProduit(),lv.getVente().getBoutique()));
         margeVenteDto.setLibelle(lv.getProduit().getLibelle());
         margeVenteDto.setQuantite(lv.getQuantite().intValue());
         margeVenteDto.setPrixVente(lv.getPrixUnitaire().intValue());
@@ -250,7 +287,7 @@ public class MapperDtoImpl {
     public MargeVenteDto mapperMargeByLigneVente(LigneVente lv, Date debut, Date fin) {
         System.out.println("com.mproduits.mappers.MapperDtoImpl.mapperMargeByLigneVente()" + "LigneVente id=" + lv.getId() + ", Produit=" + lv.getProduit().getLibelle());
         MargeVenteDto margeVenteDto = new MargeVenteDto();
-        margeVenteDto.setP(mapperProduitDto(lv.getProduit()));
+        margeVenteDto.setP(mapperProduitDto(lv.getProduit(),lv.getVente().getBoutique()));
         margeVenteDto.setLibelle(lv.getProduit().getLibelle());
         margeVenteDto.setQuantite(lv.getQuantite().intValue());
         margeVenteDto.setPrixVente(lv.getPrixUnitaire().intValue());
@@ -287,8 +324,9 @@ public class MapperDtoImpl {
     public PointVenteDto mapperPointVentByPointVentDtoi(PointVente pv) {
         PointVenteDto pvdto = new PointVenteDto();
         pvdto.setBoutique(pv.getBoutique());
-        pvdto.setProduit(mapperProduitDto(pv.getProduit()));
+        pvdto.setProduit(mapperProduitDto(pv.getProduit(),pv.getBoutique()));
         pvdto.setStockFinalTheorie(pv.getStockFinalTheorie());
+        pvdto.setStockPhysic(pv.getStockFinalTheorie());
         pvdto.setPrix(prixArticlesRepositories.findActiveByEntrepriseAndPointVente(pv.getEntreprise(), pv).get().getPrixVenteNet());
         System.out.println("stock final " + pv.getStockFinalTheorie());
         return pvdto;
@@ -297,7 +335,7 @@ public class MapperDtoImpl {
     public InventaireDto mapperPointVentByInventaireDtto(PointVente pv) {
         InventaireDto pvdto = new InventaireDto();
         pvdto.setBoutique(pv.getBoutique());
-        pvdto.setProduit(mapperProduitDto(pv.getProduit()));
+        pvdto.setProduit(mapperProduitDto(pv.getProduit(),pv.getBoutique()));
         pvdto.setCategorie(pv.getProduit().getCategorie());
         pvdto.setQuantite(pv.getStockFinalTheorie());
         PrixAchat last = prixAchatRepositories.findLastPrixAchatByProduit(pv.getProduit()).get();
@@ -331,11 +369,11 @@ public class MapperDtoImpl {
     
     
     
-    public  ProduitDto produitById(Long id){
+    public  ProduitDto produitById(Long id,Boutique boutiqueid){
         ProduitDto pdto=new ProduitDto();
       Optional<Produit> pd =  produitRepositories.findById(id);
       if(pd.isPresent()){
-          pdto=this.mapperProduitDto(pd.get());
+          pdto=this.mapperProduitDto(pd.get(),boutiqueid);
       }
       return pdto;
     }

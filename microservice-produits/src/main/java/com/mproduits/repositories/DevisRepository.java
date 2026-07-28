@@ -83,8 +83,8 @@ public interface DevisRepository  extends JpaRepository<Devis, Long>{
      * @param clientId ID du client
      * @return Liste des devis du client
      */
-    @Query("SELECT d FROM Devis d WHERE d.client.id = :clientId ORDER BY d.dateDevis DESC")
-    List<Devis> findByClientId(@Param("clientId") Long clientId);
+    @Query("SELECT d FROM Devis d WHERE d.client.id = :clientId  and d.boutique.id= :boutiqueid ORDER BY d.dateDevis DESC")
+    List<Devis> findByClientId(@Param("clientId") Long clientId,@Param("boutiqueid") Long boutiqueid);
 
     /**
      * Récupère tous les devis ayant un statut donné
@@ -92,7 +92,7 @@ public interface DevisRepository  extends JpaRepository<Devis, Long>{
      * @param statut Statut recherché (EN_ATTENTE, ACCEPTE, etc.)
      * @return Liste des devis avec ce statut
      */
-    List<Devis> findByStatut(StatutDevis statut);
+    List<Devis> findByStatutAndBoutiqueId(StatutDevis statut,Long boutiqueid);
 
     /**
      * Recherche combinée: devis d'un client avec un statut spécifique
@@ -101,11 +101,11 @@ public interface DevisRepository  extends JpaRepository<Devis, Long>{
      * @param statut Statut recherché
      * @return Liste des devis correspondants
      */
-    @Query("SELECT d FROM Devis d WHERE d.client.id = :clientId AND d.statut = :statut " +
+    @Query("SELECT d FROM Devis d WHERE d.client.id = :clientId AND d.statut = :statut  and d.boutique.id= :boutiqueid " +
            "ORDER BY d.dateDevis DESC")
     List<Devis> findByClientIdAndStatut(
             @Param("clientId") Long clientId, 
-            @Param("statut") StatutDevis statut);
+            @Param("statut") StatutDevis statut, @Param("boutiqueid") Long boutiqueid);
 
     /**
      * Recherche les devis dont le numéro contient une chaîne
@@ -204,8 +204,8 @@ public interface DevisRepository  extends JpaRepository<Devis, Long>{
      * @param clientId ID du client
      * @return Nombre de devis
      */
-    @Query("SELECT COUNT(d) FROM Devis d WHERE d.client.id = :clientId")
-    long countByClientId(@Param("clientId") Long clientId);
+    @Query("SELECT COUNT(d) FROM Devis d WHERE d.client.id = :clientId and d.boutique.id= :boutiqueid")
+    long countByClientId(@Param("clientId") Long clientId,Long boutiqueid);
 
     /**
      * Compte les devis créés entre deux dates
@@ -470,4 +470,13 @@ public interface DevisRepository  extends JpaRepository<Devis, Long>{
     Object[] getTauxConversionByPeriode(
             @Param("dateDebut") Date dateDebut, 
             @Param("dateFin") Date dateFin);
+    
+    List<Devis>findByBoutiqueId(Long boutiqueid);
+    
+  
+    
+    // Récupérer le dernier numéro de devis de l'année
+    @Query("SELECT MAX(CAST(SUBSTRING(d.numeroDevis, LENGTH(d.numeroDevis) - 3, 4) AS int)) " +
+           "FROM Devis d WHERE d.numeroDevis LIKE :pattern")
+    Integer findMaxNumeroByPattern(@Param("pattern") String pattern);
 }

@@ -11,10 +11,12 @@ import com.mproduits.dto.ProduitDto;
 import com.mproduits.dto.StockDepotAndBoutique;
 import com.mproduits.exceptions.Success;
 import com.mproduits.mappers.MapperDtoImpl;
+import com.mproduits.model.Annee;
 import com.mproduits.model.Barcodeproduit;
 import com.mproduits.model.Boutique;
 import com.mproduits.model.Categories;
 import com.mproduits.model.Commande;
+import com.mproduits.model.Employeur;
 import com.mproduits.model.Entreprise;
 import com.mproduits.model.Fournisseur;
 import com.mproduits.model.Magasin;
@@ -29,11 +31,14 @@ import com.mproduits.model.Taxeproduit;
 import com.mproduits.model.Ville;
 import com.mproduits.repositories.AnneeRepository;
 import com.mproduits.repositories.BarcodeproduitRepositories;
+import com.mproduits.repositories.BoutiqueRepositories;
 import com.mproduits.repositories.CategorieRepositories;
+import com.mproduits.repositories.EmployeurRepository;
 import com.mproduits.repositories.EntrepriseRepositories;
 import com.mproduits.repositories.FournisseurRepositories;
 import com.mproduits.repositories.MagasinFournisseurRepositories;
 import com.mproduits.repositories.MagasinRepositories;
+import com.mproduits.repositories.MagasinRepository;
 import com.mproduits.repositories.MoisRepositories;
 import com.mproduits.repositories.PointVenteRepositories;
 import com.mproduits.repositories.PrixArticlesRepositories;
@@ -101,6 +106,10 @@ public class CommandeController implements Serializable {
     private final AnneeRepository anneerepository;
     private final EntrepriseRepositories entrepriseRepositories;
     private final VilleRepositories villeRepositories;
+    private final BoutiqueRepositories boutiqueRepositories;
+    private final AnneeRepository anneeRepository;
+    private final EmployeurRepository employeurRepository;
+    private final MagasinRepositories magasinRepository;
     @Autowired
     private MapperDtoImpl mapperDto;
 
@@ -237,7 +246,7 @@ public class CommandeController implements Serializable {
         } catch (Exception e) {
             log.error("Erreur lors de la génération du numéro de commande: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Erreur lors de la génération du numéro");
+                    .body("Erreur lors de la génér-ation du numéro");
         }
     }
 
@@ -247,19 +256,20 @@ public class CommandeController implements Serializable {
         ProduitDto pdto = produitService.findByReference(reference);
         return ResponseEntity.ok(pdto);
     }
-   @GetMapping("/produits/id/{produitid}")
-    public ResponseEntity<ProduitDto> produitsByReference(@PathVariable Long produitid) {
+   @GetMapping("/produits/id/{produitid}/{boutiqueid}")
+    public ResponseEntity<ProduitDto> produitsByReference(@PathVariable Long produitid,@PathVariable Long boutiqueid) {
 
         Produit pdto = produitService.findById(produitid);
-        return ResponseEntity.ok(mapperDto.mapperProduitDto(pdto));
+        Optional<Boutique> boutique=boutiqueRepositories.findById(boutiqueid);
+        return ResponseEntity.ok(mapperDto.mapperProduitDto(pdto,boutique.isPresent() ? boutique.get(): new Boutique()));
     }
 
-    @GetMapping("/produits/reference/{barcode}")
-    public ResponseEntity<ProduitDto> produitsBycodeBar(@PathVariable String barcode) {
+    @GetMapping("/produits/reference/{barcode}/{boutiqueid}")
+    public ResponseEntity<ProduitDto> produitsBycodeBar(@PathVariable String barcode,@PathVariable Long boutiqueid) {
 
         Barcodeproduit barcodeProduit = barcodeProduitService.findByCodeBard(barcode);
-
-        return ResponseEntity.ok(barcodeProduit != null ? mapperDto.mapperProduitDto(barcodeProduit.getProduit()) : new ProduitDto());
+ Optional<Boutique> boutique=boutiqueRepositories.findById(boutiqueid);
+        return ResponseEntity.ok(barcodeProduit != null ? mapperDto.mapperProduitDto(barcodeProduit.getProduit(),boutique.isPresent() ? boutique.get(): new Boutique()) : new ProduitDto());
     }
 
     @GetMapping("/taxes")
@@ -278,11 +288,12 @@ public class CommandeController implements Serializable {
         return ResponseEntity.ok(categories);
     }
 
-    @GetMapping("/depots")
-    public ResponseEntity<List<DepoteDto>> allDepots() {
+    @GetMapping("/depots/{boutiqueid}")
+    public ResponseEntity<List<DepoteDto>> allDepots(@PathVariable Long boutiqueid) {
         List<DepoteDto> depots = new ArrayList<>();
         try {
             depots = magasinFournisseurRepositories.findAll().stream()
+                    .filter(dp -> dp.getMagasin().getBoutiqueId()!=null && dp.getMagasin().getBoutiqueId().getId().equals(boutiqueid)==Boolean.TRUE)
                     .map(d -> mapperDto.mapperDepot(d))
                     .collect(Collectors.toList());
             // Authentification de l'utilisateur ici
@@ -334,7 +345,8 @@ public class CommandeController implements Serializable {
     public ResponseEntity<List<Boutique>> allBoutique() {
         List<Boutique> boutiques = new ArrayList<>();
         try {
-            boutiques = depotService.findByBoutiqueDistinctIsNotNull().stream()
+            boutiques = depotService.findAll().stream()
+                    .filter(dp-> dp.getBoutiqueId()!=null  && dp.getBoutiqueId().getId()!=null)
                     .map(d -> d.getBoutiqueId())
                     .collect(Collectors.toList());
             // Authentification de l'utilisateur ici
@@ -352,6 +364,21 @@ public class CommandeController implements Serializable {
 
         List<Fournisseur> fournisseurs = fourniService.findAll();
         return ResponseEntity.ok(fournisseurs);
+    }
+    
+    @GetMapping("/all-annee")
+    public ResponseEntity<List<Annee>> allAnnee() {
+
+        List<Annee> allannees = anneeRepository.findAll();
+        return ResponseEntity.ok(allannees);
+    }
+
+    
+    @GetMapping("/employeur")
+    public ResponseEntity<List<Employeur>> employeur() {
+
+        List<Employeur> employeurs = employeurRepository.findAll();
+        return ResponseEntity.ok(employeurs);
     }
 
     @GetMapping("/produits")
@@ -388,8 +415,8 @@ public class CommandeController implements Serializable {
 
     }
 
-    @GetMapping("/produits/barcode/{barcode}")
-    public ResponseEntity<ProduitDto> getProduitBarCode(@PathVariable String barcode, HttpSession session) {
+    @GetMapping("/produits/barcode/{barcode}/{boutiqueid}")
+    public ResponseEntity<ProduitDto> getProduitBarCode(@PathVariable String barcode,@PathVariable Long boutiqueid, HttpSession session) {
         System.out.println("code bar " + barcode);
 
         Barcodeproduit bar = null;
@@ -399,7 +426,8 @@ public class CommandeController implements Serializable {
 
             Produit produit = bar == null ? new Produit() : bar.getPrixArticles().getPointVente().getProduit();
             //System.out.println("produit " +produit.toString());
-            return ResponseEntity.ok(mapperDto.mapperProduitDto(produit));
+            Optional<Boutique> boutique=boutiqueRepositories.findById(boutiqueid);
+            return ResponseEntity.ok(mapperDto.mapperProduitDto(produit,boutique.isPresent() ? boutique.get():new Boutique()));
         } catch (Exception e) {
             log.debug("❌ Aucun produit trouvé pour le code-barres : {}", barcode);
             return ResponseEntity.notFound().build();
@@ -408,13 +436,13 @@ public class CommandeController implements Serializable {
 
     }
 
-    @GetMapping("/prix-articles")
-    public ResponseEntity<Map<String, Object>> getPrixArticles(
+    @GetMapping("/prix-articles/{boutiqueid}")
+    public ResponseEntity<Map<String, Object>> getPrixArticles(@PathVariable Long boutiqueid,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String search
     ) {
-        Page<PrixArticles> prixArticles = commandeService.getPrixArticles(page, size, search);
+        Page<PrixArticles> prixArticles = commandeService.getPrixArticles(page, size, search,boutiqueid);
 
         Map<String, Object> response = new HashMap<>();
         response.put("content", prixArticles.getContent());
@@ -425,19 +453,19 @@ public class CommandeController implements Serializable {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/prix-articles/filter")
-    public ResponseEntity<List<PrixArticles>> getPrixArticles(
+    @GetMapping("/prix-articles/filter/{boutiqueid}")
+    public ResponseEntity<List<PrixArticles>> getPrixArticles(@PathVariable Long boutiqueid,
             @RequestParam(required = false) String filters
     ) {
-        List<PrixArticles> results = commandeService.getPrixArticlesFilster(filters);
+        List<PrixArticles> results = commandeService.getPrixArticlesFilster(filters,boutiqueid);
         return ResponseEntity.ok(results);
     }
     
-     @GetMapping("/prix-articles/all")
-    public ResponseEntity<List<PrixArticles>> getAllPrixArticles(
+     @GetMapping("/prix-articles/all/{boutiqueid}")
+    public ResponseEntity<List<PrixArticles>> getAllPrixArticles(@PathVariable Long boutiqueid
           
     ) {
-        List<PrixArticles> results = commandeService.getPrixArticlesFilster("");
+        List<PrixArticles> results = commandeService.getPrixArticlesFilster("",boutiqueid);
         return ResponseEntity.ok(results);
     }
 
@@ -454,7 +482,8 @@ public class CommandeController implements Serializable {
 //            return ResponseEntity.ok(stock);
 //        }
         Long boutiqueid = stockDepotAndBoutique.getBoutiqueid();
-        if (boutiqueid==0L || boutiqueid==null) {
+       Optional<Magasin>  depot=magasinRepository.findById(stockDepotAndBoutique.getDepotid());
+        if (depot.isPresent() &&  depot.get().getBoutiqueId()==null) {
            stock= commandeService.stockDepot(produitId, stockDepotAndBoutique.getDepotid());
             return ResponseEntity.ok(stock);
         }
@@ -502,6 +531,7 @@ public class CommandeController implements Serializable {
 
         commande.setPrixAchat(request.getPrixAchat());
         commande.setPrixVente(request.getPrixVente());
+        //commande.set
         commande.setQuantite(request.getQuantite());
         commande.setUsercreate(request.getUsercreate());
 
@@ -683,5 +713,39 @@ public class CommandeController implements Serializable {
 
         return cleaned;
     }
+    
+    @GetMapping("/boutique/{id}")
+    public ResponseEntity<Boutique> boutiqueid(@PathVariable Long id) {
+      
+        try {
+         Optional<Boutique>  boutique = boutiqueRepositories.findById(id);
+            // Authentification de l'utilisateur ici
+            // ...if
+            if (boutique.isPresent()) {
+                return ResponseEntity.ok(boutique.get());
+            }
+            
+        } catch (Exception e) {
+            System.out.println("com.mproduits.web.controller.CommandeController.allDepots()" + e.getMessage() + ' ' + e.getLocalizedMessage());
+        }
 
+       return  ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    }
+      @GetMapping("/depots-stockage-all")
+    public ResponseEntity<List<DepoteDto>> allDepots() {
+        List<DepoteDto> depots = new ArrayList<>();
+        try {
+            depots = magasinFournisseurRepositories.findDepotByFournisseurByGroupDepot().stream()
+                    //.filter(depot -> depot.getMagasin().getBoutiqueId()==null)
+                    .map(d -> mapperDto.mapperDepot(d))
+                    .collect(Collectors.toList());
+            // Authentification de l'utilisateur ici
+            // ...
+
+        } catch (Exception e) {
+            System.out.println("com.mproduits.web.controller.CommandeController.allDepots()" + e.getMessage() + ' ' + e.getLocalizedMessage());
+        }
+
+        return ResponseEntity.ok(depots);
+    }
 }

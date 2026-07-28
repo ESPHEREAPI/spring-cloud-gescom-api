@@ -5,6 +5,7 @@
 package com.mproduits.services;
 
 import com.mproduits.dto.CommandeDto;
+import com.mproduits.enums.TypeMois;
 import com.mproduits.exceptions.Success;
 import com.mproduits.model.Annee;
 import com.mproduits.model.Barcodeproduit;
@@ -43,6 +44,7 @@ import com.mproduits.repositories.ProduitRepositories;
 import com.mproduits.utiles.GlobalFonctions;
 import com.mproduits.utiles.IdleDate;
 import com.mproduits.exceptions.GlobalException;
+import com.mproduits.exceptions.MetierException;
 import jakarta.servlet.http.HttpSession;
 
 import java.math.BigDecimal;
@@ -263,7 +265,15 @@ public class ServiceCommande implements IServiceCommande {
             anneeRepository.save(an);
         }
 
-        Mois mois = moisRepositories.findOneByAnneeAndNumero(anneeActuelle, moisActuel);
+        Optional<Mois> mois = moisRepositories.findOneByAnneeAndNumero(anneeActuelle, moisActuel);
+        if (mois.isEmpty()) {
+            Mois new_mois=new Mois();
+            new_mois.setCode(TypeMois.AVRIL.name());
+            new_mois.setMois(TypeMois.AVRIL.toString());
+            new_mois.setNumero(4);
+            new_mois.setAnnee(an);
+           return moisRepositories.save(new_mois);
+        }
         //Entreprise entreprise = entrepriseRepositories.findByActif(true);
 
         // Stocker en session
@@ -272,7 +282,7 @@ public class ServiceCommande implements IServiceCommande {
 //        if (mois == null) {
 //            throw new RuntimeException("Aucun mois actif dans la session");
 //        }
-        return mois;
+        return mois.get();
     }
 
     @Override
@@ -323,6 +333,7 @@ public class ServiceCommande implements IServiceCommande {
             detailCommandeEntree.setMois(mois);
             detailCommandeEntree.setPrixachat(commande.getPrixAchat());
             detailCommandeEntree.setPrixvente(commande.getPrixVente());
+           // detailCommandeEntree.setp
             detailCommandeEntree.setQuantiteentree(commande.getQuantite());
             detailCommandeEntree.setUsercreate(commande.getUsercreate());
             detailCommandeEntree.setNumerocommande(commande.getNumeroRepartition());
@@ -343,6 +354,7 @@ public class ServiceCommande implements IServiceCommande {
                     prixVente.setProduit(cde.getProduit());
                     prixVente.setDatedebut(new Date());
                     prixVente.setPrix(cde.getPrixVente());
+                    //prixVente.s
                     prixVente.setUsercreat(commande.getUsercreate());
                     // if (ancienPrix.isPresent()) {
                     PrixVente arretAncienPrix = ancienPrix.get();
@@ -469,10 +481,10 @@ public class ServiceCommande implements IServiceCommande {
             detailCommandeSortieRepositories.save(detailCommandeSortie);
             if (pointVente.isPresent()) {
                 PointVente lastpoinVente = pointVente.get();
-                BigDecimal stockFinal = lastpoinVente.getStockFinalTheorie().add(commande.getQuantite());
-                BigDecimal stockEntree = lastpoinVente.getEntreeProduit().add(commande.getQuantite());
-                BigDecimal stockSortieCommande = commande.getSortiProduit().add(commande.getQuantite());
-                BigDecimal stockFinalCommande = commande.getStockFinalTheorie().subtract(commande.getQuantite());
+                BigDecimal stockFinal = lastpoinVente.getStockFinalTheorie().add(commande.getStockFinalTheorie());
+                BigDecimal stockEntree = lastpoinVente.getEntreeProduit().add(commande.getStockFinalTheorie());
+                BigDecimal stockSortie = commande.getSortiProduit().add(commande.getStockFinalTheorie());
+                //BigDecimal stockFinalCommande = commande.getStockFinalTheorie().subtract(commande.getQuantite());
 
                 // enregistrer les details sortie 
 //                //entrement du mouvement du stock
@@ -486,8 +498,8 @@ public class ServiceCommande implements IServiceCommande {
 //                detailCommandeSortie.setQuantitsortie(commande.getQuantite());
 //                detailCommandeSortie.setUsercreate(commande.getUsercreate());
                 // mise a jour commande 
-                commande.setSortiProduit(stockSortieCommande);
-                commande.setStockFinalTheorie(stockFinalCommande);
+                commande.setSortiProduit(stockSortie);
+                commande.setStockFinalTheorie(BigDecimal.ZERO);
                 commandeRepositories.save(commande);
                 // mise a jour au point de vente 
 
@@ -498,11 +510,19 @@ public class ServiceCommande implements IServiceCommande {
 //                detailCommandeSortieRepositories.save(detailCommandeSortie);
                 //gestion de s prix articles 
                 // le prixArticles existemps
-                Optional<PrixArticles> pa = prixArticlesRepositories.findLastActiveByEntrepriseAndProduit(entreprise, lastpoinVente.getProduit());
+                Optional<PrixArticles> pa = prixArticlesRepositories.findLastActiveByEntrepriseAndProduit(entreprise, lastpoinVente.getProduit(),lastpoinVente.getBoutique().getId());
                 if (pa.isPresent()) {
                     PrixArticles last = pa.get();
                     last.setActif(true);
                     last.setPrixVenteNet(commande.getPrixVente());
+                    if (last.getTva()==null || last.getTva()==BigDecimal.ZERO) {
+                        last.setPrixVenteTTC(commande.getPrixVente());
+                    }else{
+                        BigDecimal prcent=BigDecimal.valueOf(100.0);
+                        BigDecimal prix_tva=last.getPrixVenteNet().add((last.getPrixVenteNet().multiply(last.getTva()).divide(prcent)));
+                        last.setPrixVenteTTC(prix_tva);
+                    }
+                   
                     prixArticlesRepositories.save(last);
 
                     return;
@@ -520,6 +540,10 @@ public class ServiceCommande implements IServiceCommande {
             newpointVente.setSortiProduit(BigDecimal.ZERO);
             newpointVente.setEntreprise(entreprise);
             newpointVente.setProduit(commande.getProduit());
+            // mise a jour commande 
+            commande.setSortiProduit(commande.getQuantite());
+            commande.setStockFinalTheorie(BigDecimal.ZERO);
+            commandeRepositories.save(commande);
             PointVente savePointVente = pointVenteRepositories.save(newpointVente);
 
 // creation du prix articles
@@ -1081,24 +1105,24 @@ public class ServiceCommande implements IServiceCommande {
     }
 
     @Override
-    public Page<PrixArticles> getPrixArticles(int page, int size, String search) {
+    public Page<PrixArticles> getPrixArticles(int page, int size, String search, Long boutiqueid) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
 
         if (search != null && !search.isEmpty()) {
-            return prixArticlesRepositories.findProduitLibelleByEntrepriseWithFilter(e, search, pageable);
+            return prixArticlesRepositories.findProduitLibelleByEntrepriseWithFilter(e, search, pageable, boutiqueid);
         } else {
-            return prixArticlesRepositories.findAllByEntrepriseProduitActif(e, Boolean.TRUE, pageable);
+            return prixArticlesRepositories.findAllByEntrepriseProduitActif(e, Boolean.TRUE, pageable, boutiqueid);
         }
     }
 
     @Override
-    public List<PrixArticles> getPrixArticlesFilster(String search) {
+    public List<PrixArticles> getPrixArticlesFilster(String search, Long boutiqueid) {
         Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
         if (search != null && !search.trim().isEmpty()) {
-            return prixArticlesRepositories.findProduitLibelleByEntrepriseWithFilter(e, search);
+            return prixArticlesRepositories.findProduitLibelleByEntrepriseWithFilter(e, search, boutiqueid);
         }
-        return prixArticlesRepositories.findAllByEntrepriseProduitActif(e, Boolean.TRUE);
+        return prixArticlesRepositories.findAllByEntrepriseProduitActif(e, Boolean.TRUE, boutiqueid);
     }
 
     @Override

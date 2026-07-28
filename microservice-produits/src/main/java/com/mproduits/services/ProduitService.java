@@ -13,10 +13,13 @@ import com.mproduits.model.Produit;
 import com.mproduits.repositories.CategorieRepositories;
 import com.mproduits.repositories.ProduitRepositories;
 import com.mproduits.exceptions.GlobalException;
+import com.mproduits.model.Boutique;
+import com.mproduits.repositories.BoutiqueRepositories;
 import java.math.BigDecimal;
 import java.util.Date;
 
-import java.util.List;
+
+import java.util.*;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -51,6 +54,8 @@ public class ProduitService {
     MapperDtoImpl mapperdto;
     private static final int DEFAULT_AUTOCOMPLETE_LIMIT = 100;
     private static final int MAX_SEARCH_LIMIT = 500;
+      @Autowired
+      BoutiqueRepositories boutiqueRepository;
 
     /**
      * Recherche optimisée pour l'autocomplétion Cache les résultats fréquents
@@ -63,9 +68,9 @@ public class ProduitService {
     @Cacheable(value = "articleAutocomplete",
             key = "#searchTerm + '_' + #limit",
             unless = "#searchTerm.length() < 2")
-    public List<ProduitDto> searchForAutocomplete(String searchTerm, Integer limit) {
+    public List<ProduitDto> searchForAutocomplete(String searchTerm, Integer limit,Long boutiqueid) {
         if (!StringUtils.hasText(searchTerm) || searchTerm.trim().length() < 2) {
-            return getTopArticles();
+            return getTopArticles(boutiqueid);
         }
 
         int searchLimit = (limit != null && limit > 0)
@@ -75,9 +80,10 @@ public class ProduitService {
         Pageable pageable = PageRequest.of(0, searchLimit);
         List<Produit> articles = articleRepository.findForAutocomplete(
                 searchTerm.trim(), pageable);
+        Optional<Boutique>boutique=boutiqueRepository.findById(boutiqueid);
 
         return (List<ProduitDto>) articles.stream()
-                .map(a -> mapperdto.mapperProduitDto(a))
+                .map(a -> mapperdto.mapperProduitDto(a,boutique.isPresent() ? boutique.get():new Boutique()))
                 .collect(Collectors.toList());
     }
     
@@ -113,7 +119,7 @@ public class ProduitService {
         } else {
             articlePage = articleRepository.findByDeletesFalse(pageable);
         }
-
+ //Optional<Boutique>boutique=boutiqueRepository.findById(boutiqueid);
         List<ProduitDto> articles = articlePage.getContent().stream()
                 .map(a -> mapperdto.mapperProduitDto(a))
                 .collect(Collectors.toList());
@@ -134,10 +140,12 @@ public class ProduitService {
      * pendant 10 minutes
      */
     @Cacheable(value = "topArticles", unless = "#result.isEmpty()")
-    public List<ProduitDto> getTopArticles() {
+    public List<ProduitDto> getTopArticles(Long boutiqueid) {
         List<Produit> articles = articleRepository.findTop10000ByDeletesFalseOrderByLibelleAsc();
+        Optional<Boutique>boutique=boutiqueRepository.findById(boutiqueid);
+        
         return articles.stream()
-                .map(p -> mapperdto.mapperProduitDto(p))
+                .map(p -> mapperdto.mapperProduitDto(p,boutique.isPresent() ? boutique.get():new Boutique()))
                 .collect(Collectors.toList());
     }
 
@@ -152,13 +160,14 @@ public class ProduitService {
     /**
      * Recherche par code exact
      */
-    public ProduitDto findByReference(String reference) {
+    public ProduitDto findByReference(String reference, Long boutiqueid) {
         if (!StringUtils.hasText(reference)) {
             return null;
         }
 
         Produit article = articleRepository.findByCodeAndActiveTrue(reference.trim());
-        return article != null ? mapperdto.mapperProduitDto(article) : null;
+        Optional<Boutique> boutique =boutiqueRepository.findById(boutiqueid);
+        return article != null ? mapperdto.mapperProduitDto(article,boutique.isPresent() ? boutique.get(): new Boutique()) : null;
     }
 
     /**
@@ -175,9 +184,9 @@ public class ProduitService {
      * Recherche full-text (si supportée par la base de données)
      */
     public List<ProduitDto> fullTextSearch(String searchTerm, Integer limit) {
-        if (!StringUtils.hasText(searchTerm)) {
-            return getTopArticles();
-        }
+//        if (!StringUtils.hasText(searchTerm)) {
+//            return getTopArticles(boutiqueid);
+//        }
 
         int searchLimit = (limit != null && limit > 0)
                 ? Math.min(limit, DEFAULT_AUTOCOMPLETE_LIMIT)
@@ -186,13 +195,15 @@ public class ProduitService {
         try {
             List<Produit> articles = articleRepository.fullTextSearch(
                     searchTerm.trim(), searchLimit);
+            //Optional<Boutique>boutique=boutiqueRepository.findById(boutiqueid);
             return articles.stream()
                     .map(p -> mapperdto.mapperProduitDto(p))
                     .collect(Collectors.toList());
         } catch (Exception e) {
             // Fallback vers recherche LIKE si full-text non supporté
-            return searchForAutocomplete(searchTerm, limit);
+           // return searchForAutocomplete(searchTerm, limit//);
         }
+        return  this.articleRepository.findAll().subList(0, 50).stream().map(p-> mapperdto.mapperProduitDto(p)).toList();
     }
 
     /**
@@ -292,7 +303,7 @@ public class ProduitService {
         prd.setUsernameupdate(produitDto.getUsername());
         Produit prodSave = articleRepository.save(prd);
         System.out.println("qunatite pacquet " + prodSave.getQuantiteByPacquet());
-        ProduitDto pdto = mapperdto.mapperProduitDto(prodSave);
+        ProduitDto pdto = mapperdto.mapperProduitDto(prodSave,new Boutique());
         return pdto;
 
     }
@@ -305,5 +316,23 @@ public class ProduitService {
         }
         articleRepository.delete(p.get());
     }
+    
+    public List<ProduitDto> searchProduitsByBoutique(Long boutiqueid, String searchTerm) {
+    if (searchTerm == null || searchTerm.trim().isEmpty()) {
+        return new ArrayList<>();
+    }
+    
+    String term = searchTerm.trim().toLowerCase();
+    
+    return articleRepository.findAll().stream()
+        .filter(p -> !p.getDeletes())
+        .filter(p -> 
+            p.getLibelle().toLowerCase().contains(term) ||
+            (p.getReference() != null && p.getReference().toLowerCase().contains(term))
+        )
+          .map(pr -> mapperdto.mapperProduitDto(pr))
+        .limit(100)
+        .collect(Collectors.toList());
+}
     
 }

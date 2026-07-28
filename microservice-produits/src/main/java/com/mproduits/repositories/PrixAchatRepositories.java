@@ -20,7 +20,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface PrixAchatRepositories extends JpaRepository<PrixAchat, Long> {
 
-    @Query("SELECT pv FROM PrixAchat pv WHERE pv.id=(SELECT MAX(prv.id)  FROM PrixAchat prv  where prv.produit= :produit)")
+    @Query("SELECT pv FROM PrixAchat pv WHERE pv.id=(SELECT MAX(prv.id)  FROM PrixAchat prv  where prv.produit= :produit )")
     Optional<PrixAchat> findLastPrixAchatByProduit(@Param("produit") Produit produit);
 
     @Query("SELECT pv FROM PrixAchat pv WHERE pv.produit= :produit and pv.datedebut<= :endOfDay and pv.datefin is null")

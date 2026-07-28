@@ -5,6 +5,7 @@
 package com.mproduits.repositories;
 
 import com.mproduits.model.Entreprise;
+import com.mproduits.model.EntreprisePK;
 import com.mproduits.model.Produit;
 import feign.Param;
 import org.springframework.data.domain.Page;
@@ -95,5 +96,35 @@ public interface ProduitRepositories extends JpaRepository<Produit, Long>{
     
     // ✅ Plus performant pour vérifier l'existence
     boolean existsByReferenceAndDeletesFalse(String reference);
+    Optional<Produit> findByCode(String code);
+
+    List<Produit> findByDeletes(Boolean deletes);
+    
+    // ========================================
+    // MÉTHODE POUR RÉCUPÉRER PLUSIEURS PRODUITS PAR IDS
+    // ========================================
+    
+    // ✅ OPTION 1: Méthode Spring Data JPA (RECOMMANDÉ - Simple et efficace)
+    List<Produit> findByIdIn(List<Long> ids);
+    
+    // ✅ OPTION 2: Avec @Query personnalisée
+    @Query("SELECT p FROM Produit p WHERE p.id IN :ids")
+    List<Produit> findProductsByIds(@Param("ids") List<Long> ids);
+    
+    // ✅ OPTION 3: Avec @Query et boutique
+    @Query("SELECT p FROM Produit p  join p.pointventeCollection pv WHERE p.id IN :ids AND pv.boutique.id = :boutiqueId")
+    List<Produit> findProductsByIdsAndBoutique(
+            @Param("ids") List<Long> ids, 
+            @Param("boutiqueId") Long boutiqueId
+    );
    
+     @Query("SELECT COUNT(DISTINCT pv.produit) FROM PointVente pv " +
+            "WHERE pv.entreprise.entreprisePK = :pk " +
+            "AND pv.produit.deletes = true")
+    Long countProduitsSupprimesDansPointsVente(@Param("pk") EntreprisePK entreprisePK);
+
+   // Optional<Produit> findByCode(String code);
+
+    @Query("SELECT p FROM Produit p WHERE p.deletes = false OR p.deletes IS NULL")
+    List<Produit> findAllNonSupprimes();
 }

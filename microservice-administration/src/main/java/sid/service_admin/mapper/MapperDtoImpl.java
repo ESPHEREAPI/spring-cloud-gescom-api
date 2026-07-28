@@ -21,7 +21,6 @@ import sid.service_admin.model.Roles;
 import java.util.stream.Collectors;
 import java.util.Optional;
 import sid.service_admin.dto.MenuDto;
-import sid.service_admin.dto.MenuUserDTO;
 import sid.service_admin.dto.ModuleDTO;
 import sid.service_admin.dto.ProfilDTO;
 import sid.service_admin.dto.UserCreateDTO;
@@ -29,7 +28,6 @@ import sid.service_admin.model.Menu;
 import sid.service_admin.model.Modulesecurite;
 import sid.service_admin.model.Personne;
 import sid.service_admin.model.Profil;
-import sid.service_admin.model.Usermenu;
 import sid.service_admin.utils.JwtExpiration;
 
 /**
@@ -47,7 +45,7 @@ public class MapperDtoImpl {
     public UserDTO mapToDTO(Personne user) {
         UserDTO userDTO = new UserDTO();
         BeanUtils.copyProperties(user, userDTO);
-        userDTO.setBoutiqueid(user.getBoutique().getId());
+      
 
         // Map roles
         if (user.getRoleid() != null && user.getRoleid().getId() != null) {
@@ -56,7 +54,7 @@ public class MapperDtoImpl {
             userDTO.setProfil(mapToDTOProfil(user.getProfilid()));
         }
         System.out.println("userDto :"+userDTO.toString() );
-
+      userDTO.setBoutiqueid(user.getBoutique().getId());
         return userDTO;
     }
 

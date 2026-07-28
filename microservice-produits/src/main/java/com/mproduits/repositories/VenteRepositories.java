@@ -25,52 +25,55 @@ import org.springframework.data.jpa.repository.Query;
  */
 public interface VenteRepositories extends JpaRepository<Vente, Long>, JpaSpecificationExecutor<Vente> {
 
-    Optional<Vente> findByEntrepriseAndNumeroTicket(Entreprise entreprise, String numeroTicket);
+    Optional<Vente> findByEntrepriseAndNumeroTicketAndBoutiqueId(Entreprise entreprise, String numeroTicket,Long id);
 
     long countByEntreprise(Entreprise entreprise);
 
-    @Query("SELECT v.entreprise.annee FROM Vente v WHERE v.vendeur.userName= :username")
-    public List<Annee> listeVenteUserByAnnee(@Param("username") String username);
+    @Query("SELECT v.entreprise.annee FROM Vente v WHERE v.vendeur.userName= :username and v.boutique.id= :boutiqueid")
+    public List<Annee> listeVenteUserByAnnee(@Param("username") String username,@Param("boutiqueid") Long boutiqueid);
 
-    @Query("SELECT DISTINCT DATE(v.dateVente) FROM Vente v WHERE v.entreprise.annee.id= :annee and v.vendeur.userName= :username ")
-    public List<Date> listeDateVentByVendeur(@Param("annee") Long annee, @Param("username") String username);
+    @Query("SELECT DISTINCT DATE(v.dateVente) FROM Vente v WHERE v.entreprise.annee.id= :annee and v.vendeur.userName= :username and v.boutique.id= :boutiqueid ")
+    public List<Date> listeDateVentByVendeur(@Param("annee") int annee, @Param("username") String username,@Param("boutiqueid") Long boutiqueid);
 
-    @Query("SELECT DISTINCT DATE(v.dateVente) FROM Vente v WHERE v.entreprise.annee.id= :annee ")
-    public List<Date> listeDateVente(@Param("annee") Long annee);
+    @Query("SELECT DISTINCT DATE(v.dateVente) FROM Vente v WHERE v.entreprise.annee.id= :annee and v.boutique.id= :boutiqueid ")
+    public List<Date> listeDateVente(@Param("annee") int annee,@Param("boutiqueid") Long boutiqueid);
+     @Query("SELECT  v FROM Vente v WHERE v.entreprise.annee.id= :annee and v.boutique.id= :boutiqueid and MONTH(v.dateVente) = :mois ")
+    public List<Vente> listeAllVenteByBoutique(@Param("annee") int annee,@Param("boutiqueid") Long boutiqueid,@Param("mois")int mois);
 
-    @Query("SELECT v FROM Vente v WHERE v.vendeur.userName= :vendeur and DATE(v.dateVente)= :dateVente ")
-    public Vente findByVendeurAndDateVente(String vendeur, Date dateVente);
+    @Query("SELECT v FROM Vente v WHERE v.vendeur.userName= :vendeur and DATE(v.dateVente)= :dateVente and v.boutique.id= :boutiqueid  ")
+    public Vente findByVendeurAndDateVente(String vendeur, Date dateVente,@Param("boutiqueid") Long boutiqueid);
 
-    @Query("SELECT v FROM Vente v WHERE DATE(v.dateVente)= :datevente and v.vendeur.userName= :vendeur and v.entreprise.annee.id= :anneeid")
-    public List<Vente> allVentesByUsersDate(@Param("datevente") Date datevente, @Param("vendeur") String vendeur, @Param("anneeid") long anneeid);
+    @Query("SELECT v FROM Vente v WHERE DATE(v.dateVente)= :datevente and v.vendeur.userName= :vendeur and v.entreprise.annee.id= :anneeid and v.boutique.id= :boutiqueid")
+    public List<Vente> allVentesByUsersDate(@Param("datevente") Date datevente, @Param("vendeur") String vendeur, @Param("anneeid") int anneeid,@Param("boutiqueid") long boutiqueid);
 
-    @Query("SELECT DISTINCT(v.entreprise.annee) FROM Vente v ")
-    public List<Annee> listeVenteByAnnee();
+    @Query("SELECT DISTINCT(v.entreprise.annee) FROM Vente v where v.boutique.id= :boutiqueid")
+    public List<Annee> listeVenteByAnnee(@Param("boutiqueid") Long boutiqueid);
 
-    @Query("SELECT DISTINCT DATE(v.dateVente) FROM Vente v WHERE v.entreprise.annee.id= :annee ")
-    public List<Date> listeDateVenteByAnnee(@Param("annee") Long annee);
+    @Query("SELECT DISTINCT DATE(v.dateVente) FROM Vente v WHERE v.entreprise.annee.id= :annee  and v.boutique.id= :boutiqueid ")
+    public List<Date> listeDateVenteByAnnee(@Param("annee") Long annee,@Param("boutiqueid") Long boutiqueid);
 
     @Query("SELECT v FROM Vente v "
             + "WHERE (COALESCE(:search, '') = '' OR LOWER(v.numeroTicket) LIKE LOWER(CONCAT('%', :search, '%')) "
             + "OR LOWER(v.client.nom) LIKE LOWER(CONCAT('%', :search, '%'))) "
             + "AND (:statut = '' OR v.statut = :statut) "
             + "AND (:from IS NULL OR v.dateVente >= :from) "
-            + "AND (:to IS NULL OR v.dateVente <= :to)")
+            + "AND (:to IS NULL OR v.dateVente <= :to) and v.boutique.id= :boutiqueid ")
     Page<Vente> searchVentes(
             @Param("search") String search,
             @Param("statut") String statut,
             @Param("from") Date from,
             @Param("to") Date to,
-            Pageable pageable
+            Pageable pageable,
+            @Param("boutiqueid") Long boutiqueid
     );
 
-    @Query("SELECT COUNT(v) FROM Vente v")
-    long nbrRow();
+    @Query("SELECT COUNT(v) FROM Vente v where  v.boutique.id= :boutiqueid ")
+    long nbrRow(@Param("boutiqueid") Long boutiqueid);
 
   //  public Orders findByNumero(String numero);
     @Query("SELECT v FROM Vente v WHERE v.userecom= :username and v.entreprise.annee.id= :anneeid")
         public List<Vente> allVentesByUsernameEcom(@Param("username") String username, @Param("anneeid") long anneeid);
-        @Query("SELECT v FROM Vente v  WHERE v.numerocommande= :numerocommande and v.statut= :statut and v.entreprise.annee.id= :anneeid ")
+        @Query("SELECT v FROM Vente v  WHERE v.numerocommande= :numerocommande and v.statut= :statut and v.entreprise.annee.id= :anneeid and v.boutique.id= :boutiqueid ")
       Optional<Vente> findByNumeroTicketAndStatutForCommande(@Param("numerocommande") long numerocommande,
-                                                       @Param("statut") StatutVente statut,@Param("anneeid") int anneeid);
+                                                       @Param("statut") StatutVente statut,@Param("anneeid") int anneeid,@Param("boutiqueid") Long boutiqueid);
 }

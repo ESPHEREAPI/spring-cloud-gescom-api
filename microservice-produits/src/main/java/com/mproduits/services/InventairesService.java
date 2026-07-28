@@ -103,13 +103,17 @@ public class InventairesService {
     
     private PointVenteDto saveStock(PointVenteDto pointVenteDto ,BigDecimal quantite){
             Entreprise e= entrepriseRepositories.findByActif(Boolean.TRUE);
-        Optional<PrixArticles> paNew=prixArticlesRepositories.findLastActiveByEntrepriseAndProduit(e, mapperDto.mapperProduit(pointVenteDto.getProduit()));
+            Long  boutiqueid=pointVenteDto.getBoutique().getId();
+            Optional<Boutique> boutique=boutiqueRepositories.findById(boutiqueid);
+            Produit produit=mapperDto.mapperProduit(pointVenteDto.getProduit());
+        Optional<PrixArticles> paNew=prixArticlesRepositories.findLastActiveByEntrepriseAndProduit(e,produit ,boutique.get().getId());
         if (paNew.isEmpty()) {
             throw  new EntityNotFoundException("Produit non trouvée avec l'ID: " + pointVenteDto.getId());
         }
         PrixArticles prixArticles=paNew.get();
         if (prixArticles.getPrixVenteNet().intValue()!=pointVenteDto.getPrix().intValue()) {
             prixArticles.setPrixVenteNet(pointVenteDto.getPrix());
+            prixArticles.setPrixVenteTTC(pointVenteDto.getPrix());
                   prixArticlesRepositories.save(prixArticles);
         }
         prixArticles.getPointVente().setStockFinalTheorie(quantite);
@@ -117,10 +121,10 @@ public class InventairesService {
         prixArticles.getPointVente().setSortiProduit(BigDecimal.ZERO);
         prixArticles.setDatemiseajour(new Date());
       pointVenteRepositories.save(prixArticles.getPointVente());
-       if (prixArticles.getPrixVenteNet().intValue()!=pointVenteDto.getPrix().intValue()) {
-            prixArticles.setPrixVenteNet(pointVenteDto.getPrix());
-                  prixArticlesRepositories.save(prixArticles);
-        }
+//       if (prixArticles.getPrixVenteNet().intValue()!=pointVenteDto.getPrix().intValue()) {
+//            prixArticles.setPrixVenteNet(pointVenteDto.getPrix());
+//                  prixArticlesRepositories.save(prixArticles);
+//        }
 
       return pointVenteDto;
        

@@ -21,9 +21,11 @@ import sid.service_admin.dto.UserDTO;
 import sid.service_admin.dto.UserSessionDTO;
 import sid.service_admin.mapper.MapperDtoImpl;
 import sid.service_admin.model.Annee;
+import sid.service_admin.model.Boutique;
 import sid.service_admin.model.Entreprise;
 import sid.service_admin.model.Mois;
 import sid.service_admin.repository.AnneeRepository;
+import sid.service_admin.repository.BoutiqueRepository;
 import sid.service_admin.repository.EntrepriseRepositories;
 import sid.service_admin.repository.MoisRepository;
 
@@ -46,6 +48,8 @@ public class AuthController {
     MoisRepository moisRepositories;
     @Autowired
     EntrepriseRepositories entrepriseRepositories;
+       @Autowired
+       BoutiqueRepository boutiqueRepository;
 
     @PostMapping("/auth/login")
     public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest, HttpSession session) {
@@ -66,7 +70,7 @@ public class AuthController {
        
         Mois mois = moisRepositories.findOneByAnneeAndNumero(dateCurent, nombre);
         Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
-       userSessionDTO.setAnneeid(dateCurent);
+       userSessionDTO.setAnneeid(e.getAnnee().getId());
         session.setAttribute("mois", mois);
         session.setAttribute("entreprise", e); // si nécessaire
         return ResponseEntity.ok(userSessionDTO);
@@ -90,4 +94,11 @@ public class AuthController {
         List<UserDTO> allUsersList = userService.getAllUsers();
         return allUsersList;
     }
+    
+    @GetMapping("/all-boutiques")
+    public ResponseEntity<List<Boutique>> allBoutiques(){
+        List<Boutique>boutiques=boutiqueRepository.findAll();
+           return ResponseEntity.ok(boutiques);
+    }
+    
 }

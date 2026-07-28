@@ -103,7 +103,7 @@ public class ArticlesRestController {
      }
       @PostMapping("/vente/e-com/order/{numerocommande}")
      public ResponseEntity<Long> addOrders(@PathVariable(name = "numerocommande") long numerocommande,@RequestBody VenteDto  venteDto){
-         long vendid=barcodeService.valideVente(venteDto, numerocommande);
+         long vendid=barcodeService.valideVente(venteDto, numerocommande,venteDto.getBoutiqueid());
           return ResponseEntity.ok(vendid);
      }
          

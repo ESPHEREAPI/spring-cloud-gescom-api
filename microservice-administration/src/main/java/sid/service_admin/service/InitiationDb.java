@@ -13,7 +13,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -431,6 +430,99 @@ public class InitiationDb implements InitDB {
         }
         return menuone;
 
+    }
+    
+     @Override
+    public Collection<Menu> getMenuByModuleStock() {
+        Modulesecurite modsec5 = this.modulesecuriteRepository.findByCode("stock");
+        Map<String, Object> parMap = new HashMap<>();
+       // parMap.put("moduleid", modsec5.getId());
+        Collection<Menu> menuone = new ArrayList<>();
+        //menuone = menudao.findAllEntitiesByUsingQueryName(Menu.FIND_BY_MODULEID, parMap);
+        if (modsec5 != null) {
+
+            menuone.add(new Menu("Dashboard Transfert", "tableau de bord pour le transfert de stock", modsec5));
+            menuone.add(new Menu("Static Stock", "Gestion des static de stock", modsec5));
+            //menuone.add(new Menu("Facture", "Facture client", modsec5));
+           // menuone.add(new Menu("Rapport", "Rapport Facturation", modsec5));
+            //menuone.add(new Menu("Versement", "Versement client", modsec5));
+//            menuone.add(new Menu("salaire", "gestion de la paie", false, "/paiement/gestionPaie", modsec5));
+//            menuone.add(new Menu("caisse", "gestion de la caisse", false, "/paiement/gestioncaisse", modsec5));
+//            menuone.add(new Menu(ModuleMenu.mPaGestionAnnciennette, "ANCIENNETE", false, "/paiement/gestionAnciennette", modsec5));
+//            menuone.add(new Menu(ModuleMenu.mPOperationDivert, "Operqtion Diverts", false, "/paiement/operationDiverts", modsec5));
+//            menuone.add(new Menu(ModuleMenu.Impot_Salarier, "impot Salarier", false, "/paiement/gestionImpot", modsec5));
+
+        }
+        for (Menu menu : menuone) {
+            if (this.menuRepository.findByCode(menu.getCode()) == null) {
+                menu.setEtat(false);
+                this.menuRepository.save(menu);
+            }
+        }
+        return menuone;
+
+    }
+
+    @Override
+    public Collection<Menu> getMenuByModulePhotocopie() {
+        Modulesecurite modsec5 = this.modulesecuriteRepository.findByCode("photocophie");
+        Map<String, Object> parMap = new HashMap<>();
+       // parMap.put("moduleid", modsec5.getId());
+        Collection<Menu> menuone = new ArrayList<>();
+        //menuone = menudao.findAllEntitiesByUsingQueryName(Menu.FIND_BY_MODULEID, parMap);
+        if (modsec5 != null) {
+
+            menuone.add(new Menu("Photocopie/Saisir", "Gestion saisir des photocopies", modsec5));
+             menuone.add(new Menu("Historique Photocopie", "historique  des photocopies", modsec5));
+            //menuone.add(new Menu("Static Stock", "Gestion des static de stock", modsec5));
+            //menuone.add(new Menu("Facture", "Facture client", modsec5));
+           // menuone.add(new Menu("Rapport", "Rapport Facturation", modsec5));
+            //menuone.add(new Menu("Versement", "Versement client", modsec5));
+//            menuone.add(new Menu("salaire", "gestion de la paie", false, "/paiement/gestionPaie", modsec5));
+//            menuone.add(new Menu("caisse", "gestion de la caisse", false, "/paiement/gestioncaisse", modsec5));
+//            menuone.add(new Menu(ModuleMenu.mPaGestionAnnciennette, "ANCIENNETE", false, "/paiement/gestionAnciennette", modsec5));
+//            menuone.add(new Menu(ModuleMenu.mPOperationDivert, "Operqtion Diverts", false, "/paiement/operationDiverts", modsec5));
+//            menuone.add(new Menu(ModuleMenu.Impot_Salarier, "impot Salarier", false, "/paiement/gestionImpot", modsec5));
+
+        }
+        for (Menu menu : menuone) {
+            if (this.menuRepository.findByCode(menu.getCode()) == null) {
+                menu.setEtat(false);
+                this.menuRepository.save(menu);
+            }
+        }
+        return menuone;
+    
+    }
+
+    @Override
+    public Collection<Menu> getMenuByModuleVente() {
+        Modulesecurite modsec5 = this.modulesecuriteRepository.findByCode("vente");
+        Map<String, Object> parMap = new HashMap<>();
+       // parMap.put("moduleid", modsec5.getId());
+        Collection<Menu> menuone = new ArrayList<>();
+        //menuone = menudao.findAllEntitiesByUsingQueryName(Menu.FIND_BY_MODULEID, parMap);
+        if (modsec5 != null) {
+
+            menuone.add(new Menu("Historique Vente", "Gestion Historique Vente", modsec5));
+           // menuone.add(new Menu("Static Stock", "Gestion des static de stock", modsec5));
+            //menuone.add(new Menu("Facture", "Facture client", modsec5));
+           // menuone.add(new Menu("Rapport", "Rapport Facturation", modsec5));
+            //menuone.add(new Menu("Versement", "Versement client", modsec5));
+//            menuone.add(new Menu("salaire", "gestion de la paie", false, "/paiement/gestionPaie", modsec5));
+//            menuone.add(new Menu("caisse", "gestion de la caisse", false, "/paiement/gestioncaisse", modsec5));
+//            menuone.add(new Menu(ModuleMenu.mPaGestionAnnciennette, "ANCIENNETE", false, "/paiement/gestionAnciennette", modsec5));
+//            menuone.add(new Menu(ModuleMenu.mPOperationDivert, "Operqtion Diverts", false, "/paiement/operationDiverts", modsec5));
+//            menuone.add(new Menu(ModuleMenu.Impot_Salarier, "impot Salarier", false, "/paiement/gestionImpot", modsec5));
+
+        }
+        for (Menu menu : menuone) {
+            if (this.menuRepository.findByCode(menu.getCode()) == null) {
+                menu.setEtat(false);
+                this.menuRepository.save(menu);
+            }
+        }
+        return menuone;
     }
 
 }

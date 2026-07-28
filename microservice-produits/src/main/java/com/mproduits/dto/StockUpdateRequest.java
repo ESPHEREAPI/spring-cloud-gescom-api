@@ -16,4 +16,5 @@ public class StockUpdateRequest {
     private Integer quantity;
     private String type;
     private String reason;  
+    private Long boutiqueid;
 }

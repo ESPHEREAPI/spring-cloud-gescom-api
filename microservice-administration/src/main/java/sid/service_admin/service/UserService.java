@@ -29,6 +29,7 @@ import sid.service_admin.dto.UserDTO;
 import sid.service_admin.dto.UserUpdateDTO;
 import sid.service_admin.exceptions.ResourceNotFoundException;
 import sid.service_admin.mapper.MapperDtoImpl;
+import sid.service_admin.model.Boutique;
 import sid.service_admin.model.Indicatifpays;
 import sid.service_admin.model.Menu;
 import sid.service_admin.model.Modulesecurite;
@@ -72,6 +73,7 @@ public class UserService implements Serializable {
     private IndicatifpaysRepository indicatifpaysRepository;
     private UsermoduleRepository usermoduleRepository;
     private UsermenuRepository usermenuRepository;
+ 
 
     private ISecurite securiteService;
 
@@ -121,6 +123,7 @@ public class UserService implements Serializable {
 //            user.setPhoneNumber(userCreateDTO.getAdresse().getTel());
             String pwd = Crypto.sha256(userCreateDTO.getPassword());
             user.setPassword(pwd);
+            user.setBoutique(userCreateDTO.getBoutique());
             Personne savedUser = personneRepository.save(user);
 //        roles.stream()
 //                .forEach(rl -> userRoleRepository.save(new UserRole(savedUser, rl)));
@@ -150,6 +153,7 @@ public class UserService implements Serializable {
         user.setQuartier(userUpdateDTO.getQuartier());
         user.setEmail(userUpdateDTO.getEmail());
         user.setAutorisationDeletes(userUpdateDTO.getAutorisationDeletes());
+        user.setBoutique(userUpdateDTO.getBoutique());
 
         user.setIsActive(userUpdateDTO.getIsActive());
 

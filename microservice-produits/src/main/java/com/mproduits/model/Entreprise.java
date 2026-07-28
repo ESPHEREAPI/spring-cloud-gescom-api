@@ -73,19 +73,17 @@ public class Entreprise implements Serializable {
     @Column(name = "Type_responsable")
     private String typeResponsable;
     @Column(name = "date_fin_license")
-    @Temporal(TemporalType.DATE)
+    @Temporal(TemporalType.TIMESTAMP)
     private Date dateFinLicense;
-    @Basic(optional = false)
+    //@Basic(optional = false)
 
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "entreprise")
+    @OneToMany( mappedBy = "entreprise")
     @JsonIgnore
     private Collection<Prixclient> prixclientCollection;
     @OneToMany(mappedBy = "entreprise")
     @JsonIgnore
     private Collection<MagasinFournisseur> magasinFournisseurCollection;
-
     @OneToMany(mappedBy = "entreprise")
-
     @JsonIgnore
     private Collection<PrixArticles> prixarticlesCollection;
     @JoinColumn(name = "Anneeid", referencedColumnName = "Id", insertable = false, updatable = false)
@@ -94,7 +92,7 @@ public class Entreprise implements Serializable {
     @JoinColumn(name = "Employeurid", referencedColumnName = "Id", insertable = false, updatable = false)
     @ManyToOne(optional = false)
     private Employeur employeur;
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "entreprise")
+    @OneToMany( mappedBy = "entreprise")
     @JsonIgnore
     private Collection<Verrouillage> verrouillageCollection;
     private String capital = "10 000 000 XFA";

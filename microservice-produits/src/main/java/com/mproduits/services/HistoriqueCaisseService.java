@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.mproduits.services;
 
 import com.mproduits.dto.MargeVenteDto;
@@ -10,137 +6,197 @@ import com.mproduits.enums.StatutVente;
 import com.mproduits.mappers.MapperDtoImpl;
 import com.mproduits.model.Annee;
 import com.mproduits.model.PrixAchat;
+import com.mproduits.model.Produit;
+import com.mproduits.repositories.BoutiqueRepositories;
 import com.mproduits.repositories.LigneVenteRepositories;
 import com.mproduits.repositories.PrixAchatRepositories;
 import com.mproduits.repositories.VenteRepositories;
-import java.math.BigDecimal;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Date;
+import java.util.List;
+
 /**
- *
+ * Service de gestion de l'historique de caisse
+ * 
  * @author USER01
  */
 @Service
 public class HistoriqueCaisseService {
 
-    VenteRepositories venteRepositories;
-    LigneVenteRepositories ligneVenteRepositories;
-    PrixAchatRepositories prixAchatRepositories;
-    @Autowired
-    MapperDtoImpl mapperDtoImpl;
+    private final VenteRepositories venteRepositories;
+    private final LigneVenteRepositories ligneVenteRepositories;
+    private final PrixAchatRepositories prixAchatRepositories;
+    private final BoutiqueRepositories boutiqueRepositories;
+    private final MapperDtoImpl mapperDtoImpl;
 
-    @Autowired
-    public HistoriqueCaisseService(VenteRepositories venteRepositories, LigneVenteRepositories ligneVenteRepositories, PrixAchatRepositories prixAchatRepositories) {
+    public HistoriqueCaisseService(
+            VenteRepositories venteRepositories,
+            LigneVenteRepositories ligneVenteRepositories,
+            PrixAchatRepositories prixAchatRepositories,
+            MapperDtoImpl mapperDtoImpl,BoutiqueRepositories boutiqueRepositories) {
         this.venteRepositories = venteRepositories;
         this.ligneVenteRepositories = ligneVenteRepositories;
         this.prixAchatRepositories = prixAchatRepositories;
+        this.mapperDtoImpl = mapperDtoImpl;
+        this.boutiqueRepositories=boutiqueRepositories;
     }
 
-    public List<Annee> listeAnneeByVenteAndVendeur(String username) {
-        List<Annee> listeAnneeByVente = venteRepositories.listeVenteUserByAnnee(username);
-        return listeAnneeByVente;
+    /**
+     * Récupère la liste des années de vente pour un vendeur
+     */
+    public List<Annee> listeAnneeByVenteAndVendeur(String username,Long boutiqueid) {
+        return venteRepositories.listeVenteUserByAnnee(username,boutiqueid);
     }
 
-    public List<Annee> listeAnneeByVente() {
-        List<Annee> listeAnneeByVente = venteRepositories.listeVenteByAnnee();
-        return listeAnneeByVente;
+    /**
+     * Récupère la liste de toutes les années de vente
+     */
+    public List<Annee> listeAnneeByVente(Long boutiqueid) {
+        return venteRepositories.listeVenteByAnnee(boutiqueid);
     }
 
-    public List<Date> listeDateVente(Long anneeid, String vendeur) {
-
-        List<Date> allDates = venteRepositories.listeDateVentByVendeur(anneeid, vendeur);
-        return allDates;
-    }
- public List<Date> listeDateVente(Long anneeid) {
-
-        List<Date> allDates = venteRepositories.listeDateVente(anneeid);
-        return allDates;
-    }
-    public List<Date> listeDateVenteByAnnee(Long anneeid) {
-
-        List<Date> allDates = venteRepositories.listeDateVenteByAnnee(anneeid);
-        return allDates;
+    /**
+     * Récupère les dates de vente pour un vendeur et une année
+     */
+    public List<Date> listeDateVente(int anneeid, String vendeur,Long boutiqueid) {
+        return venteRepositories.listeDateVentByVendeur(anneeid, vendeur, boutiqueid);
     }
 
-    public List<VenteDto> allVenteByVendeurByDate(Date datevente, Long anneid, String vendeur) {
-        List<VenteDto> allVentesDtos = venteRepositories.allVentesByUsersDate(datevente, vendeur, anneid).stream()
-                .filter(ve -> ve.getStatut().equals(StatutVente.TERMINEE))
-                .map(v -> mapperDtoImpl.mapperVentByVenteDto(v))
-                .collect(Collectors.toList());
-        return allVentesDtos;
+    /**
+     * Récupère les dates de vente pour une année
+     */
+    public List<Date> listeDateVente(int anneeid,Long boutiqueid) {
+        return venteRepositories.listeDateVente(anneeid, boutiqueid);
     }
 
-    public List<MargeVenteDto> margeJournaliere(Date Vente, Long anneeid) {
-        List<MargeVenteDto> marge = ligneVenteRepositories.listeProduitVendueJournalier(Vente, anneeid).stream()
-                .filter(lgv -> lgv.getVente().getStatut().equals(StatutVente.TERMINEE))
-                .map(lv -> mapperDtoImpl.mapperMargeByLigneVente(lv, Vente))
-                .collect(Collectors.toList());
-        return marge;
+    /**
+     * Récupère les dates de vente par année
+     */
+    public List<Date> listeDateVenteByAnnee(Long anneeid,Long boutiqueid) {
+        return venteRepositories.listeDateVenteByAnnee(anneeid, boutiqueid);
     }
 
-    public List<MargeVenteDto> margeMensuel(Date debut, Date fin, Long anneeid) {
-        List<MargeVenteDto> marge = ligneVenteRepositories.listeProduitVendueMensuelle(debut, fin, anneeid).stream()
-                .filter(lgv -> lgv.getVente().getStatut().equals(StatutVente.TERMINEE))
+    /**
+     * Récupère toutes les ventes d'un vendeur pour une date donnée
+     */
+    public List<VenteDto> allVenteByVendeurByDate(Date datevente, int anneid, String vendeur,Long boutiqueid) {
+        return venteRepositories.allVentesByUsersDate(datevente, vendeur, anneid,boutiqueid)
+                .stream()
+                .filter(ve -> ve.getStatut() == StatutVente.TERMINEE)
+                .map(mapperDtoImpl::mapperVentByVenteDto)
+                .toList();
+    }
+
+    /**
+     * Calcule la marge journalière
+     */
+    public List<MargeVenteDto> margeJournaliere(Date vente, int anneeid,long boutiqueid ) {
+        return ligneVenteRepositories.listeProduitVendueJournalier(vente, anneeid,boutiqueid)
+                .stream()
+                .filter(lgv -> lgv.getVente().getStatut() == StatutVente.TERMINEE)
+                .map(lv -> mapperDtoImpl.mapperMargeByLigneVente(lv, vente))
+                .toList();
+    }
+
+    /**
+     * Calcule la marge mensuelle
+     */
+    public List<MargeVenteDto> margeMensuel(Date debut, Date fin, int anneeid,Long boutiqueid) {
+        return ligneVenteRepositories.listeProduitVendueMensuelle(debut, fin, anneeid, boutiqueid)
+                .stream()
+                .filter(lgv -> lgv.getVente().getStatut() == StatutVente.TERMINEE)
                 .map(lv -> mapperDtoImpl.mapperMargeByLigneVente(lv, debut, fin))
-                .collect(Collectors.toList());
-        return marge;
+                .toList();
     }
 
+    /**
+     * Valide et met à jour le prix d'achat si nécessaire
+     */
     public MargeVenteDto validerPrixAchat(MargeVenteDto margeVenteDto, Date datevente) {
+        var produit = mapperDtoImpl.mapperProduit(margeVenteDto.getP());
+        var dateFinJournee = convertirEnFinDeJournee(datevente);
+        
+        var prixAchatOptional = prixAchatRepositories
+                .findTopByProduitAndDatedebutLessThanEqualAndDatefinIsNullOrderByDatedebutDesc(
+                        produit, dateFinJournee);
 
-        if (prixAchatRepositories.findTopByProduitAndDatedebutLessThanEqualAndDatefinIsNullOrderByDatedebutDesc(mapperDtoImpl.mapperProduit(margeVenteDto.getP()), convertirEnFinDeJournee(datevente)).isEmpty()) {
-            PrixAchat pra = new PrixAchat();
-            pra.setDatedebut(datevente);
-            pra.setPrix(BigDecimal.valueOf(margeVenteDto.getAchat().longValue()));
-            pra.setProduit(mapperDtoImpl.mapperProduit(margeVenteDto.getP()));
-            pra.setUsercreat(margeVenteDto.getUsercreat());
-            PrixAchat saveAchat = prixAchatRepositories.save(pra);
-            margeVenteDto.setPrixachatid(saveAchat.getId());
-            System.out.println("id new PrixAchat" + pra.getId());
+        if (prixAchatOptional.isEmpty()) {
+            return creerNouveauPrixAchat(margeVenteDto, datevente, produit);
+        }
 
+        var prixAchatExistant = prixAchatOptional.get();
+        
+        if (prixAchatExistant.getPrix().compareTo(new BigDecimal(margeVenteDto.getAchat())) == 0) {
             return margeVenteDto;
         }
-        Optional<PrixAchat> pa = prixAchatRepositories.findTopByProduitAndDatedebutLessThanEqualAndDatefinIsNullOrderByDatedebutDesc(mapperDtoImpl.mapperProduit(margeVenteDto.getP()), convertirEnFinDeJournee(datevente));
-        // Produit p = this.mapperDtoImpl.mapperProduit(margeVenteDto.getP());
 
-        if (pa.isEmpty()) {
+        return mettreAJourPrixAchat(margeVenteDto, datevente, produit, prixAchatExistant);
+    }
 
-            throw new RuntimeException("prix achat n existe pas id " + margeVenteDto.getPrixachatid());
-        }
+    /**
+     * Crée un nouveau prix d'achat
+     */
+    private MargeVenteDto creerNouveauPrixAchat(
+            MargeVenteDto margeVenteDto, 
+            Date datevente, 
+            Produit produit) {
+        
+        var nouveauPrixAchat = PrixAchat.builder()
+                .datedebut(datevente)
+                .prix(new BigDecimal(margeVenteDto.getAchat().doubleValue()))
+                .produit(produit)
+                .usercreat(margeVenteDto.getUsercreat())
+                .build();
 
-        PrixAchat prixAchat = pa.get();
-        if (prixAchat.getPrix().intValue() == margeVenteDto.getAchat().intValue()) {
-            return margeVenteDto;
-        }
-        PrixAchat newPrixAchat = new PrixAchat();
-        newPrixAchat.setDatedebut(datevente);
-        newPrixAchat.setPrix(BigDecimal.valueOf(margeVenteDto.getAchat().longValue()));
-        newPrixAchat.setUsercreat(margeVenteDto.getUsercreat());
-        newPrixAchat.setProduit(mapperDtoImpl.mapperProduit(margeVenteDto.getP()));
-        //pa.get().setPrix(BigDecimal.valueOf(margeVenteDto.getAchat().longValue()));
-        prixAchat.setDatefin(datevente);
-        prixAchatRepositories.save(prixAchat);
-        prixAchatRepositories.save(newPrixAchat);
-
+        var prixAchatSauvegarde = prixAchatRepositories.save(nouveauPrixAchat);
+        margeVenteDto.setPrixachatid(prixAchatSauvegarde.getId());
+        
         return margeVenteDto;
     }
 
-    private Date convertirEnFinDeJournee(Date date) {
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(date);
-        cal.set(Calendar.HOUR_OF_DAY, 23);
-        cal.set(Calendar.MINUTE, 59);
-        cal.set(Calendar.SECOND, 59);
-        cal.set(Calendar.MILLISECOND, 999);
-        return cal.getTime();
+    /**
+     * Met à jour un prix d'achat existant
+     */
+    private MargeVenteDto mettreAJourPrixAchat(
+            MargeVenteDto margeVenteDto,
+            Date datevente,
+            Produit produit,
+            PrixAchat prixAchatExistant) {
+        
+        // Clôture l'ancien prix d'achat
+        prixAchatExistant.setDatefin(datevente);
+        prixAchatRepositories.save(prixAchatExistant);
+
+        // Crée le nouveau prix d'achat
+        var nouveauPrixAchat = PrixAchat.builder()
+                .datedebut(datevente)
+                .prix(new BigDecimal(margeVenteDto.getAchat()))
+                .produit(produit)
+                .usercreat(margeVenteDto.getUsercreat())
+                .build();
+        
+        prixAchatRepositories.save(nouveauPrixAchat);
+        
+        return margeVenteDto;
     }
 
-    
-    
+    /**
+     * Convertit une date en fin de journée (23:59:59.999)
+     */
+    private Date convertirEnFinDeJournee(Date date) {
+        return Date.from(
+                LocalDate.ofInstant(date.toInstant(), ZoneId.systemDefault())
+                        .atTime(23, 59, 59, 999_000_000)
+                        .atZone(ZoneId.systemDefault())
+                        .toInstant()
+        );
+    }
+    public List<Date>allDateForCaissier(int anneeid,String username,Long boutique){
+        return venteRepositories.listeDateVentByVendeur(anneeid, username,boutique);
+    }
 }

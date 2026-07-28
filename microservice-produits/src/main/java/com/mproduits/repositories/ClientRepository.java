@@ -39,4 +39,16 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
            "LOWER(c.nom) LIKE LOWER(CONCAT('%', :term, '%')) OR " +
            "LOWER(c.email) LIKE LOWER(CONCAT('%', :term, '%'))")
     List<Client> search(@Param("term") String term);
+    /**
+ * Recherche optimisée avec LIMIT dans la requête
+ */
+@Query("SELECT c FROM Client c WHERE " +
+       "(LOWER(c.nom) LIKE LOWER(CONCAT('%', :term, '%')) OR " +
+       "LOWER(c.code) LIKE LOWER(CONCAT('%', :term, '%'))) " +
+       "AND c.statut = 'ACTIF' " +
+       "ORDER BY c.nom ASC")
+Page<Client> searchActiveClients(
+    @Param("term") String term, 
+    Pageable pageable
+);
 }

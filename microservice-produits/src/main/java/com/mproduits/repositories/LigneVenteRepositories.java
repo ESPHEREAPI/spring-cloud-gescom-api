@@ -22,10 +22,10 @@ public interface LigneVenteRepositories extends JpaRepository<LigneVente, Long> 
 
     List<LigneVente> findByVente(Vente vente);
 
-    @Query("SELECT l FROM LigneVente l WHERE  DATE(l.vente.dateVente)= :dateVente and l.vente.entreprise.annee.id= :anneeid")
-    List<LigneVente> listeProduitVendueJournalier(@Param("dateVente") Date dateVente, @Param("anneeid") long anneeid);
+    @Query("SELECT l FROM LigneVente l WHERE  DATE(l.vente.dateVente)= :dateVente and l.vente.entreprise.annee.id= :anneeid and l.vente.boutique.id= :boutiqueid")
+    List<LigneVente> listeProduitVendueJournalier(@Param("dateVente") Date dateVente, @Param("anneeid") int anneeid , @Param("boutiqueid") Long boutiqueid);
 
-    @Query("SELECT l FROM LigneVente l WHERE  DATE(l.vente.dateVente) BETWEEN  :debut and :fin and  l.vente.entreprise.annee.id= :anneeid")
-    List<LigneVente> listeProduitVendueMensuelle(@Param("debut") Date debut, @Param("fin") Date fin, @Param("anneeid") long anneeid);
+    @Query("SELECT l FROM LigneVente l WHERE  DATE(l.vente.dateVente) BETWEEN  :debut and :fin and  l.vente.entreprise.annee.id= :anneeid and l.vente.boutique.id= :boutiqueid ")
+    List<LigneVente> listeProduitVendueMensuelle(@Param("debut") Date debut, @Param("fin") Date fin, @Param("anneeid") int anneeid, @Param("boutiqueid") Long boutiqueid);
      Optional<LigneVente> findByVenteAndProduit(Vente vente, Produit produit);
 }

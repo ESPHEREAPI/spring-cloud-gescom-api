@@ -4,6 +4,7 @@
  */
 package com.mproduits.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Basic;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -68,13 +69,14 @@ public class Client implements Serializable {
     private String code;
     @Column(name = "nom")
     private String nom;
-     private String statut; // ACTIF, INACTIF, EN_ATTENTE
-     private String adresse;
-
+    private String statut; // ACTIF, INACTIF, EN_ATTENTE
+    private String adresse;
+    @JsonIgnore
     @JoinColumn(name = "serviceid", referencedColumnName = "id")
     @ManyToOne(optional = true)
     private Serviceclient serviceid;
     @JoinColumn(name = "TypeClientid", referencedColumnName = "id")
+    @JsonIgnore
     @ManyToOne(optional = true)
     private Typeclient typeClientid;
     @JoinColumn(name = "Villeid", referencedColumnName = "id")
@@ -82,18 +84,17 @@ public class Client implements Serializable {
     private Ville villeid;
 
     private boolean fidelite;
-    
+    @JsonIgnore
     @OneToMany(mappedBy = "client")
     private List<Devis> devis;
-
+    @JsonIgnore
     @OneToMany(mappedBy = "client")
     private List<Facture> factures;
-
+    @JsonIgnore
     @OneToMany(mappedBy = "client")
     private List<VersementClient> versements;
-
+    @JsonIgnore
     @OneToMany(mappedBy = "client")
     private List<NotificationClient> notifications;
 
-    
 }

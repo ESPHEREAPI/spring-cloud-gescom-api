@@ -2,13 +2,10 @@ package com.mproduits.specifications;
 
 import com.mproduits.model.VersementClient;
 import com.mproduits.dto.VersementSearchCriteria;
-import com.mproduits.enums.ModePaiement;
 import org.springframework.data.jpa.domain.Specification;
 
 import jakarta.persistence.criteria.Predicate;
-import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 public class VersementSpecifications {
@@ -16,7 +13,9 @@ public class VersementSpecifications {
     public static Specification<VersementClient> withCriteria(VersementSearchCriteria criteria) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-
+              if (criteria.getBoutiqueid() != null) {
+                predicates.add(cb.equal(root.get("facture").get("boutique").get("id"), criteria.getBoutiqueid()));
+            }
             // 🔹 Filtrer par client
             if (criteria.getClientId() != null) {
                 predicates.add(cb.equal(root.get("client").get("id"), criteria.getClientId()));

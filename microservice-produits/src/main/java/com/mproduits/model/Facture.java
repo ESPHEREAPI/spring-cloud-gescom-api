@@ -20,37 +20,27 @@ import java.util.List;
 
 /**
  * Entité Facture - Gestion complète des factures clients
- * 
- * MODES DE CRÉATION:
- * 1. Conversion d'un devis accepté → Facture avec référence au devis
- * 2. Création directe → Facture sans devis
- * 
- * CYCLE DE VIE:
- * 1. BROUILLON     → Facture en création, modifiable
- * 2. NON_PAYEE     → Facture validée, stock sorti, en attente de paiement
- * 3. PARTIELLE     → Paiement partiel reçu
- * 4. PAYEE         → Totalement payée
- * 5. EN_RETARD     → Échéance dépassée
- * 6. ANNULEE       → Facture annulée, stock réintégré
- * 
- * RÈGLES MÉTIER:
- * - Une facture BROUILLON peut être modifiée
- * - À la validation (BROUILLON → NON_PAYEE):
- *   * Sortie de stock (PointVente.stockFinalTheorie - quantité)
- *   * Incrémentation PointVente.sortiProduit
- *   * Création notification client
- * - À l'annulation:
- *   * Réintégration stock (PointVente.stockFinalTheorie + quantité)
- *   * Incrémentation PointVente.entreeProduit
- *   * Notification client
- * - Calcul automatique des montants
- * - Notifications automatiques selon échéances
- * 
+ *
+ * MODES DE CRÉATION: 1. Conversion d'un devis accepté → Facture avec référence
+ * au devis 2. Création directe → Facture sans devis
+ *
+ * CYCLE DE VIE: 1. BROUILLON → Facture en création, modifiable 2. NON_PAYEE →
+ * Facture validée, stock sorti, en attente de paiement 3. PARTIELLE → Paiement
+ * partiel reçu 4. PAYEE → Totalement payée 5. EN_RETARD → Échéance dépassée 6.
+ * ANNULEE → Facture annulée, stock réintégré
+ *
+ * RÈGLES MÉTIER: - Une facture BROUILLON peut être modifiée - À la validation
+ * (BROUILLON → NON_PAYEE): * Sortie de stock (PointVente.stockFinalTheorie -
+ * quantité) * Incrémentation PointVente.sortiProduit * Création notification
+ * client - À l'annulation: * Réintégration stock (PointVente.stockFinalTheorie
+ * + quantité) * Incrémentation PointVente.entreeProduit * Notification client -
+ * Calcul automatique des montants - Notifications automatiques selon échéances
+ *
  * @author Analyste Développeur JAVA/JAVAEE
  * @version 3.0
  */
 @Entity
-@Table(name = "facture_client", indexes = {
+@Table(name = "facture_customer", indexes = {
     @Index(name = "idx_facture_numero", columnList = "numero_facture"),
     @Index(name = "idx_facture_client", columnList = "client_id"),
     @Index(name = "idx_facture_statut", columnList = "statut"),
@@ -70,19 +60,17 @@ public class Facture implements Serializable {
 
     // ========== IDENTIFIANT ==========
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     /**
-     * Numéro unique de la facture (Format: FAC-YYYY-NNNN)
-     * Exemple: FAC-2025-0001
-     * Généré automatiquement à la création
+     * Numéro unique de la facture (Format: FAC-YYYY-NNNN) Exemple:
+     * FAC-2025-0001 Généré automatiquement à la création
      */
     @Column(name = "numero_facture", unique = true, nullable = false, length = 20)
     private String numeroFacture;
 
     // ========== DATES ==========
-    
     /**
      * Date de création de la facture
      */
@@ -91,8 +79,8 @@ public class Facture implements Serializable {
     private Date dateFacture;
 
     /**
-     * Date d'échéance de paiement
-     * Par défaut: dateFacture + délai de paiement client
+     * Date d'échéance de paiement Par défaut: dateFacture + délai de paiement
+     * client
      */
     @Column(name = "date_echeance")
     @Temporal(TemporalType.DATE)
@@ -130,7 +118,6 @@ public class Facture implements Serializable {
     private Date dateModification;
 
     // ========== MONTANTS FINANCIERS ==========
-    
     /**
      * Montant total HT (Hors Taxes)
      */
@@ -167,15 +154,13 @@ public class Facture implements Serializable {
     private BigDecimal montantPaye = BigDecimal.ZERO;
 
     /**
-     * Solde restant à payer
-     * Calculé: totalTtc - montantPaye
+     * Solde restant à payer Calculé: totalTtc - montantPaye
      */
     @Column(name = "solde_restant", precision = 12, scale = 2, nullable = false)
     @Builder.Default
     private BigDecimal soldeRestant = BigDecimal.ZERO;
 
     // ========== STATUT ==========
-    
     /**
      * Statut de la facture
      */
@@ -192,7 +177,6 @@ public class Facture implements Serializable {
     private Integer version;
 
     // ========== PAIEMENT ==========
-    
     /**
      * Mode de paiement par défaut/principal
      */
@@ -201,8 +185,7 @@ public class Facture implements Serializable {
     private ModePaiement modePaiementDefaut;
 
     /**
-     * Délai de paiement en jours
-     * Utilisé pour calculer la date d'échéance
+     * Délai de paiement en jours Utilisé pour calculer la date d'échéance
      */
     @Column(name = "delai_paiement_jours")
     @Builder.Default
@@ -223,7 +206,6 @@ public class Facture implements Serializable {
     private BigDecimal montantPenalite = BigDecimal.ZERO;
 
     // ========== RELATIONS ==========
-    
     /**
      * Client associé à la facture (obligatoire)
      */
@@ -232,8 +214,7 @@ public class Facture implements Serializable {
     private Client client;
 
     /**
-     * Devis source (si la facture provient d'un devis)
-     * Null si création directe
+     * Devis source (si la facture provient d'un devis) Null si création directe
      */
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "devis_id")
@@ -268,7 +249,6 @@ public class Facture implements Serializable {
     private List<NotificationClient> notifications = new ArrayList<>();
 
     // ========== INFORMATIONS COMPLÉMENTAIRES ==========
-    
     /**
      * Notes ou remarques sur la facture
      */
@@ -294,7 +274,6 @@ public class Facture implements Serializable {
     private String referenceExterne;
 
     // ========== TRAÇABILITÉ ==========
-    
     /**
      * Utilisateur ayant créé la facture
      */
@@ -320,7 +299,6 @@ public class Facture implements Serializable {
     private String usernameAnnulation;
 
     // ========== FLAGS ==========
-    
     /**
      * Indique si la facture a été envoyée au client
      */
@@ -348,9 +326,11 @@ public class Facture implements Serializable {
     @Column(name = "date_derniere_relance")
     @Temporal(TemporalType.TIMESTAMP)
     private Date dateDerniereRelance;
+    @JoinColumn(name = "Boutiqueid", referencedColumnName = "id")
+    @ManyToOne(optional = false)
+    private Boutique boutique;
 
     // ========== MÉTHODES UTILITAIRES ==========
-    
     /**
      * Ajoute un article à la facture
      */
@@ -481,7 +461,7 @@ public class Facture implements Serializable {
         totalTtc = items.stream()
                 .map(FactureItem::getMontantTTC)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
+
         // Recalcul du solde restant
         soldeRestant = totalTtc.subtract(montantPaye);
     }
@@ -522,8 +502,12 @@ public class Facture implements Serializable {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Facture)) return false;
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof Facture)) {
+            return false;
+        }
         Facture facture = (Facture) o;
         return id != null && id.equals(facture.getId());
     }

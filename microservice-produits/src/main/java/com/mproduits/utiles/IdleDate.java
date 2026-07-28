@@ -6,6 +6,9 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Date;
 
 /**
  * Classe de gestion simplifiée des dates Java, voiçi les fonctionnalités proposées:
@@ -443,5 +446,23 @@ public class IdleDate extends Date {
   int maxDay = calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
   return maxDay;
 }
+  
+  public static LocalDate getDateForLocalDate(Date date){
+       
+        // Méthode 1 : Conversion directe (recommandée)
+        LocalDate localDate = date.toInstant()
+                                  .atZone(ZoneId.systemDefault())
+                                  .toLocalDate();
+        
+        System.out.println("Date originale : " + date);
+        System.out.println("LocalDate converti : " + localDate);
+        
+        // Méthode 2 : En spécifiant une zone horaire spécifique
+        LocalDate localDateUTC = date.toInstant()
+                                     .atZone(ZoneId.of("UTC"))
+                                     .toLocalDate();
+        
+        return  localDateUTC;
+  }
 	
 }

@@ -30,7 +30,7 @@ import java.math.RoundingMode;
  * @version 3.0
  */
 @Entity
-@Table(name = "facture_item", indexes = {
+@Table(name = "facture_item_customer", indexes = {
     @Index(name = "idx_facture_item_facture", columnList = "facture_id"),
     @Index(name = "idx_facture_item_produit", columnList = "produit_id")
 })
@@ -318,7 +318,7 @@ public class FactureItem implements Serializable {
         return montantRemise.multiply(new BigDecimal("100"))
                 .divide(montantBrut, 2, RoundingMode.HALF_UP);
     }
-
+    
     // ========== MÉTHODES DE VALIDATION ==========
     
     /**

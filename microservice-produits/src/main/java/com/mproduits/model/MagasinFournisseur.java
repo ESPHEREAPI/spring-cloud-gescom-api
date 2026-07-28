@@ -7,6 +7,7 @@ package com.mproduits.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinColumns;
 import jakarta.persistence.ManyToOne;
@@ -31,16 +32,20 @@ public class MagasinFournisseur implements Serializable {
     private static final long serialVersionUID = 1L;
     @EmbeddedId
     protected MagasinFournisseurPK magasinFournisseurPK;
-    @JoinColumns({
+   @JoinColumns({
         @JoinColumn(name = "Anneeid", referencedColumnName = "Anneeid"),
         @JoinColumn(name = "Employeurid", referencedColumnName = "Employeurid")})
-    @ManyToOne
+    @ManyToOne(optional = true, fetch = FetchType.LAZY)  // ← LAZY
     private Entreprise entreprise;
-    @JoinColumn(name = "fournisseurid", referencedColumnName = "id", insertable = false, updatable = false)
-    @ManyToOne(optional = false)
+    
+    @JoinColumn(name = "fournisseurid", referencedColumnName = "id", 
+                insertable = false, updatable = false)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)  // ← LAZY
     private Fournisseur fournisseur;
-    @JoinColumn(name = "Depotid", referencedColumnName = "id", insertable = false, updatable = false)
-    @ManyToOne(optional = false)
+    
+    @JoinColumn(name = "Depotid", referencedColumnName = "id", 
+                insertable = false, updatable = false)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)  // ← LAZY
     private Magasin magasin;
    
 

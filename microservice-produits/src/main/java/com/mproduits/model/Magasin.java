@@ -5,6 +5,7 @@
 package com.mproduits.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Basic;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -27,6 +28,7 @@ import java.util.Collection;
  */
 @Entity
 @Table(name = "magasin")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler","magasinFournisseurCollection", "inventaireCollection", "pointventeCollection"})
 @NamedQueries({
     @NamedQuery(name = "Magasin.findAll", query = "SELECT m FROM Magasin m"),
     @NamedQuery(name = "Magasin.findById", query = "SELECT m FROM Magasin m WHERE m.id = :id"),

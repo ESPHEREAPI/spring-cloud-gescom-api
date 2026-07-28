@@ -11,6 +11,7 @@ import com.mproduits.model.*;
 import com.mproduits.repositorieCustom.FactureRepositoryCustom;
 import com.mproduits.repositories.*;
 import com.mproduits.specifications.FactureSpecifications;
+import com.mproduits.utiles.IdleDate;
 import com.mproduits.utiles.PDFGenerator;
 import com.mproduits.utiles.PDFGeneratorFacture;
 import com.mproduits.utiles.PDFGeneratorProfessionnel;
@@ -29,6 +30,7 @@ import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.apache.http.impl.client.IdleConnectionEvictor;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -60,6 +62,7 @@ public class FactureService {
     private final StockMovementRepository stockMovementRepository;
     private final NotificationService notificationService;
     private final NumeroGeneratorService numeroGeneratorService;
+    private final BoutiqueRepositories boutiqueRepositories;
     private final PDFGeneratorProfessionnel pdfGenerator;
     @Autowired
     private MapperDtoImpl mappers;
@@ -86,6 +89,8 @@ public class FactureService {
         // 1. Validation du client
         Client client = clientRepository.findById(request.getClientId())
                 .orElseThrow(() -> new ResourceNotFoundException("Client introuvable avec l'ID: " + request.getClientId()));
+        Boutique boutique=boutiqueRepositories.findById(request.getBoutiqueid())
+                .orElseThrow(() -> new ResourceNotFoundException("boutique introuvable avec l'ID: " + request.getClientId()));
         
         // 2. Création de la facture
         Facture facture = Facture.builder()
@@ -98,6 +103,7 @@ public class FactureService {
                 .conditionsPaiement(request.getConditionsPaiement())
                 .referenceExterne(request.getReferenceExterne())
                 .usernameCreate(username)
+                .boutique(boutique)
                 .build();
         
         // 3. Calcul de la date d'échéance
@@ -166,6 +172,7 @@ public class FactureService {
                 .remarques(devis.getRemarques())
                 .conditionsPaiement(devis.getConditions())
                 .usernameCreate(username)
+                .boutique(devis.getBoutique())
                 .build();
         
         // 3. Calcul de la date d'échéance
@@ -434,8 +441,8 @@ public class FactureService {
      * Récupère les factures d'un client
      */
     @Transactional(readOnly = true)
-    public List<FactureSummary> getFacturesClient(Long clientId) {
-        List<Facture> factures = factureRepository.findByClientIdOrderByDateFactureDesc(clientId);
+    public List<FactureSummary> getFacturesClient(Long clientId,Long boutiqueid) {
+        List<Facture> factures = factureRepository.findByClientIdAndBoutiqueIdOrderByDateFactureDesc(clientId,boutiqueid);
         return factures.stream()
                 .map(this::mapToSummary)
                 .collect(Collectors.toList());
@@ -449,6 +456,11 @@ public class FactureService {
         return factureRepositoryCustom.calculerStatistiques(dateDebut, dateFin);
     }
 
+    
+  @Transactional(readOnly = true)
+    public FactureStatistiques getStatistiques() {
+        return factureRepositoryCustom.calculerStatistiques();
+    }  
     // ========== MÉTHODES PRIVÉES ==========
 
     /**
@@ -480,8 +492,10 @@ public class FactureService {
      * Vérifie la disponibilité du stock pour tous les articles
      */
     private void verifierDisponibiliteStock(Facture facture) {
+        int annee=IdleDate.getYear(facture.getDateFacture());
+        
         for (FactureItem item : facture.getItems()) {
-            PointVente pointVente = pointVenteRepository.findByProduitId(item.getProduit().getId())
+            PointVente pointVente = pointVenteRepository.getProduitHaveStockByBoutiqueAndAnnee(facture.getBoutique().getId(),annee,item.getProduit().getId())
                     .orElseThrow(() -> new ErrorResponse("Stock introuvable pour le produit: " + 
                                                             item.getProduitLibelleSnapshot()));
             
@@ -505,7 +519,8 @@ public class FactureService {
      * - Crée un StockMovement
      */
     private void effectuerSortieStock(Facture facture, FactureItem item,String username) {
-        PointVente pointVente = pointVenteRepository.findByProduitId(item.getProduit().getId())
+           int annee=IdleDate.getYear(facture.getDateFacture());
+        PointVente pointVente = pointVenteRepository.getProduitHaveStockByBoutiqueAndAnnee(facture.getBoutique().getId(),annee,item.getProduit().getId())
                 .orElseThrow(() -> new ErrorResponse("Stock introuvable pour le produit: " + 
                                                         item.getProduitLibelleSnapshot()));
         
@@ -549,7 +564,8 @@ public class FactureService {
      * - Crée un StockMovement
      */
     private void effectuerEntreeStock(Facture facture, FactureItem item, String motif,String username) {
-        PointVente pointVente = pointVenteRepository.findByProduitId(item.getProduit().getId())
+           int annee=IdleDate.getYear(facture.getDateFacture());
+        PointVente pointVente = pointVenteRepository.getProduitHaveStockByBoutiqueAndAnnee(facture.getBoutique().getId(),annee,item.getProduit().getId())
                 .orElseThrow(() -> new BadRequestException("Stock introuvable pour le produit: " + 
                                                         item.getProduitLibelleSnapshot()));
         
@@ -675,7 +691,7 @@ public class FactureService {
                
                 .prixUnitaireHT(factureItem.getPrixUnitaireHT())
                 .prixUnitaireTTC(factureItem.getPrixUnitaireTTC())
-                .produit(mappers.mapperProduitDto(factureItem.getProduit()))
+                .produit(mappers.mapperProduitDto(factureItem.getProduit(),factureItem.getFacture().getBoutique()))
                 .produitCode(factureItem.getProduit().getReference())
                 .produitId(factureItem.getProduit().getId())
                 .produitLibelle(factureItem.getProduit().getLibelle())
@@ -692,5 +708,8 @@ public byte[] genererPDF(Long id) {
     Facture facture = factureRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Facture non trouvée"));
     return pdfGenerator.genererFacturePDF(facture);
+}
+public List<ProduitDto>listStockHaveQuantiteForBoutiqueAndAnneei(int anneeid,Long boutiqueid){
+    return pointVenteRepository.findProduitsDtoByAnneeAndBoutique(anneeid, boutiqueid);
 }
 }

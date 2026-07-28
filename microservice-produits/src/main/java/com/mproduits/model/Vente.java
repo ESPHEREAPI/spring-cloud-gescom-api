@@ -5,7 +5,6 @@
 package com.mproduits.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.mproduits.enums.StatutVente;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -86,6 +85,9 @@ public class Vente implements Serializable {
     @ManyToOne(optional = false)
     @JsonIgnore
     private Entreprise entreprise;
+        @JoinColumn(name = "Boutiqueid", referencedColumnName = "id")
+    @ManyToOne(optional = false)
+    private Boutique boutique;
 
     @Transient
     @Temporal(TemporalType.TIME)

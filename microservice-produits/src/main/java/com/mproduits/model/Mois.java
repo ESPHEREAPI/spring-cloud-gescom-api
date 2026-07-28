@@ -4,6 +4,7 @@
  */
 package com.mproduits.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Basic;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -48,8 +49,10 @@ public class Mois implements Serializable {
     private Integer numero;
     @Column(name = "mois")
     private String mois;
+    @JsonIgnore
     @OneToMany(mappedBy = "mois")
     private Collection<Pertearticles> pertearticlesCollection;
+      @JsonIgnore
     @OneToMany(mappedBy = "mois")
     private Collection<Quinzaine> quinzaineCollection;
    

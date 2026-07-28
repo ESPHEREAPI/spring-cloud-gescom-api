@@ -121,6 +121,8 @@ public class Produit implements Serializable {
     private BigDecimal prixAchat = BigDecimal.ZERO;
     @Transient
     private BigInteger quantite;
+    @Transient
+    private Boutique boutique;
 
     public Produit() {
     }

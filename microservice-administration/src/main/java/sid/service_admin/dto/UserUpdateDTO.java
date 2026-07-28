@@ -6,6 +6,7 @@ package sid.service_admin.dto;
 
 import java.util.Date;
 import lombok.Data;
+import sid.service_admin.model.Boutique;
 
 /**
  *
@@ -21,7 +22,7 @@ public class UserUpdateDTO {
     private String password;
     private String tel;
     private String address;
- 
+
     //private String createdBy;
     private String profileImageUrl;
     private Long roleid;
@@ -42,7 +43,7 @@ public class UserUpdateDTO {
     private String bp;
     private String ville;
     private Boolean autorisationDeletes;
-
+    private Boutique boutique;
     private String createdBy;
     private Boolean isActive;
 }

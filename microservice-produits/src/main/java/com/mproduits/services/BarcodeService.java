@@ -1,682 +1,714 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.mproduits.services;
 
-import com.mproduits.dto.Caissedto;
-import com.mproduits.dto.ClientDto;
-import com.mproduits.dto.ProduitDto;
-import com.mproduits.dto.TicketRequest;
-import com.mproduits.dto.UserDTO;
-import com.mproduits.dto.VenteDto;
+import com.mproduits.dto.*;
 import com.mproduits.ecommerce.dto.DTO.OrdersDTO;
 import com.mproduits.ecommerce.dto.DTO.Orders_detailsDTO;
-import com.mproduits.ecommerce.dto.entites.Orders;
+import com.mproduits.ecommerce.dto.entites.ClientOrder;
 import com.mproduits.enums.StatutVente;
 import com.mproduits.enums.TypePaiement;
+import com.mproduits.exceptions.MetierException;
+import com.mproduits.exceptions.ResourceNotFoundException;
 import com.mproduits.mappers.MapperDtoImpl;
-import com.mproduits.model.Barcodeproduit;
-import com.mproduits.model.Client;
-import com.mproduits.model.Entreprise;
-import com.mproduits.model.LigneVente;
-import com.mproduits.model.Mois;
-import com.mproduits.model.Paiement;
-import com.mproduits.model.Personne;
-import com.mproduits.model.PrixArticles;
-import com.mproduits.model.Produit;
-import com.mproduits.model.Profil;
-import com.mproduits.model.Property;
-import com.mproduits.model.Vente;
-import com.mproduits.repositories.BarcodeproduitRepositories;
-import com.mproduits.repositories.ClientBonAchatRepositories;
-import com.mproduits.repositories.ClientRepositories;
-import com.mproduits.repositories.EntrepriseRepositories;
-import com.mproduits.repositories.LigneVenteRepositories;
-import com.mproduits.repositories.MoisRepositories;
-import com.mproduits.repositories.PaiementRepositories;
-import com.mproduits.repositories.PersonneRepositories;
-import com.mproduits.repositories.PointVenteRepositories;
-import com.mproduits.repositories.PrixArticlesRepositories;
-import com.mproduits.repositories.ProduitRepositories;
-import com.mproduits.repositories.ProfilRepositories;
-import com.mproduits.repositories.VenteRepositories;
+import com.mproduits.model.*;
+import com.mproduits.repositories.*;
 import com.mproduits.utiles.GlobalFonctions;
 import com.mproduits.utiles.IdleDate;
-import com.mproduits.exceptions.ResourceNotFoundException;
 import jakarta.persistence.EntityNotFoundException;
-import java.io.IOException;
-import java.io.Serializable;
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.jaxb.SpringDataJaxb;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+
 /**
+ * Service de gestion des codes-barres et des ventes - Optimisé Java 17/21
  *
  * @author USER01
  */
 @Service
-public class BarcodeService implements Serializable {
+@Slf4j
+@RequiredArgsConstructor
+public class BarcodeService {
 
-    BarcodeproduitRepositories barcodeproduitRepositories;
+    // Constants
+    private static final BigDecimal ZERO = BigDecimal.ZERO;
+    private static final int TOP_ARTICLES_LIMIT = 10000;
+    private static final String PROFIL_CAISSE = "CAISSE";
 
-    PrixArticlesRepositories prixArticlesRepositories;
-    EntrepriseRepositories entrepriseRepositories;
-    VenteRepositories venteRepositories;
-    PersonneRepositories personneRespositories;
-    ClientBonAchatRepositories clientBonAchatRepositories;
-    LigneVenteRepositories ligneVenteRepositories;
-    PaiementRepositories paiementRepositories;
-    PointVenteRepositories pointVenteRepositories;
-    ProduitRepositories produitRepositories;
-    ClientRepositories clientRepositories;
-    @Autowired
-    MapperDtoImpl mapper;
-    @Autowired
-    TicketCaisseService ticketCaisseService;
-    @Autowired
-    MoisRepositories moisRepositories;
-    //  @Autowired
-    //  PersonneRepositories personneRepositories;
-    @Autowired
-    ProfilRepositories profilRepositories;
+    // Dependencies (final avec @RequiredArgsConstructor)
+    private final BarcodeproduitRepositories barcodeproduitRepositories;
+    private final PrixArticlesRepositories prixArticlesRepositories;
+    private final EntrepriseRepositories entrepriseRepositories;
+    private final VenteRepositories venteRepositories;
+    private final PersonneRepositories personneRepositories;
+    private final ClientBonAchatRepositories clientBonAchatRepositories;
+    private final LigneVenteRepositories ligneVenteRepositories;
+    private final PaiementRepositories paiementRepositories;
+    private final PointVenteRepositories pointVenteRepositories;
+    private final ProduitRepositories produitRepositories;
+    private final ClientRepositories clientRepositories;
+    private final MapperDtoImpl mapper;
+    private final TicketCaisseService ticketCaisseService;
+    private final MoisRepositories moisRepositories;
+    private final ProfilRepositories profilRepositories;
+    private final BoutiqueRepositories boutiqueRepositories;
 
-    @Autowired
-    public BarcodeService(BarcodeproduitRepositories barcodeproduitRepositories, PrixArticlesRepositories prixArticlesRepositories, EntrepriseRepositories entrepriseRepositories, VenteRepositories venteRepositories,
-            PersonneRepositories personneRespositories, LigneVenteRepositories ligneVenteRepositories, PaiementRepositories paiementRepositories, PointVenteRepositories pointVenteRepositories,
-            ProduitRepositories produitRepositories, ClientRepositories clientRepositories) {
-        this.barcodeproduitRepositories = barcodeproduitRepositories;
-        this.prixArticlesRepositories = prixArticlesRepositories;
-        this.entrepriseRepositories = entrepriseRepositories;
-        this.venteRepositories = venteRepositories;
-        this.personneRespositories = personneRespositories;
-        this.ligneVenteRepositories = ligneVenteRepositories;
-        this.paiementRepositories = paiementRepositories;
-        this.pointVenteRepositories = pointVenteRepositories;
-        this.produitRepositories = produitRepositories;
-        this.clientRepositories = clientRepositories;
-    }
-
+    /**
+     * Charge un produit par son code-barres
+     */
+    @Transactional(readOnly = true)
     public ProduitDto chargeProduitByBarcode(String codeBar) {
-        String barcode = GlobalFonctions.getCodeBare(codeBar);
-        Barcodeproduit bar = barcodeproduitRepositories.findByCodeBard(barcode);
-        Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
-        if (bar != null && bar.getId() != null) {
-            Optional<PrixArticles> pa = prixArticlesRepositories.findLastActiveByEntrepriseAndProduit(e, bar.getProduit());
-            return this.chargeValue(pa.get());
-        }
-        return new ProduitDto();
-    }
+        var barcode = GlobalFonctions.getCodeBare(codeBar);
+        var barcodeProduit = barcodeproduitRepositories.findByCodeBard(barcode);
 
-    private ProduitDto chargeValue(PrixArticles pa) {
-        ProduitDto pdto = mapper.mapperProduitDto(pa.getPointVente().getProduit());
-        pdto.setBarcode(pa.getCodeBar());
-        pdto.setPrixVenteNet(pa.getPrixVenteNet());
-        System.out.println("article" + pa.getPointVente().getProduit().getLibelle() + " prix ttc " + pa.getPrixVenteTTC());
-        pdto.setPrixVenteTTC((pa.getPrixVenteTTC() == BigDecimal.ZERO || pa.getPrixVenteTTC() == null) ? pa.getPrixVenteNet() : pa.getPrixVenteTTC());
-        System.out.println("article" + pa.getPointVente().getProduit().getLibelle() + " prix ttc " + pa.getPrixVenteTTC() + "mis a jouir ");
-        pdto.setStockFinal(pa.getPointVente().getStockFinalTheorie());
-        pdto.setTva(pa.getTva());
-        pdto.setRemise(pa.getRemise());
-        return pdto;
+        if (barcodeProduit == null || barcodeProduit.getId() == null) {
+            return new ProduitDto();
+        }
+
+        var entreprise = findActiveEntreprise();
+        return prixArticlesRepositories
+                .findLastActiveByEntrepriseAndProduit(entreprise, barcodeProduit.getProduit(),barcodeProduit.getPrixArticles().getPointVente().getBoutique().getId())
+                .map(this::chargeValue)
+                .orElseGet(ProduitDto::new);
     }
 
     /**
-     * Récupère les articles les plus populaires pour l'affichage initial Cache
-     * pendant 10 minutes
+     * Récupère les articles les plus populaires (cache 10 minutes)
      */
     @Cacheable(value = "topArticles", unless = "#result.isEmpty()")
-    public List<ProduitDto> getTopArticles() {
-        PageRequest limit = PageRequest.of(0, 10000); // page 0, 10 000 éléments max
-        List<PrixArticles> articles = prixArticlesRepositories.findTopActifWithStockFinalPositive(limit);
-        // List<PrixArticles> articles = prixArticlesRepositories.findTop10000ByActifTrueOrderByDateCreationDesc();
+    @Transactional(readOnly = true)
+    public List<ProduitDto> getTopArticles(Long boutiqueid) {
+        var limit = PageRequest.of(0, TOP_ARTICLES_LIMIT);
+        var articles = prixArticlesRepositories.findTopActifWithStockFinalPositive(limit, boutiqueid);
+     
+   
         return articles.stream()
-                .map(p -> chargeValue(p))
-                .collect(Collectors.toList());
+                .filter(pa-> pa.getEntreprise().getAnnee().getId()==anneeEnCours())
+                .map(this::chargeValue)
+                .toList();
     }
 
-    //rechercher un article a partir de la reference
-    public ProduitDto getArticlesByReference(String reference) {
-        Optional<PrixArticles> prixarticle = prixArticlesRepositories.getPrixAticlesByReferenceProduit(reference);
-        if (prixarticle.isPresent()) {
-            ProduitDto pdo = chargeValue(prixarticle.get());
-            return pdo;
-        }
-        return null;
+    /**
+     * Recherche un article par référence
+     */
+    @Transactional(readOnly = true)
+    public ProduitDto getArticlesByReference(String reference,Long boutiqueid) {
+        return prixArticlesRepositories.getPrixAticlesByReferenceProduit(reference,boutiqueid)
+                 .filter(pa-> pa.getEntreprise().getAnnee().getId()==anneeEnCours())
+                .map(this::chargeValue)
+                .orElse(null);
     }
 
-    public ProduitDto getArticlesByProduitId(Long produitid) {
-        Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
-        Optional<Produit> p = this.produitRepositories.findById(produitid);
-        Optional<PrixArticles> prixarticle = prixArticlesRepositories.findLastActiveByEntrepriseAndProduit(e, p.get());
-        if (prixarticle.isPresent()) {
-            ProduitDto pdo = chargeValue(prixarticle.get());
-            return pdo;
-        }
-        return null;
+    /**
+     * Recherche un article par ID produit
+     */
+    @Transactional(readOnly = true)
+    public ProduitDto getArticlesByProduitId(Long produitId,Long boutiqueid) {
+        var entreprise = findActiveEntreprise();
+        var produit = findProduitOrThrow(produitId);
+
+        return prixArticlesRepositories
+                .findLastActiveByEntrepriseAndProduit(entreprise, produit, boutiqueid)
+                .map(this::chargeValue)
+                .orElse(null);
     }
 
+    /**
+     * Valide une vente standard
+     */
     @Transactional(rollbackFor = Exception.class)
     public Long valideVente(VenteDto venteDto) {
-        // on creer directement la vente 
-        //verifions l existance du usert insert
-        Client saveClient = null;
-        Vente vente = null;
         try {
-            Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
-            Optional<Personne> userEntite = personneRespositories.findByUserName(venteDto.getUserinsert());
-            if (userEntite.isEmpty()) {
-                throw new ResourceNotFoundException("User not found with id: " + venteDto.getUserinsert());
-            }
+            var entreprise = findActiveEntreprise();
+            var vendeur = findPersonneByUsername(venteDto.getUserinsert());
+            var client = findOrCreateClient(venteDto.getClient());
 
-            Personne userinsert = userEntite.get();
+            var vente = creerVente(venteDto, entreprise, vendeur, client);
+            var venteEnregistree = venteRepositories.save(vente);
 
-            //  if (TypePaiement.valueOf(venteDto.getTypePaiement()) == TypePaiement.BON_ACHAT) {
-            Optional<Client> cl = clientRepositories.findByNom(venteDto.getClient().getNom());
-            if (cl.isEmpty()) {
-                Client client = new Client();
-                client.setEmail(venteDto.getClient().getEmail());
-                client.setNom(venteDto.getClient().getNom());
-                client.setTelephone(venteDto.getClient().getTelephone());
-                client.setFidelite(true);
-                saveClient = clientRepositories.save(client);
-            } else {
-                saveClient = cl.get();
-            }
+            // Créer les lignes de vente
+            venteDto.getItems().forEach(item
+                    -> createLigneVente(item, venteEnregistree)
+            );
 
-            // }
-            vente = new Vente();
-            vente.setDateVente(venteDto.getDate());
-            vente.setEntreprise(e);
-            vente.setNumeroTicket(venteDto.getNumeroTicket());
-            vente.setStatut(StatutVente.TERMINEE);
-            vente.setTotalBrut(venteDto.getMontantTotal());
-            vente.setTotalNet(venteDto.getMontantNet());
-            vente.setTotalRemise(venteDto.getRemise());
-            vente.setTotalrecu(venteDto.getMontantRecu());
-            vente.setVendeur(userinsert);
-            if (saveClient != null && saveClient.getId() != null) {
-                vente.setClient(saveClient);
-            }
+            // Enregistrer le paiement
+            creerPaiement(venteDto, venteEnregistree);
 
-            Vente saveVente = venteRepositories.save(vente);
-            venteDto.getItems().stream()
-                    .map(it -> createLigenVente(it, saveVente))
-                    .collect(Collectors.toList());
+            log.info("Vente validée avec succès: id={}, ticket={}",
+                    venteEnregistree.getId(), venteEnregistree.getNumeroTicket());
 
-            //enregitrement paiement de la vente 
-            Paiement paiement = new Paiement();
-            paiement.setDatePaiement(new Date());
-            paiement.setMontant(venteDto.getMontantNet());
-            paiement.setTypePaiement(TypePaiement.valueOf(venteDto.getTypePaiement()));
-            paiement.setReference(venteDto.getNumeroTicket());
-            paiement.setVente(saveVente);
-            paiementRepositories.save(paiement);
+            return venteEnregistree.getId();
 
-            return saveVente.getId();
         } catch (Exception e) {
-            // le rollback est automatique avec @Transactional si exception est levée
-            throw new RuntimeException("Échec de l'enregistrement de la vente : " + e.getMessage(), e);
-        }
-
-    }
-
-    public Long valideVente(VenteDto venteDto, long numerocommande) {
-        // on creer directement la vente 
-        //verifions l existance du usert insert
-        Client saveClient = null;
-        Vente vente = null;
-        try {
-            Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
-            Optional<Personne> userEntite = personneRespositories.findByUserName(venteDto.getUserinsert());
-            if (userEntite.isEmpty()) {
-                throw new ResourceNotFoundException("User not found with id: " + venteDto.getUserinsert());
-            }
-
-            Personne userinsert = userEntite.get();
-
-            //  if (TypePaiement.valueOf(venteDto.getTypePaiement()) == TypePaiement.BON_ACHAT) {
-            Optional<Client> cl = clientRepositories.findByNom(venteDto.getClient().getNom());
-            if (cl.isEmpty()) {
-                Client client = new Client();
-                client.setEmail(venteDto.getClient().getEmail());
-                client.setNom(venteDto.getClient().getNom());
-                client.setTelephone(venteDto.getClient().getTelephone());
-                client.setFidelite(true);
-                saveClient = clientRepositories.save(client);
-            } else {
-                saveClient = cl.get();
-            }
-
-            // }
-            vente = venteRepositories.findByNumeroTicketAndStatutForCommande(numerocommande, StatutVente.EN_COURS, e.getAnnee().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Vente introuvable pour le ticket " + numerocommande));
-            vente.setDateVente(venteDto.getDate());
-            vente.setEntreprise(e);
-            vente.setNumeroTicket(venteDto.getNumeroTicket());
-            vente.setStatut(StatutVente.TERMINEE);
-            vente.setTotalBrut(venteDto.getMontantTotal());
-            vente.setTotalNet(venteDto.getMontantNet());
-            vente.setTotalRemise(venteDto.getRemise());
-            vente.setTotalrecu(venteDto.getMontantRecu());
-            vente.setVendeur(userinsert);
-            if (saveClient != null && saveClient.getId() != null) {
-                vente.setClient(saveClient);
-            }
-
-            Vente saveVente = venteRepositories.save(vente);
-            //recuperation des lignes pour insertion avec statut terminer
-
-            List<LigneVente> ligneVentesRference = venteDto.getItems().stream()
-                    .map(it -> mapper.mapperCcaissedtoByLigneDTO(it))
-                    .collect(Collectors.toList());
-            //System.out.println("liste reference :");
-            //ligneVentesRference.forEach(System.out::print);
-
-            // on recupere les ligne dejaenregister dans la partie commeande
-            List<LigneVente> listeLigneVenteSource = ligneVenteRepositories.findByVente(vente);
-           // System.out.println("liste source :");
-           // listeLigneVenteSource.forEach(System.out::print);
-
-            this.synchroniserListesInPlaceAlternative(ligneVentesRference, listeLigneVenteSource,vente);
-            //System.out.println("liste source sinchroniser :");
-            //listeLigneVenteSource.forEach(System.out::print);
-            
-           // this.updatelignevente(listeLigneVenteSource);
-
-            //enregitrement paiement de la vente 
-            Paiement paiement = paiementRepositories.findByVente(saveVente)
-                    .orElseThrow(() -> new EntityNotFoundException("Vente introuvable pour le ticket " + saveVente.getId()));
-            paiement.setDatePaiement(new Date());
-            paiement.setMontant(venteDto.getMontantNet());
-            paiement.setTypePaiement(TypePaiement.valueOf(venteDto.getTypePaiement()));
-            paiement.setReference(venteDto.getNumeroTicket());
-            paiement.setVente(saveVente);
-            paiementRepositories.save(paiement);
-
-            return saveVente.getId();
-        } catch (Exception e) {
-            // le rollback est automatique avec @Transactional si exception est levée
-            throw new RuntimeException("Échec de l'enregistrement de la vente : " + e.getMessage(), e);
-        }
-
-    }
-
-    public void updatelignevente(List<LigneVente> allVentes) {
-        // Utiliser un iterator pour pouvoir supprimer en toute sécurité
-        Iterator<LigneVente> iterator = allVentes.iterator();
-        LigneVente lv;
-        while (iterator.hasNext()) {
-            LigneVente ligneSource = iterator.next();
-            String cle = genererCle(ligneSource);
-            Optional<LigneVente> lgv = ligneVenteRepositories.findByVenteAndProduit(ligneSource.getVente(), ligneSource.getProduit());
-            if (lgv.isEmpty()) {
-                lv = new LigneVente();
-                lv.setPrixUnitaire(ligneSource.getPrixUnitaire());
-                lv.setProduit(ligneSource.getProduit());
-                lv.setQuantite(ligneSource.getQuantite());
-                lv.setTotalLigne(ligneSource.getQuantite().multiply(ligneSource.getPrixUnitaire()));
-                lv.setVente(ligneSource.getVente());
-                ligneVenteRepositories.save(lv);
-
-            } else {
-                lv = lgv.get();
-                lv.setPrixUnitaire(ligneSource.getPrixUnitaire());
-                lv.setProduit(ligneSource.getProduit());
-                lv.setQuantite(ligneSource.getQuantite());
-                lv.setTotalLigne(ligneSource.getQuantite().multiply(ligneSource.getPrixUnitaire()));
-                lv.setVente(ligneSource.getVente());
-                ligneVenteRepositories.save(lv);
-            }
-
+            log.error("Erreur lors de la validation de la vente", e);
+            throw new MetierException("Échec de l'enregistrement de la vente: " + e.getMessage(), e);
         }
     }
 
+    /**
+     * Valide une vente à partir d'une commande existante
+     */
     @Transactional(rollbackFor = Exception.class)
+    public Long valideVente(VenteDto venteDto, long numeroCommande, Long boutiqueid) {
+        try {
+            var entreprise = findActiveEntreprise();
+            var vendeur = findPersonneByUsername(venteDto.getUserinsert());
+            var client = findOrCreateClient(venteDto.getClient());
 
+            // Récupérer la vente en cours
+            var vente = venteRepositories
+                    .findByNumeroTicketAndStatutForCommande(numeroCommande, StatutVente.EN_COURS, entreprise.getAnnee().getId(), boutiqueid)
+                    .orElseThrow(() -> new EntityNotFoundException("Vente introuvable pour le ticket " + numeroCommande));
+
+            // Mettre à jour la vente
+            updateVente(vente, venteDto, entreprise, vendeur, client);
+            var venteEnregistree = venteRepositories.save(vente);
+
+            // Synchroniser les lignes de vente
+            var lignesReference = venteDto.getItems().stream()
+                    .map(mapper::mapperCcaissedtoByLigneDTO)
+                    .toList();
+
+            var lignesSource = ligneVenteRepositories.findByVente(vente);
+            synchroniserLignesVente(lignesReference, lignesSource, vente);
+
+            // Mettre à jour le paiement
+            updatePaiement(venteDto, venteEnregistree);
+
+            log.info("Vente mise à jour avec succès: id={}, commande={}",
+                    venteEnregistree.getId(), numeroCommande);
+
+            return venteEnregistree.getId();
+
+        } catch (Exception e) {
+            log.error("Erreur lors de la validation de la commande", e);
+            throw new MetierException("Échec de l'enregistrement de la vente: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Valide une vente en cours (commande e-commerce)
+     */
+    @Transactional(rollbackFor = Exception.class)
     public Vente valideVenteEnCours(OrdersDTO ordersDTO) {
-        // on creer directement la vente 
-        //verifions l existance du usert insert
-        Client saveClient = null;
-        Vente vente = null;
-        // VenteDto venteDto=null;
         try {
+            var entreprise = findActiveEntreprise();
+            var vendeur = findPersonneByUsername(ordersDTO.getClient().getUsernane());
+            var client = findOrCreateClientFromOrder(ordersDTO.getClient());
 
-            //  venteDto =mapper.mapperVenteDtoOrdersDto(ordersDTO, pv, numerocomande, cde, Usernane);
-            Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
-            Optional<Personne> userEntite = personneRespositories.findByUserName(ordersDTO.getClient().getUsernane());
-            if (userEntite.isEmpty()) {
-                throw new ResourceNotFoundException("User not found with id: " + ordersDTO.getClient().getUsernane());
-            }
+            var numeroTicket = genererNumeroTicketUnique(entreprise, vendeur.getBoutique().getId());
 
-            Personne userinsert = userEntite.get();
+            var vente = creerVenteEnCours(ordersDTO, entreprise, vendeur, client, numeroTicket);
+            var venteEnregistree = venteRepositories.save(vente);
 
-            //  if (TypePaiement.valueOf(venteDto.getTypePaiement()) == TypePaiement.BON_ACHAT) {
-            Optional<Client> cl = clientRepositories.findByNom(ordersDTO.getClient().getName());
-            if ((!"".equals(ordersDTO.getClient().getName()) || ordersDTO.getClient().getName() != null) && cl.isEmpty()) {
-                Client client = new Client();
-                client.setEmail(ordersDTO.getClient().getEmail());
-                client.setNom(ordersDTO.getClient().getName());
-                client.setTelephone(ordersDTO.getClient().getPhoneNumber());
-                client.setFidelite(true);
-                saveClient = clientRepositories.save(client);
-            } else {
-                saveClient = cl.get();
-            }
+            // Créer les lignes de vente et décrémenter le stock
+            ordersDTO.getProducts().forEach(produit
+                    -> createLigneVenteEnCours(produit, venteEnregistree)
+            );
 
-            String numero = this.getNumero_commande(e.getAnnee().getId());
+            // Enregistrer le paiement
+            creerPaiementEnCours(ordersDTO, venteEnregistree);
 
-            while (venteRepositories.findByEntrepriseAndNumeroTicket(e, numero).isPresent()) {
-                numero = this.getNumero_commande(e.getAnnee().getId());
-            }
-            // }
-            vente = new Vente();
-            vente.setDateVente(ordersDTO.getDate());
-            vente.setEntreprise(e);
+            log.info("Commande créée avec succès: id={}, ticket={}",
+                    venteEnregistree.getId(), numeroTicket);
 
-            vente.setStatut(StatutVente.EN_COURS);
-            vente.setTotalBrut(ordersDTO.getTotalAmount());
-            vente.setTotalNet(ordersDTO.getTotalAmount());
-            // vente.setTotalRemise(venteDto.getRemise());
-            // vente.setTotalrecu(venteDto.getMontantRecu());
-            vente.setNumeroTicket(numero);
-            vente.setNumerocommande(Long.parseLong(numero));
-            vente.setVendeur(userinsert);
-            vente.setUserecom(ordersDTO.getClient().getUsernane());
-            if (saveClient != null && saveClient.getId() != null) {
-                vente.setClient(saveClient);
-            }
+            return venteEnregistree;
 
-            Vente saveVente = venteRepositories.save(vente);
-
-            ordersDTO.getProducts().stream()
-                    .map(it -> createLigenVenteEnCours(it, saveVente))
-                    .collect(Collectors.toList());
-
-            //enregitrement paiement de la vente 
-            Paiement paiement = new Paiement();
-            paiement.setDatePaiement(new Date());
-            paiement.setMontant(ordersDTO.getTotalAmount());
-            paiement.setTypePaiement(TypePaiement.ESPECES);
-            paiement.setReference(saveVente.getNumeroTicket());
-            paiement.setVente(saveVente);
-            paiementRepositories.save(paiement);
-            // if (venteRepositories.findById(saveVente.getId()).isEmpty()) {
-            //     saveVente.setId(null);
-
-            // }
-            return saveVente;
         } catch (Exception e) {
-            // le rollback est automatique avec @Transactional si exception est levée
-            throw new RuntimeException("Échec de l'enregistrement de la vente : " + e.getMessage(), e);
+            log.error("Erreur lors de la création de la commande", e);
+            throw new MetierException("Échec de l'enregistrement de la commande: " + e.getMessage(), e);
         }
-
     }
 
-    public String getNumero_commande(int annee) {
-        List<Vente> allVente = venteRepositories.findAll();
-        long nbre = 0L;
-        if (allVente.isEmpty()) {
-            nbre++;
-        } else {
-            nbre = allVente.size() + 1;
-        }
-
-        return "" + annee + "" + nbre;
-
+    /**
+     * Récupère une vente par son ID
+     */
+    @Transactional(readOnly = true)
+    public Vente getVenteById(Long venteId) {
+        return venteRepositories.findById(venteId)
+                .orElseThrow(() -> new ResourceNotFoundException("Vente non trouvée: id=" + venteId));
     }
 
-    private LigneVente createLigenVente(Caissedto caissedto, Vente v) {
-
-        try {
-            LigneVente ligneVente = new LigneVente();
-
-            ligneVente.setPrixUnitaire(caissedto.getPrixUnitaire());
-            ligneVente.setQuantite(caissedto.getQuantite());
-            ligneVente.setTotalLigne(caissedto.getMontantTotal());
-            ligneVente.setVente(v);
-            ligneVente.setProduit(mapper.mapperProduit(caissedto.getArticle()));
-            LigneVente ligneSave = ligneVenteRepositories.save(ligneVente);
-
-            //destockage articles 
-            Optional<PrixArticles> pa = prixArticlesRepositories.findLastActiveByEntrepriseAndProduit(v.getEntreprise(), ligneVente.getProduit());
-            if (pa.isEmpty()) {
-                throw new RuntimeException("Article introuvable");
-            }
-            if (pa.get().getPointVente().getStockFinalTheorie().intValue() < caissedto.getQuantite().intValue()) {
-                throw new RuntimeException("Stock insuffisant");
-            }
-            BigDecimal sortie = pa.get().getPointVente().getSortiProduit().add(caissedto.getQuantite());
-            BigDecimal stockFinal = pa.get().getPointVente().getStockFinalTheorie().subtract(caissedto.getQuantite());
-            pa.get().getPointVente().setSortiProduit(sortie);
-            pa.get().getPointVente().setStockFinalTheorie(stockFinal);
-            pointVenteRepositories.save(pa.get().getPointVente());
-
-            return ligneSave;
-        } catch (Exception e) {
-            // le rollback est automatique avec @Transactional si exception est levée
-            throw new RuntimeException("Échec de l'enregistrement de la vente : " + e.getMessage(), e);
-        }
-
+    /**
+     * Récupère les lignes de vente d'une vente
+     */
+    @Transactional(readOnly = true)
+    public List<LigneVente> listeLigneVenteByVente(Vente vente) {
+        return ligneVenteRepositories.findByVente(vente);
     }
 
-    private LigneVente createLigenVenteEnCours(Orders_detailsDTO caissedto, Vente v) {
-
-        try {
-            LigneVente ligneVente = new LigneVente();
-
-            ligneVente.setPrixUnitaire(caissedto.getPrice());
-            ligneVente.setQuantite(caissedto.getQuantite());
-            ligneVente.setTotalLigne(caissedto.getPrice().multiply(caissedto.getQuantite()));
-            // ligneVente.setVente(v);
-            ligneVente.setProduit(produitRepositories.findById(caissedto.getProduct().getProduit()).get());
-            LigneVente ligneSave;
-
-            //destockage articles 
-            Optional<PrixArticles> pa = prixArticlesRepositories.findLastActiveByEntrepriseAndProduit(v.getEntreprise(), ligneVente.getProduit());
-            if (pa.isEmpty()) {
-                throw new RuntimeException("Article introuvable");
-            }
-            if (pa.get().getPointVente().getStockFinalTheorie().intValue() < caissedto.getQuantite().intValue()) {
-                System.out.println("produit: " + pa.get().getPointVente().getProduit().getLibelle());
-                System.out.println("stock final: " + pa.get().getPointVente().getStockFinalTheorie().intValue());
-                System.out.println("quantite commande: " + caissedto.getQuantite().intValue());
-                venteRepositories.delete(v);
-                throw new RuntimeException("Stock insuffisant");
-            }
-            BigDecimal sortie = pa.get().getPointVente().getSortiProduit().add(caissedto.getQuantite());
-            BigDecimal stockFinal = pa.get().getPointVente().getStockFinalTheorie().subtract(caissedto.getQuantite());
-            pa.get().getPointVente().setSortiProduit(sortie);
-            pa.get().getPointVente().setStockFinalTheorie(stockFinal);
-            pointVenteRepositories.save(pa.get().getPointVente());
-            //Vente saveVente = venteRepositories.save(v);
-            ligneVente.setVente(v);
-
-            ligneSave = ligneVenteRepositories.save(ligneVente);
-
-            return ligneSave;
-        } catch (Exception e) {
-            // le rollback est automatique avec @Transactional si exception est levée
-            throw new RuntimeException("Échec de l'enregistrement de la vente : " + e.getMessage(), e);
-        }
-
+    /**
+     * Récupère le paiement d'une vente
+     */
+    @Transactional(readOnly = true)
+    public Paiement getPaiementByVente(Vente vente) {
+        return paiementRepositories.findByVente(vente)
+                .orElseThrow(() -> new EntityNotFoundException("Paiement non trouvé pour la vente: " + vente.getId()));
     }
 
-    public Vente getVenteById(Long venteid) {
-        Optional<Vente> v = venteRepositories.findById(venteid);
-        if (v.isEmpty()) {
-            throw new ResourceNotFoundException("vente  not found with id: " + venteid);
-        }
-        return v.get();
-    }
+    /**
+     * Génère un ticket de caisse en format texte
+     */
+    public void createTicketCaisseTXT(Vente vente) throws IOException {
+        var mois = getMoisActuel();
+        var paiement = getPaiementByVente(vente);
+        var lignesVente = ligneVenteRepositories.findByVente(vente);
 
-    public List<LigneVente> listeLigneVenteByVente(Vente v) {
-        return ligneVenteRepositories.findByVente(v);
-    }
-
-    public Paiement getPaiementByVente(Vente v) {
-        return paiementRepositories.findByVente(v).get();
-    }
-
-    public void createTicaisseTXT(Vente v) throws IOException {
-        Mois m = getMoisByNumero();
-        TicketRequest ticketRequest = TicketRequest.builder()
-                .lignesVente(ligneVenteRepositories.findByVente(v))
+        var ticketRequest = TicketRequest.builder()
+                .lignesVente(lignesVente)
                 .remboursementAvecBonAchat(Boolean.FALSE)
-                .typePaiement(paiementRepositories.findByVente(v).get().getTypePaiement())
-                .mois(m.getMois())
-                .vente(v)
+                .typePaiement(paiement.getTypePaiement())
+                .mois(mois.getMois())
+                .vente(vente)
                 .property(new Property())
                 .build();
 
         ticketCaisseService.generateTicket(ticketRequest);
-
+        log.info("Ticket généré pour la vente: {}", vente.getId());
     }
 
-    public Mois getMoisByNumero() {
-        int annee = IdleDate.getYear(new Date());
-        int numero = IdleDate.getMonth(new Date());
-
-        Mois m = moisRepositories.findOneByAnneeAndNumero(annee, numero);
-        return m;
-    }
-
+    /**
+     * Récupère tous les clients
+     */
+    @Transactional(readOnly = true)
     public List<ClientDto> allClient() {
-        List<ClientDto> listesClientDto = clientRepositories.findAll().stream()
-                .map(cl -> mapper.mapperClientByClientDto(cl))
-                .collect(Collectors.toList());
-        return listesClientDto;
+        return clientRepositories.findAll().stream()
+                .map(mapper::mapperClientByClientDto)
+                .toList();
     }
 
+    /**
+     * Crée un nouveau client depuis la caisse
+     */
+    @Transactional
     public Client createClientCaisse(ClientDto clientDto) {
-        Optional<Client> client = clientRepositories.findByNom(clientDto.getNom());
-        Client nouveauClient = null;
-        if (client.isEmpty()) {
-            Client cl = new Client();
-            cl.setNom(clientDto.getNom());
-            cl.setTelephone(clientDto.getTelephone());
-            cl.setEmail(clientDto.getEmail());
-            nouveauClient = clientRepositories.save(cl);
+        return clientRepositories.findByNom(clientDto.getNom())
+                .orElseGet(() -> {
+                    var client = new Client();
+                    client.setNom(clientDto.getNom());
+                    client.setTelephone(clientDto.getTelephone());
+                    client.setEmail(clientDto.getEmail());
+                    return clientRepositories.save(client);
+                });
+    }
+
+    /**
+     * Liste tous les caissiers actifs
+     */
+    @Transactional(readOnly = true)
+    public List<UserDTO> listeCaissiers(Long boutiqueid) {
+        var profilCaisse = profilRepositories.findByCode(PROFIL_CAISSE);
+
+        return personneRepositories.findActiveUserByProfil(profilCaisse).stream()
+                .filter(p -> Boolean.TRUE.equals(p.getCompteActif()  && p.getBoutique().getId().equals(boutiqueid))
+                && PROFIL_CAISSE.equals(p.getProfilid().getCode()))
+                .map(this::createUserDTO)
+                .toList();
+    }
+
+    // ==================== Méthodes privées ====================
+    /**
+     * Charge les valeurs d'un PrixArticles vers ProduitDto
+     */
+    private ProduitDto chargeValue(PrixArticles pa) {
+        var pdto = mapper.mapperProduitDto(pa.getPointVente().getProduit(), pa.getPointVente().getBoutique());
+        pdto.setBarcode(pa.getCodeBar());
+        pdto.setPrixVenteNet(pa.getPrixVenteNet());
+
+        var prixTTC = Optional.ofNullable(pa.getPrixVenteTTC())
+                .filter(prix -> prix.compareTo(ZERO) != 0)
+                .orElse(pa.getPrixVenteNet());
+
+        pdto.setPrixVenteTTC(prixTTC);
+        pdto.setStockFinal(pa.getPointVente().getStockFinalTheorie());
+        pdto.setTva(pa.getTva());
+        pdto.setRemise(pa.getRemise());
+
+        log.debug("Article chargé: {} - PrixTTC: {}",
+                pa.getPointVente().getProduit().getLibelle(), prixTTC);
+
+        return pdto;
+    }
+
+    /**
+     * Crée une vente standard
+     */
+    private Vente creerVente(VenteDto dto, Entreprise entreprise, Personne vendeur, Client client) {
+        var vente = new Vente();
+        vente.setDateVente(dto.getDate());
+        vente.setEntreprise(entreprise);
+        vente.setNumeroTicket(dto.getNumeroTicket());
+        vente.setStatut(StatutVente.TERMINEE);
+        vente.setTotalBrut(dto.getMontantTotal());
+        vente.setTotalNet(dto.getMontantNet());
+        vente.setTotalRemise(dto.getRemise());
+        vente.setTotalrecu(dto.getMontantRecu());
+        vente.setBoutique(boutiqueRepositories.findById(dto.getBoutiqueid()).get());
+        vente.setVendeur(vendeur);
+        vente.setBoutique(boutiqueRepositories.findById(dto.getBoutiqueid()).get());
+
+        if (client != null) {
+            vente.setClient(client);
         }
-        return nouveauClient;
 
+        return vente;
     }
 
-    public List<UserDTO> listeCaissiers() {
-        String profile = "CAISSE";
-        Profil p = profilRepositories.findByCode(profile);
-        List<UserDTO> allCaissier = personneRespositories.findActiveUserByProfil(p).stream()
-                .filter(pers -> pers.getCompteActif() == true && "CAISSE".equals(pers.getProfilid().getCode()))
-                .map(users -> cresateByUserDTO(users))
-                .collect(Collectors.toList());
-        return allCaissier;
+    /**
+     * Met à jour une vente existante
+     */
+    private void updateVente(Vente vente, VenteDto dto, Entreprise entreprise,
+            Personne vendeur, Client client) {
+        vente.setDateVente(dto.getDate());
+        vente.setEntreprise(entreprise);
+        vente.setNumeroTicket(dto.getNumeroTicket());
+        vente.setStatut(StatutVente.TERMINEE);
+        vente.setTotalBrut(dto.getMontantTotal());
+        vente.setTotalNet(dto.getMontantNet());
+        vente.setTotalRemise(dto.getRemise());
+        vente.setTotalrecu(dto.getMontantRecu());
+        vente.setVendeur(vendeur);
 
+        if (client != null) {
+            vente.setClient(client);
+        }
     }
 
-    private UserDTO cresateByUserDTO(Personne p) {
-        UserDTO userDTO = new UserDTO();
-        userDTO.setUserName(p.getUserName());
-        userDTO.setFirstName(p.getNom());
-        userDTO.setLastname(p.getPrenom());
+    /**
+     * Crée une vente en cours (commande)
+     */
+    private Vente creerVenteEnCours(OrdersDTO dto, Entreprise entreprise,
+            Personne vendeur, Client client, String numeroTicket) {
+        var vente = new Vente();
+        vente.setDateVente(dto.getDate());
+        vente.setEntreprise(entreprise);
+        vente.setStatut(StatutVente.EN_COURS);
+        vente.setTotalBrut(dto.getTotalAmount());
+        vente.setTotalNet(dto.getTotalAmount());
+        vente.setNumeroTicket(numeroTicket);
+        vente.setNumerocommande(Long.parseLong(numeroTicket));
+        vente.setVendeur(vendeur);
+        vente.setUserecom(dto.getClient().getUsernane());
+
+        if (client != null) {
+            vente.setClient(client);
+        }
+
+        return vente;
+    }
+
+    /**
+     * Crée une ligne de vente et gère le stock
+     */
+    private LigneVente createLigneVente(Caissedto dto, Vente vente) {
+        try {
+            var produit = mapper.mapperProduit(dto.getArticle());
+
+            var ligneVente = new LigneVente();
+            ligneVente.setPrixUnitaire(dto.getPrixUnitaire());
+            ligneVente.setQuantite(dto.getQuantite());
+            ligneVente.setTotalLigne(dto.getMontantTotal());
+            ligneVente.setVente(vente);
+            ligneVente.setProduit(produit);
+
+            var ligneSave = ligneVenteRepositories.save(ligneVente);
+
+            // Déstockage
+            destockerArticle(vente.getEntreprise(),produit,vente.getBoutique().getId(), dto.getQuantite());
+
+            return ligneSave;
+
+        } catch (Exception e) {
+            log.error("Erreur lors de la création de la ligne de vente", e);
+            throw new MetierException("Échec de la ligne de vente: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Crée une ligne de vente en cours (commande)
+     */
+    private LigneVente createLigneVenteEnCours(Orders_detailsDTO dto, Vente vente) {
+        try {
+            var produit = findProduitOrThrow(dto.getProduct().getProduit());
+
+            var ligneVente = new LigneVente();
+            ligneVente.setPrixUnitaire(dto.getPrice());
+            ligneVente.setQuantite(dto.getQuantite());
+            ligneVente.setTotalLigne(dto.getPrice().multiply(dto.getQuantite()));
+            ligneVente.setProduit(produit);
+            ligneVente.setVente(vente);
+
+            // Déstockage avec vérification
+            destockerArticleAvecVerification(vente, produit,vente.getBoutique().getId(), dto.getQuantite());
+
+            return ligneVenteRepositories.save(ligneVente);
+
+        } catch (Exception e) {
+            log.error("Erreur lors de la création de la ligne de vente en cours", e);
+            throw new MetierException("Échec de la ligne de vente: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Déstocke un article
+     */
+    /**
+     * Décrémente le stock de manière atomique (thread-safe)
+     */
+    @Transactional(rollbackFor = Exception.class)
+    private void destockerArticle(Entreprise entreprise, Produit produit,Long boutiqueid, BigDecimal quantite) {
+        //Optional<Boutique> boutique=boutiqueRepositories.findById(boutiqueid);
+        var prixArticle = prixArticlesRepositories
+                .findLastActiveByEntrepriseAndProduit(entreprise, produit,boutiqueid)
+                .orElseThrow(() -> new MetierException("Article introuvable"));
+
+        var pointVente = prixArticle.getPointVente();
+
+        // ✅ SOLUTION : UPDATE atomique en SQL
+        int rowsUpdated = pointVenteRepositories.updateStockAtomique(
+                pointVente.getId(),
+                quantite
+        );
+
+        // ❌ Si aucune ligne mise à jour = stock insuffisant
+        if (rowsUpdated == 0) {
+            // Relire le stock actuel pour le message d'erreur
+            var pvActuel = pointVenteRepositories.findById(pointVente.getId())
+                    .orElseThrow(() -> new MetierException("Point de vente introuvable"));
+
+            throw new MetierException(
+                    String.format("Stock insuffisant pour %s: disponible=%.2f, demandé=%.2f",
+                            produit.getLibelle(),
+                            pvActuel.getStockFinalTheorie(),
+                            quantite));
+        }
+
+        log.debug("✅ Stock décrémenté: produit={}, quantité={}", produit.getCode(), quantite);
+    }
+
+    /**
+     * Déstocke avec vérification et rollback si stock insuffisant
+     */
+    private void destockerArticleAvecVerification(Vente vente, Produit produit,Long boutiqueid, BigDecimal quantite) {
+        var prixArticle = prixArticlesRepositories
+                .findLastActiveByEntrepriseAndProduit(vente.getEntreprise(), produit,boutiqueid)
+                .orElseThrow(() -> new MetierException("Article introuvable"));
+
+        var pointVente = prixArticle.getPointVente();
+        var stockActuel = pointVente.getStockFinalTheorie();
+
+        if (stockActuel.compareTo(quantite) < 0) {
+            log.error("Stock insuffisant: produit={}, stock={}, demandé={}",
+                    produit.getLibelle(), stockActuel, quantite);
+            venteRepositories.delete(vente);
+            throw new MetierException("Stock insuffisant pour " + produit.getLibelle());
+        }
+
+        var nouvelleSortie = pointVente.getSortiProduit().add(quantite);
+        var nouveauStock = stockActuel.subtract(quantite);
+
+        pointVente.setSortiProduit(nouvelleSortie);
+        pointVente.setStockFinalTheorie(nouveauStock);
+        pointVenteRepositories.save(pointVente);
+    }
+
+    /**
+     * Crée ou récupère un client
+     */
+    private Client findOrCreateClient(ClientDto dto) {
+        if (dto == null || dto.getNom() == null || dto.getNom().isBlank()) {
+            return null;
+        }
+
+        return clientRepositories.findByNom(dto.getNom())
+                .orElseGet(() -> {
+                    var client = new Client();
+                    client.setEmail(dto.getEmail());
+                    client.setNom(dto.getNom());
+                    client.setTelephone(dto.getTelephone());
+                    client.setFidelite(true);
+                    return clientRepositories.save(client);
+                });
+    }
+
+    /**
+     * Crée ou récupère un client depuis une commande
+     */
+    private Client findOrCreateClientFromOrder(ClientOrder dto) {
+        if (dto.getName() == null || dto.getName().isBlank()) {
+            return null;
+        }
+
+        return clientRepositories.findByNom(dto.getName())
+                .orElseGet(() -> {
+                    var client = new Client();
+                    client.setEmail(dto.getEmail());
+                    client.setNom(dto.getName());
+                    client.setTelephone(dto.getPhoneNumber());
+                    client.setFidelite(true);
+                    return clientRepositories.save(client);
+                });
+    }
+
+    /**
+     * Crée un paiement pour une vente
+     */
+    private void creerPaiement(VenteDto dto, Vente vente) {
+        var paiement = new Paiement();
+        paiement.setDatePaiement(new Date());
+        paiement.setMontant(dto.getMontantNet());
+        paiement.setTypePaiement(TypePaiement.valueOf(dto.getTypePaiement()));
+        paiement.setReference(dto.getNumeroTicket());
+        paiement.setVente(vente);
+        paiementRepositories.save(paiement);
+    }
+
+    /**
+     * Met à jour un paiement existant
+     */
+    private void updatePaiement(VenteDto dto, Vente vente) {
+        var paiement = paiementRepositories.findByVente(vente)
+                .orElseThrow(() -> new EntityNotFoundException("Paiement introuvable pour la vente: " + vente.getId()));
+
+        paiement.setDatePaiement(new Date());
+        paiement.setMontant(dto.getMontantNet());
+        paiement.setTypePaiement(TypePaiement.valueOf(dto.getTypePaiement()));
+        paiement.setReference(dto.getNumeroTicket());
+        paiementRepositories.save(paiement);
+    }
+
+    /**
+     * Crée un paiement pour une commande
+     */
+    private void creerPaiementEnCours(OrdersDTO dto, Vente vente) {
+        var paiement = new Paiement();
+        paiement.setDatePaiement(new Date());
+        paiement.setMontant(dto.getTotalAmount());
+        paiement.setTypePaiement(TypePaiement.ESPECES);
+        paiement.setReference(vente.getNumeroTicket());
+        paiement.setVente(vente);
+        paiementRepositories.save(paiement);
+    }
+
+    /**
+     * Synchronise les lignes de vente (suppression et recréation)
+     */
+    private void synchroniserLignesVente(List<LigneVente> lignesReference,
+            List<LigneVente> lignesSource,
+            Vente vente) {
+        // Supprimer les anciennes lignes
+        lignesSource.forEach(ligneVenteRepositories::delete);
+        lignesSource.clear();
+
+        // Créer les nouvelles lignes
+        lignesReference.forEach(ligneRef -> {
+            var nouvelleLigne = new LigneVente();
+            nouvelleLigne.setQuantite(ligneRef.getQuantite());
+            nouvelleLigne.setPrixUnitaire(ligneRef.getPrixUnitaire());
+            nouvelleLigne.setRemise(ligneRef.getRemise());
+            nouvelleLigne.setTotalLigne(ligneRef.getTotalLigne());
+            nouvelleLigne.setProduit(ligneRef.getProduit());
+            nouvelleLigne.setVente(vente);
+
+            var ligneSaved = ligneVenteRepositories.save(nouvelleLigne);
+            lignesSource.add(ligneSaved);
+        });
+
+        log.debug("Lignes de vente synchronisées: {} lignes", lignesSource.size());
+    }
+
+    /**
+     * Génère un numéro de ticket unique
+     */
+    private String genererNumeroTicketUnique(Entreprise entreprise, Long boutiqueid) {
+        var numero = genererNumeroCommande(entreprise.getAnnee().getId());
+
+        while (venteRepositories.findByEntrepriseAndNumeroTicketAndBoutiqueId(entreprise, numero, boutiqueid).isPresent()) {
+            numero = genererNumeroCommande(entreprise.getAnnee().getId());
+        }
+
+        return numero;
+    }
+
+    /**
+     * Génère un numéro de commande
+     */
+    private String genererNumeroCommande(int annee) {
+        long nombre = venteRepositories.count() + 1;
+        return String.format("%d%d", annee, nombre);
+    }
+
+    /**
+     * Récupère le mois actuel
+     */
+    private Mois getMoisActuel() {
+        var maintenant = new Date();
+        int annee = IdleDate.getYear(maintenant);
+        int numero = IdleDate.getMonth(maintenant);
+
+        return moisRepositories.findOneByAnneeAndNumero(annee, numero)
+                .orElseThrow(() -> new MetierException("MOIS N EXISTE PAS "));
+    }
+
+    /**
+     * Crée un UserDTO depuis une Personne
+     */
+    private UserDTO createUserDTO(Personne personne) {
+        var userDTO = new UserDTO();
+        userDTO.setUserName(personne.getUserName());
+        userDTO.setFirstName(personne.getNom());
+        userDTO.setLastname(personne.getPrenom());
         return userDTO;
-
     }
 
     /**
-     * Version alternative qui modifie directement la liste source
-     *
-     * @param listeReference La liste de référence
-     * @param listeSource La liste source à modifier (sera modifiée directement)
+     * Trouve l'entreprise active
      */
-//    public void synchroniserListesInPlace(List<LigneVente> listeReference,
-//            List<LigneVente> listeSource) {
-//
-//        // Créer une map de la liste de référence
-//        Map<String, LigneVente> mapReference = listeReference.stream()
-//                .collect(Collectors.toMap(
-//                        this::genererCle,
-//                        ligne -> ligne,
-//                        (existing, replacement) -> replacement
-//                ));
-//
-//        // Utiliser un iterator pour pouvoir supprimer en toute sécurité
-//        Iterator<LigneVente> iterator = listeSource.iterator();
-//
-//        while (iterator.hasNext()) {
-//            LigneVente ligneSource = iterator.next();
-//            String cle = genererCle(ligneSource);
-//
-//            if (mapReference.containsKey(cle)) {
-//                // Remplacer par l'élément de référence
-//                LigneVente ligneReference = mapReference.get(cle);
-//                int index = listeSource.indexOf(ligneSource);
-//                listeSource.set(index, ligneReference);
-//            } else {
-//                // Supprimer si n'existe pas dans la référence
-//                ligneVenteRepositories.delete(ligneSource);
-//                iterator.remove();
-//            }
-//        }
-//    }
+    private Entreprise findActiveEntreprise() {
+        return Optional.ofNullable(entrepriseRepositories.findByActif(Boolean.TRUE))
+                .orElseThrow(() -> new MetierException("Aucune entreprise active"));
+    }
 
-    
     /**
- * Alternative plus sûre si vous voulez vraiment remplacer les objets
- */
-public void synchroniserListesInPlaceAlternative(List<LigneVente> listeReference,
-            List<LigneVente> listeSource, Vente vente) {
-    
-    // Supprimer toutes les anciennes lignes
-    List<LigneVente> lignesToDelete = new ArrayList<>(listeSource);
-    for (LigneVente ligne : lignesToDelete) {
-        ligneVenteRepositories.delete(ligne);
-    }
-    listeSource.clear();
-    
-    // Ajouter les nouvelles lignes avec la bonne relation
-    for (LigneVente ligneReference : listeReference) {
-        // Créer une nouvelle instance pour éviter les problèmes de relation
-        LigneVente nouvelleLigne = new LigneVente();
-        nouvelleLigne.setQuantite(ligneReference.getQuantite());
-        nouvelleLigne.setPrixUnitaire(ligneReference.getPrixUnitaire());
-        nouvelleLigne.setRemise(ligneReference.getRemise());
-        nouvelleLigne.setTotalLigne(ligneReference.getTotalLigne());
-        nouvelleLigne.setProduit(ligneReference.getProduit());
-        nouvelleLigne.setVente(vente); // Relation correcte
-        ligneVenteRepositories.save(nouvelleLigne);
-        
-        listeSource.add(nouvelleLigne);
-    }
-}
-    /**
-     * Génère une clé unique pour identifier une LigneVente Vous pouvez adapter
-     * cette méthode selon vos critères de comparaison
-     *
-     * @param ligne La ligne de vente
-     * @return Une clé unique sous forme de String
+     * Trouve un produit ou lève une exception
      */
-    private String genererCle(LigneVente ligne) {
-        if (ligne == null) {
-            return "null";
-        }
+    private Produit findProduitOrThrow(Long produitId) {
+        return produitRepositories.findById(produitId)
+                .orElseThrow(() -> new MetierException("Produit non trouvé: id=" + produitId));
+    }
 
-        // Option 1: Utiliser l'ID si disponible
-        String cle = "null";
-        if (ligne.getProduit() != null && ligne.getProduit().getId() != null) {
-            cle = "" + ligne.getProduit().getId();
-        }
+    /**
+     * Trouve une personne par username
+     */
+    private Personne findPersonneByUsername(String username) {
+        return personneRepositories.findByUserName(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé: " + username));
+    }
 
-        return cle.toString();
+    /**
+     * Valide qu'un stock est suffisant
+     */
+    private void validateStockSuffisant(BigDecimal stockActuel, BigDecimal quantite, String libelle) {
+        if (stockActuel.compareTo(quantite) < 0) {
+            throw new MetierException(
+                    String.format("Stock insuffisant pour %s: disponible=%.2f, demandé=%.2f",
+                            libelle, stockActuel, quantite));
+        }
+    }
+    private int  anneeEnCours(){
+        try {
+             Entreprise e=entrepriseRepositories.findByActif(Boolean.TRUE);
+             return e.getAnnee().getId();
+        } catch (Exception e) {
+        }
+          
+      return 0;
     }
 }

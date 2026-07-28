@@ -19,6 +19,7 @@ public class PointVenteDto {
     private ProduitDto produit;
     private BigDecimal entreeProduit;
     private BigDecimal stockFinalTheorie;
+     private BigDecimal stockPhysic;
     private BigDecimal stockInitial;
     private BigDecimal sortiProduit;
     private Boutique boutique;

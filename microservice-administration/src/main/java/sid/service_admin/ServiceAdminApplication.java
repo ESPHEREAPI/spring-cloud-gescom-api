@@ -1,15 +1,11 @@
 package sid.service_admin;
 
-import jakarta.persistence.EntityManagerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
-import org.springframework.orm.jpa.JpaTransactionManager;
-import org.springframework.transaction.PlatformTransactionManager;
 import sid.service_admin.repository.PersonneRepository;
 import sid.service_admin.service.InitiationDb;
 
@@ -35,6 +31,9 @@ public class ServiceAdminApplication {
             initiationDb.getAllTitres();
             initiationDb.getAllModuleSecurite();
             initiationDb.getMenuByModuleFacturation();
+            initiationDb.getMenuByModulePhotocopie();
+            initiationDb.getMenuByModuleStock();
+            initiationDb.getMenuByModuleVente();
            // if (personneRepository.findByUserName("admin").isPresent()==Boolean.FALSE) {
               // initiationDb.getAdmin(); 
            //}

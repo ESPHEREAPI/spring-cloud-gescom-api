@@ -53,9 +53,10 @@ public interface InitDB {
 //
 //    public Collection<Menu> getMenuByModuleSecurite();
 //
-//    public Collection<Menu> getMenuByModuleStock();
+   public Collection<Menu> getMenuByModuleStock();
 //
-//    public Collection<Menu> getMenuByModulePhotocopie();
+   public Collection<Menu> getMenuByModulePhotocopie();
+   public Collection<Menu> getMenuByModuleVente();
 //
 //    public Collection<Menu> getMenuByModuleComptabilite();
 ////     public Collection<Menu> getMenuByModuleEnseignant();

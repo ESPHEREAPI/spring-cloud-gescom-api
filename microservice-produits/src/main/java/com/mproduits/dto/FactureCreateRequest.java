@@ -98,5 +98,6 @@ public class FactureCreateRequest {
     @Size(max = 100, message = "La référence externe ne peut pas dépasser 100 caractères")
     private String referenceExterne;
      private String username;
+     private Long boutiqueid;
 }
 

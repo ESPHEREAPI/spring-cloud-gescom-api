@@ -6,6 +6,7 @@ package com.mproduits.repositories;
 
 import com.mproduits.dto.ProduitDto;
 import com.mproduits.model.Entreprise;
+import com.mproduits.model.EntreprisePK;
 import com.mproduits.model.Mois;
 import com.mproduits.model.PointVente;
 import com.mproduits.model.PrixArticles;
@@ -60,8 +61,8 @@ public interface PrixArticlesRepositories extends JpaRepository<PrixArticles, Lo
     @Query("SELECT pa FROM PrixArticles pa WHERE pa.id = (SELECT max(pa2.id) FROM PrixArticles pa2 WHERE pa2.entreprise = :e AND pa2.pointVente = :pv AND pa2.actif = true)")
     Optional<PrixArticles> findLastActiveByEntrepriseAndPointVente(@Param("e") Entreprise e, @Param("pv") PointVente pv);
 
-    @Query("SELECT pa FROM PrixArticles pa WHERE pa.id = (SELECT max(pa2.id) FROM PrixArticles pa2 WHERE pa2.entreprise = :e AND pa2.pointVente.produit = :p AND pa2.actif = true)")
-    Optional<PrixArticles> findLastActiveByEntrepriseAndProduit(@Param("e") Entreprise e, @Param("p") Produit p);
+    @Query("SELECT pa FROM PrixArticles pa WHERE pa.id = (SELECT max(pa2.id) FROM PrixArticles pa2 WHERE pa2.entreprise = :e AND pa2.pointVente.produit = :p AND pa2.actif = true and pa2.pointVente.boutique.id= :boutiqueid)")
+    Optional<PrixArticles> findLastActiveByEntrepriseAndProduit(@Param("e") Entreprise e, @Param("p") Produit p, @Param("boutiqueid") Long boutiqueid);
 
     @Query("SELECT pa FROM PrixArticles pa WHERE pa.entreprise = :e AND pa.pointVente.produit.deletes = false AND pa.actif = true AND pa.pointVente.stockFinalTheorie > 0 ORDER BY pa.pointVente.produit.reference")
     List<PrixArticles> findActifByEntrepriseWithStock(@Param("e") Entreprise e);
@@ -97,22 +98,22 @@ public interface PrixArticlesRepositories extends JpaRepository<PrixArticles, Lo
     /// @param pageable
     /// @return 
 
-    @Query("SELECT pa  FROM PrixArticles pa WHERE pa.entreprise = :e AND  pa.pointVente.produit.reference LIKE %:search%")
-    Page<PrixArticles> findProduitLibelleByEntrepriseWithFilter(@Param("e") Entreprise e, @Param("search") String search, Pageable pageable);
+    @Query("SELECT pa  FROM PrixArticles pa WHERE pa.entreprise = :e AND  pa.pointVente.produit.reference LIKE %:search% and pa.pointVente.boutique.id= :boutiqueid ")
+    Page<PrixArticles> findProduitLibelleByEntrepriseWithFilter(@Param("e") Entreprise e, @Param("search") String search, Pageable pageable, @Param("boutiqueid") Long boutiqueid);
 
-    @Query("SELECT pa FROM PrixArticles pa WHERE pa.entreprise = :e   AND pa.actif = :active")
-    Page<PrixArticles> findAllByEntrepriseProduitActif(@Param("e") Entreprise e, @Param("active") Boolean active, Pageable pageable);
+    @Query("SELECT pa FROM PrixArticles pa WHERE pa.entreprise = :e   AND pa.actif = :active and pa.pointVente.boutique.id= :boutiqueid")
+    Page<PrixArticles> findAllByEntrepriseProduitActif(@Param("e") Entreprise e, @Param("active") Boolean active, Pageable pageable, @Param("boutiqueid") Long boutiqueid);
 
-    @Query("SELECT DISTINCT pa FROM PrixArticles pa WHERE pa.entreprise = :e AND  pa.pointVente.produit.libelle LIKE %:search%")
-    List<PrixArticles> findProduitLibelleByEntrepriseWithFilter(@Param("e") Entreprise e, @Param("search") String search);
+    @Query("SELECT DISTINCT pa FROM PrixArticles pa WHERE pa.entreprise = :e AND  pa.pointVente.produit.libelle LIKE %:search% and pa.pointVente.boutique.id= :boutiqueid")
+    List<PrixArticles> findProduitLibelleByEntrepriseWithFilter(@Param("e") Entreprise e, @Param("search") String search, @Param("boutiqueid") Long boutiqueid);
 
-    @Query("SELECT pa FROM PrixArticles pa WHERE pa.entreprise = :e   AND pa.actif = :active")
-    List<PrixArticles> findAllByEntrepriseProduitActif(@Param("e") Entreprise e, @Param("active") Boolean active);
+    @Query("SELECT pa FROM PrixArticles pa WHERE pa.entreprise = :e   AND pa.actif = :active and pa.pointVente.boutique.id= :boutiqueid")
+    List<PrixArticles> findAllByEntrepriseProduitActif(@Param("e") Entreprise e, @Param("active") Boolean active, @Param("boutiqueid") Long boutiqueid);
 
     List<PrixArticles> findTop10000ByActifTrueOrderByDateCreationDesc();
 
-    @Query("SELECT pa FROM PrixArticles pa WHERE pa.pointVente.produit.reference= :ref")
-    Optional<PrixArticles> getPrixAticlesByReferenceProduit(@Param("reference") String ref);
+    @Query("SELECT pa FROM PrixArticles pa WHERE pa.pointVente.produit.reference= :ref and pa.pointVente.boutique.id= :boutiqueid and pa.entreprise.actif=true")
+    Optional<PrixArticles> getPrixAticlesByReferenceProduit(@Param("reference") String ref,@Param("boutiqueid") Long boutiqueid);
 
     @Query(" SELECT pa.pointVente FROM PrixArticles pa  WHERE pa.entreprise.annee.id= :anneeid and pa.pointVente.boutique.id= :boutiqueid and pa.pointVente.produit.categories.id= :categorieid and pa.actif= :active")
     public List<PointVente> chargeStockPointVente(@Param("anneeid") int anneeid, @Param("active") Boolean active, @Param("boutiqueid") Long boutiqueid, @Param("categorieid") Long categorieid);
@@ -124,16 +125,71 @@ public interface PrixArticlesRepositories extends JpaRepository<PrixArticles, Lo
     SELECT p 
     FROM PrixArticles p 
     WHERE p.actif = true 
-      AND p.pointVente.stockFinalTheorie > 0 
+      AND p.pointVente.stockFinalTheorie > 0  and p.pointVente.boutique.id= :boutiqueid
     ORDER BY p.dateCreation DESC
 """)
-    List<PrixArticles> findTopActifWithStockFinalPositive(Pageable pageable);
-        @Query("SELECT p FROM PrixArticles p WHERE p.pointVente.produit.reference  like :kw and p.actif= true and p.entreprise.annee.id= :anneeid")
-     public List<PrixArticles> searchProduit(@Param(value ="kw")String keyword,@Param("anneeid") int anneeid);
-     
-      @Query("SELECT p FROM PrixArticles p WHERE p.pointVente.produit.categories.id= :idCategorie and p.actif= true and p.entreprise.annee.id= :anneeid")
-     public List<PrixArticles> searchProduitBycategories(@Param(value ="idCategorie") Long id,@Param("anneeid") int anneeid);
-     
-      @Query("SELECT pa FROM PrixArticles pa WHERE pa.actif = true ORDER BY pa.dateCreation DESC LIMIT 1")
+    List<PrixArticles> findTopActifWithStockFinalPositive(Pageable pageable, @Param(value = "boutiqueid") Long boutiqueid);
+
+    @Query("SELECT p FROM PrixArticles p WHERE p.pointVente.produit.reference  like :kw and p.actif= true and p.entreprise.annee.id= :anneeid")
+    public List<PrixArticles> searchProduit(@Param(value = "kw") String keyword, @Param("anneeid") int anneeid);
+
+    @Query("SELECT p FROM PrixArticles p WHERE p.pointVente.produit.categories.id= :idCategorie and p.actif= true and p.entreprise.annee.id= :anneeid")
+    public List<PrixArticles> searchProduitBycategories(@Param(value = "idCategorie") Long id, @Param("anneeid") int anneeid);
+
+    @Query("SELECT pa FROM PrixArticles pa WHERE pa.actif = true ORDER BY pa.dateCreation DESC LIMIT 1")
     Optional<PrixArticles> findCurrentPrice(Long produitId);
+
+    List<PrixArticles> findByPointVente(PointVente pointVente);
+
+    /**
+     * Récupère le prix actif (le plus récent) pour un point de vente
+     */
+    @Query("SELECT p FROM PrixArticles p WHERE p.pointVente.id = :pointVenteId AND p.actif = true ORDER BY p.dateCreation DESC LIMIT 1")
+    Optional<PrixArticles> findActivePriceByPointVente(@Param("pointVenteId") Long pointVenteId);
+
+    @Query("SELECT pa FROM PrixArticles pa WHERE pa.entreprise.entreprisePK = :pk "
+            + "AND pa.actif = :actif")
+    List<PrixArticles> findByEntrepriseAndActif(
+            @Param("pk") EntreprisePK pk,
+            @Param("actif") boolean actif
+    );
+
+    @Query("SELECT COUNT(pa) FROM PrixArticles pa WHERE pa.entreprise.entreprisePK = :pk "
+            + "AND pa.actif = :actif")
+    Integer countByEntrepriseAndActif(
+            @Param("pk") EntreprisePK pk,
+            @Param("actif") boolean actif
+    );
+
+    @Query("SELECT pa FROM PrixArticles pa WHERE pa.pointVente.id = :pvId")
+    List<PrixArticles> findByPointVente(@Param("pvId") Long pointVenteId);
+
+ 
+// SELECT pa FROM PrixArticles pa
+// WHERE pa.id = (SELECT max(pa2.id) FROM PrixArticles pa2
+//                WHERE pa2.entreprise = :e
+//                  AND pa2.pointVente.produit = :p
+//                  AND pa2.actif = true
+//                  AND pa2.pointVente.boutique.id = :boutiqueid)
+ 
+// BATCH (N articles) — même logique, produit.id IN (:produitIds) :
+@Query("""
+    SELECT pa FROM PrixArticles pa
+    WHERE pa.actif = true
+      AND pa.entreprise = :e
+      AND pa.pointVente.boutique.id = :boutiqueid
+      AND pa.pointVente.produit.id IN :produitIds
+      AND pa.id = (
+          SELECT MAX(pa2.id) FROM PrixArticles pa2
+          WHERE pa2.entreprise = :e
+            AND pa2.pointVente.produit = pa.pointVente.produit
+            AND pa2.actif = true
+            AND pa2.pointVente.boutique.id = :boutiqueid
+      )
+    """)
+    List<PrixArticles> findLastActiveByEntrepriseAndProduitsAndBoutique(
+            @Param("e") Entreprise e,
+            @Param("produitIds") List<Long> produitIds,
+            @Param("boutiqueid") Long boutiqueid
+    );
 }

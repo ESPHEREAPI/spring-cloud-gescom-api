@@ -5,6 +5,7 @@
 package sid.service_admin.dto;
 
 import lombok.Data;
+import sid.service_admin.model.Boutique;
 
 /**
  *
@@ -35,5 +36,6 @@ public class UserCreateDTO {
     private Boolean isActive;
 
     private Long profilid;
+    private Boutique boutique;
 
 }

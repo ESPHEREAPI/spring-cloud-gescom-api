@@ -93,7 +93,7 @@ public class IProduitsImpl implements IProduits{
     
     }
      private ProduitDto convertToDto(Produit produit) {
-        return mapperDto.mapperProduitDto(produit);
+        return mapperDto.mapperProduitDto(produit,new Boutique());
     }
 
      @Override
@@ -111,7 +111,7 @@ public class IProduitsImpl implements IProduits{
         System.out.println("boutique.."+b);
       return pvRepositories.listeProduitHaveStockByBoutiqueAndAnnee(b!= null ? b.getId():null, annee,BigDecimal.ZERO).stream()
             .filter(pd-> pd.getDeletes()==false)
-            .map(this::convertToDto)
+            .map(pds-> mapperDto.mapperProduitDto(pds,b))
             .collect(Collectors.toList()); 
     
     }

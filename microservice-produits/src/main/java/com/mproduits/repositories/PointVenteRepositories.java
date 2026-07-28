@@ -4,10 +4,13 @@
  */
 package com.mproduits.repositories;
 
+import com.mproduits.dto.ProduitDto;
 import com.mproduits.model.Annee;
 import com.mproduits.model.Boutique;
 import com.mproduits.model.Categories;
 import com.mproduits.model.Entreprise;
+import com.mproduits.model.EntreprisePK;
+import com.mproduits.model.Magasin;
 import com.mproduits.model.PointVente;
 import com.mproduits.model.Produit;
 import feign.Param;
@@ -18,6 +21,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 /**
@@ -91,8 +95,10 @@ public interface PointVenteRepositories extends JpaRepository<PointVente, Long> 
             @Param("boutique") Boutique boutique,
             @Param("entreprise") Entreprise entreprise);
     
-    @Query("SELECT SUM(pv.stockFinalTheorie) FROM PointVente pv WHERE pv.produit.id = :produitId")
-    Optional<BigDecimal> sumStockByProduit(@Param("produitId") Long produitId);
+    @Query("SELECT SUM(pv.stockFinalTheorie) FROM PointVente pv WHERE pv.produit.id = :produitId AND pv.boutique.id = :boutique AND pv.entreprise.annee.id = :annee  ")
+    Optional<BigDecimal> sumStockByProduit(@Param("produitId") Long produitId,
+              @Param("boutique") Long boutique,
+            @Param("annee") int annee);
     
      @Query("SELECT pv.produit FROM PointVente pv WHERE  pv.boutique.id = :boutique "
             + "AND pv.entreprise.annee.id = :annee  and pv.stockFinalTheorie > :qte ")
@@ -101,4 +107,188 @@ public interface PointVenteRepositories extends JpaRepository<PointVente, Long> 
             @Param("annee") int annee,
             @Param("qte") BigDecimal qte);
      Optional<PointVente>findByProduitId(Long ProduitId);
+     @Query("SELECT pv FROM PointVente pv WHERE  pv.boutique.id = :boutiqueid and pv.produit.id= :ProduitId "
+            + "AND pv.entreprise.annee.id = :annee ")
+    Optional<PointVente> getProduitHaveStockByBoutiqueAndAnnee(
+            @Param("boutiqueid") Long boutiqueid,
+            @Param("annee") int annee,
+            @Param("produitid") Long ProduitId);
+
+     
+     List<PointVente> findByDepotId(Magasin depot);
+    List<PointVente> findByBoutique(Boutique boutique);
+    List<PointVente> findByProduit(Produit produit);
+    
+    /**
+     * Récupère le dernier enregistrement point de vente pour un produit
+     */
+    @Query("SELECT p FROM PointVente p WHERE p.depotId.id = :magasinId AND p.produit.id = :produitId ORDER BY p.dateReception DESC LIMIT 1")
+    Optional<PointVente> findLatestPointVenteByMagasinAndProduit(
+        @Param("magasinId") Long magasinId, 
+        @Param("produitId") Long produitId);
+    
+     // ... méthodes existantes ...
+    
+    /**
+     * Met à jour le stock de manière atomique (thread-safe)
+     * Utilise une condition WHERE pour éviter les conflits
+     * 
+     * @param id ID du point de vente
+     * @param quantite Quantité à décrémenter
+     * @return Nombre de lignes mises à jour (0 si stock insuffisant, 1 si OK)
+     */
+    @Modifying
+    @Query("UPDATE PointVente pv " +
+           "SET pv.stockFinalTheorie = pv.stockFinalTheorie - :quantite, " +
+           "    pv.sortiProduit = pv.sortiProduit + :quantite " +
+           "WHERE pv.id = :id " +
+           "AND pv.stockFinalTheorie >= :quantite")
+    int updateStockAtomique(@Param("id") Long id, @Param("quantite") BigDecimal quantite);
+    
+  
+    /**
+     * Récupère les produits avec leur stock disponible dans un point de vente (boutique != null)
+     * Optimisé avec une seule requête JPA incluant le prix de vente
+     * 
+     * @param depotId ID du dépôt/point de vente
+     * @param anneeid ID de l'année
+     * @param boutiqueid ID de la boutique
+     * @return Liste [produit.id, produit.code, produit.libelle, produit.reference, stock_final_theorie, prix_vente]
+     */
+    @Query("SELECT " +
+           "p.id, " +
+           "p.code, " +
+           "p.libelle, " +
+           "p.reference, " +
+           "pv.stockFinalTheorie, " +
+           "COALESCE(pa.prixVenteNet, 0) " +
+           "FROM PointVente pv " +
+           "JOIN pv.produit p " +
+           "LEFT JOIN pv.prixarticlesCollection pa " +
+           "WHERE pv.depotId.id = :depotId " +
+           "AND pv.entreprise.entreprisePK.anneeId = :anneeid " +
+           "AND pv.boutique.id = :boutiqueid " +
+           "AND pv.stockFinalTheorie IS NOT NULL " +
+           "AND pv.stockFinalTheorie > 0 " +
+           "ORDER BY p.libelle ASC")
+    List<Object[]> findProduitsWithStockByDepot(
+        @Param("depotId") Long depotId,
+        @Param("anneeid") Long anneeid,
+        @Param("boutiqueid") Long boutiqueid
+    );
+
+    /**
+     * Récupère le stock d'un produit spécifique dans un point de vente
+     * 
+     * @param depotId ID du dépôt
+     * @param produitId ID du produit
+     * @return Stock final théorique
+     */
+    @Query("SELECT pv.stockFinalTheorie " +
+           "FROM PointVente pv " +
+           "WHERE pv.depotId.id = :depotId " +
+           "AND pv.produit.id = :produitId " +
+           "ORDER BY pv.dateReception DESC")
+    Optional<BigDecimal> getStockByDepotAndProduit(
+        @Param("depotId") Long depotId,
+        @Param("produitId") Long produitId
+    );
+
+    /**
+     * Récupère les détails complets du stock depuis POINTVENTE
+     * 
+     * @param depotId ID du dépôt
+     * @param produitId ID du produit
+     * @return [stockInitial, entreeProduit, sortiProduit, stockFinalTheorie, perte, dateReception]
+     */
+    @Query("SELECT " +
+           "pv.stockInitial, " +
+           "pv.entreeProduit, " +
+           "pv.sortiProduit, " +
+           "pv.stockFinalTheorie, " +
+           "pv.perte, " +
+           "pv.dateReception " +
+           "FROM PointVente pv " +
+           "WHERE pv.depotId.id = :depotId " +
+           "AND pv.produit.id = :produitId " +
+           "ORDER BY pv.dateReception DESC")
+    Object[] getStockDetailsFromPointVente(
+        @Param("depotId") Long depotId,
+        @Param("produitId") Long produitId
+    );
+
+    /**
+     * Trouve le dernier point de vente pour un produit dans un dépôt
+     */
+    @Query("SELECT pv FROM PointVente pv " +
+           "WHERE pv.depotId.id = :depotId " +
+           "AND pv.produit.id = :produitId " +
+           "ORDER BY pv.dateReception DESC")
+    Optional<PointVente> findLatestByDepotAndProduit(
+        @Param("depotId") Long depotId,
+        @Param("produitId") Long produitId
+    );
+
+    /**
+     * Récupère le stock total par point de vente
+     */
+    @Query("SELECT pv.depotId.id, SUM(pv.stockFinalTheorie) " +
+           "FROM PointVente pv " +
+           "WHERE pv.entreprise.entreprisePK.anneeId = :anneeid " +
+           "AND pv.boutique.id = :boutiqueid " +
+           "GROUP BY pv.id")
+    List<Object[]> getStockTotalParDepot(
+        @Param("anneeid") Long anneeid,
+        @Param("boutiqueid") Long boutiqueid
+    );
+
+    /**
+     * Récupère les produits avec stock faible (< seuil) dans un point de vente
+     */
+    @Query("SELECT " +
+           "p.id, " +
+           "p.libelle, " +
+           "pv.stockFinalTheorie, " +
+           "pv.depotId.libelle " +
+           "FROM PointVente pv " +
+           "JOIN pv.produit p " +
+           "WHERE pv.depotId.id = :depotId " +
+           "AND pv.stockFinalTheorie > 0 " +
+           "AND pv.stockFinalTheorie < :seuil " +
+           "ORDER BY pv.stockFinalTheorie ASC")
+    List<Object[]> findProduitsStockFaible(
+        @Param("depotId") Long depotId,
+        @Param("seuil") BigDecimal seuil
+    );
+    
+    @Query("SELECT new  com.mproduits.dto.ProduitDto(" +
+       "pa.pointVente.produit.id, " +
+       "pa.pointVente.produit.reference, " +
+       "pa.pointVente.produit.libelle, " +
+       "pa.pointVente.produit.categories, " +
+       "pa.prixVenteNet, " +
+       "pa.pointVente.stockFinalTheorie) " +
+       "FROM PrixArticles pa  " +
+       //"JOIN pointVente pdv " +
+      //  "JOIN  pdv.produit p " +
+       //"LEFT JOIN PrixArticles pa ON pa.pointVente.id = pdv.id AND pa.entreprise.annee.id = :anneeId " +
+       "WHERE pa.entreprise.annee.id = :anneeId " +
+       "AND pa.pointVente.boutique.id = :boutiqueId and pa.actif= true and pa.pointVente.stockFinalTheorie > 0")
+List<ProduitDto> findProduitsDtoByAnneeAndBoutique(
+    @Param("anneeId") int anneeId, 
+    @Param("boutiqueId") Long boutiqueId
+);
+
+  @Query("SELECT pv FROM PointVente pv WHERE pv.entreprise.entreprisePK = :pk")
+    List<PointVente> findByEntreprise(@org.springframework.data.repository.query.Param("pk") EntreprisePK entreprisePK);
+
+    @Query("SELECT COUNT(pv) FROM PointVente pv WHERE pv.entreprise.entreprisePK = :pk")
+    Integer countByEntreprise(@org.springframework.data.repository.query.Param("pk") EntreprisePK pk);
+
+    @Query("SELECT pv FROM PointVente pv WHERE pv.entreprise.entreprisePK = :pk " +
+            "AND pv.produit.id = :produitId")
+    List<PointVente> findByEntrepriseAndProduit(
+            @org.springframework.data.repository.query.Param("pk") EntreprisePK pk,
+            @org.springframework.data.repository.query.Param("produitId") Long produitId
+    );
 }

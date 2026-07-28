@@ -9,6 +9,7 @@ import com.mproduits.dto.FactureStatistiques;
 import com.mproduits.dto.FactureSummary;
 import com.mproduits.dto.FactureUpdateRequest;
 import com.mproduits.dto.FactureValidationRequest;
+import com.mproduits.dto.ProduitDto;
 
 import com.mproduits.enums.StatutFacture;
 
@@ -198,7 +199,7 @@ public class FactureController {
      * @param criteria Critères de recherche
      * @return Page de factures
      */
-    @GetMapping
+    @GetMapping("")
 
     @Operation(summary = "Lister les factures",
                description = "Liste les factures avec filtres et pagination")
@@ -215,13 +216,13 @@ public class FactureController {
      * @param clientId ID du client
      * @return Liste des factures du client
      */
-    @GetMapping("/client/{clientId}")
+    @GetMapping("/client/{clientId}/{boutiqueid}")
 
     @Operation(summary = "Factures d'un client",
                description = "Récupère toutes les factures d'un client")
-    public ResponseEntity<List<FactureSummary>> getFacturesClient(@PathVariable Long clientId) {
+    public ResponseEntity<List<FactureSummary>> getFacturesClient(@PathVariable Long clientId,@PathVariable Long boutiqueid) {
         log.info("Récupération des factures du client ID: {}", clientId);
-        List<FactureSummary> response = factureService.getFacturesClient(clientId);
+        List<FactureSummary> response = factureService.getFacturesClient(clientId,boutiqueid);
         return ResponseEntity.ok(response);
     }
 
@@ -241,6 +242,16 @@ public class FactureController {
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") Date dateFin) {
         log.info("Récupération des statistiques de facturation");
         FactureStatistiques response = factureService.getStatistiques(dateDebut, dateFin);
+        return ResponseEntity.ok(response);
+    }
+    
+    @GetMapping("/getStatistiquesAll")
+   
+    @Operation(summary = "Statistiques de facturation",
+               description = "Récupère les statistiques de facturation sur une période")
+    public ResponseEntity<FactureStatistiques> getStatistiques() {
+        log.info("Récupération des statistiques de facturation");
+        FactureStatistiques response = factureService.getStatistiques();
         return ResponseEntity.ok(response);
     }
 
@@ -310,5 +321,13 @@ public ResponseEntity<Resource> genererPDF(@PathVariable Long id) {
             .contentType(MediaType.APPLICATION_PDF)
             .contentLength(pdfContent.length)
             .body(resource);
+}
+
+@GetMapping("/produits/have-stock/{anneeId}/{boutiqueId}")
+public ResponseEntity<List<ProduitDto>> getProduitsHaveStock(
+        @PathVariable Integer anneeId,
+        @PathVariable Long boutiqueId
+) {
+    return ResponseEntity.ok(factureService.listStockHaveQuantiteForBoutiqueAndAnneei(anneeId, boutiqueId));
 }
 }

@@ -4,7 +4,6 @@ import com.mproduits.dto.DevisDTO;
 import com.mproduits.mappers.DevisMapper;
 import com.mproduits.model.Devis;
 import com.mproduits.services.DevisService;
-import com.mproduits.mappers.MapperDtoImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -27,6 +26,10 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.transaction.TransactionSystemException;
+import org.hibernate.exception.ConstraintViolationException;
 
 /**
  * Contrôleur REST - Gestion Complète des Devis
@@ -125,7 +128,7 @@ public class DevisController {
         log.info("└─────────────────────────────────────");
 
         try {
-            Devis devis = devisService.creerDevis(dto, username);
+            Devis devis = devisService.creerDevis(dto, username,dto.getBoutiqueid(),dto.getAnneeid());
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -296,17 +299,17 @@ public class DevisController {
      * Lister tous les devis (sans pagination)
      * GET /api/v1/devis
      */
-    @GetMapping
+    @GetMapping("/all/{boutiqueid}")
     @Operation(
             summary = "Lister les devis",
             description = "Retourne tous les devis. Pour de meilleures performances, " +
                          "utilisez /api/v1/devis/paginated"
     )
     @ApiResponse(responseCode = "200", description = "Liste des devis")
-    public ResponseEntity<Map<String, Object>> listDevis() {
+    public ResponseEntity<Map<String, Object>> listDevis(@PathVariable Long boutiqueid) {
         log.info("GET /api/v1/devis");
 
-        List<DevisDTO> devis = devisService.findAll().stream()
+        List<DevisDTO> devis = devisService.findAll(boutiqueid).stream()
                 .map(mapper::toDto)
                 .toList();
 
@@ -371,17 +374,17 @@ public class DevisController {
      * Lister les devis d'un client
      * GET /api/v1/devis/client/{clientId}
      */
-    @GetMapping("/client/{clientId}")
+    @GetMapping("/client/{clientId}/{boutiqueid}")
     @Operation(
             summary = "Devis d'un client",
             description = "Retourne tous les devis d'un client spécifique"
     )
     public ResponseEntity<Map<String, Object>> listDevisByClient(
-            @PathVariable Long clientId) {
+            @PathVariable Long clientId,@PathVariable Long boutiqueid) {
 
         log.info("GET /api/v1/devis/client/{}", clientId);
 
-        List<DevisDTO> devis = devisService.findByClientId(clientId);
+        List<DevisDTO> devis = devisService.findByClientId(clientId,boutiqueid);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -398,19 +401,19 @@ public class DevisController {
      * Statuts possibles: EN_ATTENTE, ACCEPTE, REFUSE, CONVERTI, EXPIRE, ANNULE
      * @return 
      */
-    @GetMapping("/statut/{statut}")
+    @GetMapping("/statut/{statut}/{boutiqueid}")
     @Operation(
             summary = "Devis par statut",
             description = "Retourne les devis filtrés par statut. " +
                          "Valeurs possibles: EN_ATTENTE, ACCEPTE, REFUSE, CONVERTI, EXPIRE, ANNULE"
     )
     public ResponseEntity<Map<String, Object>> listDevisByStatut(
-            @PathVariable String statut) {
+            @PathVariable String statut,@PathVariable Long boutiqueid) {
 
         log.info("GET /api/v1/devis/statut/{}", statut);
 
         try {
-            List<DevisDTO> devis = devisService.findByStatut(statut);
+            List<DevisDTO> devis = devisService.findByStatut(statut,boutiqueid);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -460,14 +463,15 @@ public class DevisController {
      * Recherche combinée: client + statut
      * GET /api/v1/devis/recherche?clientId=1&statut=EN_ATTENTE
      */
-    @GetMapping("/recherche")
+    @GetMapping("/recherche/{boutiqueid}")
     @Operation(
             summary = "Recherche avancée",
             description = "Recherche devis par client ET statut"
     )
     public ResponseEntity<Map<String, Object>> rechercheDevis(
             @RequestParam(required = false) Long clientId,
-            @RequestParam(required = false) String statut) {
+            @RequestParam(required = false) String statut,
+            @RequestParam(required = true) Long boutiqueid) {
 
         log.info("GET /api/v1/devis/recherche?clientId={}&statut={}", clientId, statut);
 
@@ -475,13 +479,13 @@ public class DevisController {
             List<DevisDTO> devis;
 
             if (clientId != null && statut != null) {
-                devis = devisService.findByClientIdAndStatut(clientId, statut);
+                devis = devisService.findByClientIdAndStatut(clientId, statut,boutiqueid);
             } else if (clientId != null) {
-                devis = devisService.findByClientId(clientId);
+                devis = devisService.findByClientId(clientId,boutiqueid);
             } else if (statut != null) {
-                devis = devisService.findByStatut(statut);
+                devis = devisService.findByStatut(statut,boutiqueid);
             } else {
-                devis = devisService.findAll().stream()
+                devis = devisService.findAll(boutiqueid).stream()
                         .map(mapper::toDto)
                         .toList();
             }
@@ -511,40 +515,94 @@ public class DevisController {
      * @param id
      * @return 
      */
-    @PutMapping("/{id}/accepter")
-    @Operation(
-            summary = "Accepter un devis",
-            description = "Change le statut du devis de EN_ATTENTE à ACCEPTE. " +
-                         "Vérifie que le devis n'est pas expiré et que le stock est disponible. " +
-                         "Prérequis pour conversion en facture."
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Devis accepté"),
-        @ApiResponse(responseCode = "400", description = "Erreur: devis non EN_ATTENTE, expiré ou stock insuffisant"),
-        @ApiResponse(responseCode = "404", description = "Devis non trouvé")
-    })
-    public ResponseEntity<Map<String, Object>> accepterDevis(@PathVariable Long id) {
-        log.info("PUT /api/v1/devis/{}/accepter", id);
-
-        try {
-            DevisDTO devis = devisService.accepterDevis(id);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "Devis accepté avec succès");
-            response.put("data", devis);
-            response.put("devisId", devis.getId());
-            response.put("statut", devis.getStatut());
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            log.error("❌ Erreur acceptation: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
-                    "success", false,
-                    "message", e.getMessage()
-            ));
+    @PutMapping("/{id}/accepter/{anneeid}")
+  public ResponseEntity<Map<String, Object>> accepterDevis(
+        @PathVariable Long id,
+        @PathVariable int anneeid) {
+    
+    log.info("PUT /api/v1/devis/{}/accepter/{}", id, anneeid);
+    
+    try {
+        DevisDTO devis = devisService.accepterDevis(id, anneeid);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "Devis accepté avec succès");
+        response.put("data", devis);
+        response.put("devisId", devis.getId());
+        response.put("statut", devis.getStatut());
+        
+        return ResponseEntity.ok(response);
+        
+    } catch (IllegalArgumentException e) {
+        // Erreurs métier (devis introuvable, statut invalide, etc.)
+        log.error("❌ Erreur validation acceptation devis {}: {}", id, e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+        ));
+        
+    } catch (DataIntegrityViolationException e) {
+        // Violations de contraintes BD (clé unique, FK, etc.)
+        log.error("❌ Erreur contrainte BD lors de l'acceptation du devis {}: {}", 
+                  id, e.getMessage(), e);
+        
+        String message = "Erreur d'intégrité des données";
+        if (e.getCause() instanceof ConstraintViolationException) {
+            ConstraintViolationException cve = (ConstraintViolationException) e.getCause();
+            message = "Violation de contrainte: " + cve.getConstraintName();
         }
+        
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                "success", false,
+                "message", message
+        ));
+        
+    } catch (OptimisticLockingFailureException e) {
+        // Conflit de version (modification concurrente)
+        log.error("❌ Conflit de version pour le devis {}: {}", id, e.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                "success", false,
+                "message", "Le devis a été modifié par un autre utilisateur. Veuillez réessayer."
+        ));
+        
+    } catch (TransactionSystemException e) {
+        // Erreurs transactionnelles
+        log.error("❌ Erreur transaction lors de l'acceptation du devis {}: {}", 
+                  id, e.getMessage(), e);
+        
+        // Extraire la cause racine
+        Throwable rootCause = e.getRootCause();
+        String detailMessage = rootCause != null ? rootCause.getMessage() : e.getMessage();
+        
+        log.error("Cause racine: {}", detailMessage);
+        
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "success", false,
+                "message", "Erreur lors de la sauvegarde: " + detailMessage
+        ));
+        
+    } catch (Exception e) {
+        // Toute autre exception
+        log.error("❌ Erreur inattendue lors de l'acceptation du devis {}: {}", 
+                  id, e.getMessage(), e);
+        
+        // Logger toutes les causes
+        Throwable cause = e.getCause();
+        int level = 1;
+        while (cause != null) {
+            log.error("  Cause niveau {}: {} - {}", level, 
+                      cause.getClass().getSimpleName(), cause.getMessage());
+            cause = cause.getCause();
+            level++;
+        }
+        
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "success", false,
+                "message", "Erreur interne: " + e.getMessage()
+        ));
+    }
+        
     }
 
     /**
@@ -644,8 +702,7 @@ public class DevisController {
      * GET /api/v1/devis/expiration/proches
      */
     @GetMapping("/expiration/proches")
-    @Operation(
-            summary = "Devis proches de l'expiration",
+             @Operation(   summary = "Devis proches de l'expiration",
             description = "Retourne les devis EN_ATTENTE qui expirent dans moins de 3 jours"
     )
     @ApiResponse(responseCode = "200", description = "Liste des devis")

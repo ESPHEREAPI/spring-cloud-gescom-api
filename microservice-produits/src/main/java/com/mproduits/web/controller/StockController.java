@@ -5,6 +5,8 @@
 package com.mproduits.web.controller;
 
 
+import com.mproduits.dto.ProduitDto;
+import com.mproduits.mappers.MapperDtoImpl;
 import com.mproduits.services.StockService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 import java.math.BigDecimal;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestParam;
 
 /**
@@ -30,16 +33,17 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class StockController {
     
     private final StockService stockService;
-    
+     @Autowired
+    MapperDtoImpl mapperdto;
     /**
      * Récupérer le stock total d'un produit
      * GET /api/v1/stock/produit/{produitId}
      * @param produitId
      * @return 
      */
-    @GetMapping("/produit/{produitId}")
-    public ResponseEntity<Map<String, Object>> getStockTotal(@PathVariable Long produitId) {
-        BigDecimal stock = stockService.getStockTotal(produitId);
+    @GetMapping("/produit/{produitId}/{boutiqueid}/{anneeid}")
+    public ResponseEntity<Map<String, Object>> getStockTotal(@PathVariable Long produitId,@PathVariable Long boutiqueid,@PathVariable int anneeid) {
+        BigDecimal stock = stockService.getStockTotal(produitId,boutiqueid,anneeid);
         return ResponseEntity.ok(Map.of("stock", stock));
     }
     
@@ -57,5 +61,12 @@ public class StockController {
         
         return ResponseEntity.ok(mouvements);
     }
+    @GetMapping("/produit/{articleId}/{boutiqueid}")
+    public ResponseEntity<ProduitDto>currentProduit(@PathVariable Long articleId,@PathVariable Long boutiqueid){
+        ProduitDto pdo=stockService.lastProduitForPointVente(articleId, boutiqueid);
+          return ResponseEntity.ok(pdo);
+     
+    }
+    
     
 }

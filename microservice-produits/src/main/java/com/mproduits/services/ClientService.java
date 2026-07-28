@@ -100,4 +100,6 @@ public class ClientService {
     public List<Client> allClient(){
      return clientRepository.findAll();
     }
+    
+    
 }

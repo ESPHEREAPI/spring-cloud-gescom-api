@@ -32,7 +32,7 @@ import java.util.Date;
  * @version 2.0
  */
 @Entity
-@Table(name = "versement_client", indexes = {
+@Table(name = "versement_customer", indexes = {
     @Index(name = "idx_versement_client", columnList = "client_id"),
     @Index(name = "idx_versement_facture", columnList = "facture_id"),
     @Index(name = "idx_versement_date", columnList = "date_versement DESC"),

@@ -9,6 +9,7 @@ import com.mproduits.dto.StockUpdateResponse;
 import com.mproduits.exceptions.InsufficientStockException;
 import com.mproduits.services.StockService;
 import com.mproduits.exceptions.ProductNotFoundException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @author USER01
  */
 @RestController
+@Slf4j
 @RequestMapping("/microservice-produits")
 public class StockRestController {
     
@@ -37,6 +39,7 @@ public class StockRestController {
         try {
             StockUpdateResponse response = stockService.updateStockAfterSale(
                 request.getProductId(), 
+                    request.getBoutiqueid(),
                 request.getQuantity()
             );
             return ResponseEntity.ok(response);
@@ -62,22 +65,22 @@ public class StockRestController {
         }
     }
 
-    @GetMapping("/check-availability/{productId}/{requestedQuantity}")
+    @GetMapping("/check-availability/{productId}/{requestedQuantity}/{boutiqueid}")
     public ResponseEntity<Boolean> checkStockAvailability(
             @PathVariable Long productId, 
-            @PathVariable Integer quantity) {
+            @PathVariable Integer quantity, @PathVariable Long boutiqueid) {
         try {
-            boolean available = stockService.isStockAvailable(productId, quantity);
+            boolean available = stockService.isStockAvailable(productId,boutiqueid, quantity);
             return ResponseEntity.ok(available);
         } catch (ProductNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }
 
-    @GetMapping("/current/{productId}")
-    public ResponseEntity<Integer> getCurrentStock(@PathVariable Long productId) {
+    @GetMapping("/current/{productId}/{boutiqueid}")
+    public ResponseEntity<Integer> getCurrentStock(@PathVariable Long productId,@PathVariable Long boutiqueid) {
         try {
-            Integer currentStock = stockService.getCurrentStock(productId);
+            Integer currentStock = stockService.getCurrentStock(productId,boutiqueid);
             return ResponseEntity.ok(currentStock);
         } catch (ProductNotFoundException e) {
             return ResponseEntity.notFound().build();

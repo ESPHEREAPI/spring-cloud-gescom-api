@@ -316,4 +316,130 @@ public interface CommandeRepositories extends JpaRepository<Commande, Long>{
       
     @Query("SELECT c.stockFinalTheorie  FROM Commande c WHERE c.magasinid= :depot and c.produit= :produit and c.entreprise= :e")
     Optional<BigDecimal>stockFinalDepot(@Param("depot") Magasin depot,@Param("produit") Produit produit, @Param("e") Entreprise e);
+    
+     List<Commande> findByMagasinid(Magasin magasin);
+    List<Commande> findByProduit(Produit produit);
+    
+    /**
+     * Récupère la commande la plus récente pour un produit dans un magasin
+     */
+    @Query("SELECT c FROM Commande c WHERE c.magasinid.id = :magasinId AND c.produit.id = :produitId ORDER BY c.dateReception DESC LIMIT 1")
+    Optional<Commande> findLatestCommandeByMagasinAndProduit(
+        @Param("magasinId") Long magasinId, 
+        @Param("produitId") Long produitId);
+    
+     /**
+     * Récupère les produits avec leur stock disponible dans un magasin (boutique = null)
+     * Optimisé avec une seule requête JPA
+     * 
+     * @param depotId ID du dépôt/magasin
+     * @param anneeid ID de l'année
+     * @param boutiqueid ID de la boutique
+     * @return Liste [produit.id, produit.code, produit.libelle, produit.reference, stock_final_theorie, prix_achat]
+     */
+    @Query("SELECT " +
+           "p.id, " +
+           "p.code, " +
+           "p.libelle, " +
+           "p.reference, " +
+           "pa.pointVente.stockFinalTheorie, " +
+           "pa.prixVenteNet " +
+           "FROM PrixArticles pa " +
+           "JOIN pa.pointVente.produit p " +
+           "WHERE pa.pointVente.depotId.id = :depotId " +
+           "AND pa.entreprise.entreprisePK.anneeId = :anneeid " +
+           "AND pa.pointVente.boutique.id = :boutiqueid " +
+           "AND pa.pointVente.stockFinalTheorie IS NOT NULL " +
+           "AND pa.pointVente.stockFinalTheorie > 0 " +
+           "ORDER BY p.libelle ASC")
+    List<Object[]> findProduitsWithStockByDepot(
+        @Param("depotId") Long depotId,
+        @Param("anneeid") Long anneeid,
+        @Param("boutiqueid") Long boutiqueid
+    );
+    
+        @Query("SELECT " +
+           "p.id, " +
+           "p.code, " +
+           "p.libelle, " +
+           "p.reference, " +
+           "c.stockFinalTheorie, " +
+           "c.prixAchat " +
+           "FROM Commande c " +
+           "JOIN c.produit p " +
+           "WHERE c.magasinid.id = :depotId " +
+           "AND c.entreprise.entreprisePK.anneeId = :anneeid " +
+           "AND c.magasinid.boutique IS  NULL " +
+           "AND c.stockFinalTheorie IS NOT NULL " +
+           "AND c.stockFinalTheorie > 0 " +
+           "ORDER BY p.libelle ASC")
+    List<Object[]> findProduitsWithStockByDepot(
+        @Param("depotId") Long depotId,
+        @Param("anneeid") Long anneeid
+    );
+
+    /**
+     * Récupère le stock d'un produit spécifique dans un dépôt
+     * 
+     * @param depotId ID du dépôt
+     * @param produitId ID du produit
+     * @return Stock final théorique
+     */
+    @Query("SELECT c.stockFinalTheorie " +
+           "FROM Commande c " +
+           "WHERE c.magasinid.id = :depotId " +
+           "AND c.produit.id = :produitId " +
+           "ORDER BY c.dateReception DESC")
+    Optional<BigDecimal> getStockByDepotAndProduit(
+        @Param("depotId") Long depotId,
+        @Param("produitId") Long produitId
+    );
+
+    /**
+     * Récupère les détails complets du stock depuis COMMANDE
+     * 
+     * @param depotId ID du dépôt
+     * @param produitId ID du produit
+     * @return [stockInitial, entreeProduit, sortiProduit, stockFinalTheorie, prixAchat, dateReception]
+     */
+    @Query("SELECT " +
+           "c.stockInitial, " +
+           "c.entreeProduit, " +
+           "c.sortiProduit, " +
+           "c.stockFinalTheorie, " +
+           "c.prixAchat, " +
+           "c.dateReception " +
+           "FROM Commande c " +
+           "WHERE c.magasinid.id = :depotId " +
+           "AND c.produit.id = :produitId " +
+           "ORDER BY c.dateReception DESC")
+    Object[] getStockDetailsFromCommande(
+        @Param("depotId") Long depotId,
+        @Param("produitId") Long produitId
+    );
+
+    /**
+     * Trouve la dernière commande pour un produit dans un dépôt
+     */
+    @Query("SELECT c FROM Commande c " +
+           "WHERE c.magasinid.id = :depotId " +
+           "AND c.produit.id = :produitId " +
+           "ORDER BY c.dateReception DESC")
+    Optional<Commande> findLatestByDepotAndProduit(
+        @Param("depotId") Long depotId,
+        @Param("produitId") Long produitId
+    );
+
+    /**
+     * Récupère le stock total par dépôt
+     */
+    @Query("SELECT c.magasinid.id, SUM(c.stockFinalTheorie) " +
+           "FROM Commande c " +
+           "WHERE c.entreprise.entreprisePK.anneeId = :anneeid " +
+           "AND c.magasinid.boutique.id = :boutiqueid " +
+           "GROUP BY c.magasinid.id")
+    List<Object[]> getStockTotalParDepot(
+        @Param("anneeid") Long anneeid,
+        @Param("boutiqueid") Long boutiqueid
+    );
 }

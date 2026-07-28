@@ -41,4 +41,6 @@ public class VersementSearchCriteria {
   
     private java.time.LocalDate dateDebut;
     private java.time.LocalDate dateFin;
+    private Long boutiqueid;
+    
 }

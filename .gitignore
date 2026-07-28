@@ -1,0 +1,19 @@
+# Build output
+**/target/
+**/node_modules/
+**/dist/
+
+# Logs and crash dumps
+*.log
+myapp.log*
+logs/
+
+# Local temp files
+*.tmp
+
+# Environment & secrets
+.env
+easycomp-pro
+
+# Database dumps
+backup-librairie.sql

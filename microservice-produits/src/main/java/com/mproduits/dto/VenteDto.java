@@ -23,7 +23,7 @@ public class VenteDto {
     List<Caissedto> items;
     private String typePaiement;
     BigDecimal montantTotal, montantRecu, monnaieRendue, montantNet;
-    private Client client;
+    private ClientDto client;
     BigDecimal remise;
     private String userinsert;
     private String numeroTicket;
@@ -32,5 +32,6 @@ public class VenteDto {
     private String userecom;
     private ClientOrder clientOrder;
     private long numerocommande;
+    private long boutiqueid;
 
 }

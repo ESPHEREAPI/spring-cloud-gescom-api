@@ -40,7 +40,7 @@ public class Employeur implements Serializable {
 
     @JsonIgnore
     @Lob
-    @Column(name = "Logos")
+    @Column(name = "Logos", columnDefinition = "MEDIUMBLOB")
     private byte[] logos;
 
     private static final long serialVersionUID = 1L;
@@ -62,7 +62,7 @@ public class Employeur implements Serializable {
     @Basic(optional = false)
     @Column(name = "Id")
     private Long id;
-
+  @JsonIgnore
     @JoinColumn(name = "Id", referencedColumnName = "Id", insertable = false, updatable = false)
     @OneToOne(optional = false)
     private Personne personne;

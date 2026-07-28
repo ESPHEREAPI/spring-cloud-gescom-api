@@ -1,0 +1,122 @@
+
+
+# ============================================
+# DOCKER COMPOSE - DÉVELOPPEMENT
+# Version simplifiée pour le développement
+# ============================================
+
+services:
+  # ==========================================
+  # BASE DE DONNÉES MYSQL
+  # ==========================================
+  mysql:
+    image: mysql:9.0
+    container_name: easycom-mysql-dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: easycom_db
+      MYSQL_USER: easycom
+      MYSQL_PASSWORD: easycom123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-dev-data:/var/lib/mysql
+    networks:
+      - easycom-dev-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot123"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # CONFIG SERVER
+  # ==========================================
+  config-server:
+    build:
+      context: ./backend/config-server
+      dockerfile: Dockerfile
+    container_name: easycom-config-dev
+    restart: unless-stopped
+    ports:
+      - "9101:9101"
+    volumes:
+      - ~/cloud-config-gescom:/root/cloud-config-gescom:ro
+    environment:
+      JAVA_OPTS: "-Xms128m -Xmx256m"
+    networks:
+      - easycom-dev-network
+
+  # ==========================================
+  # EUREKA SERVER
+  # ==========================================
+  eureka-server:
+    build:
+      context: ./backend/eureka-server
+      dockerfile: Dockerfile
+    container_name: easycom-eureka-dev
+    restart: unless-stopped
+    ports:
+      - "8761:8761"
+    environment:
+      JAVA_OPTS: "-Xms128m -Xmx256m"
+    networks:
+      - easycom-dev-network
+    depends_on:
+      - config-server
+
+  # ==========================================
+  # API GATEWAY
+  # ==========================================
+  gateway:
+    build:
+      context: ./backend/gateway
+      dockerfile: Dockerfile
+    container_name: easycom-gateway-dev
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      JAVA_OPTS: "-Xms256m -Xmx512m"
+    networks:
+      - easycom-dev-network
+    depends_on:
+      - config-server
+      - eureka-server
+
+  # ==========================================
+  # FRONTEND ANGULAR (Développement avec hot-reload)
+  # ==========================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: easycom-frontend-dev
+    restart: unless-stopped
+    ports:
+      - "4200:4200"
+    volumes:
+      # Monte le code source pour le hot-reload
+      - ./frontend/src:/app/src
+      - ./frontend/angular.json:/app/angular.json
+      - /app/node_modules  # Volume anonyme pour node_modules
+    networks:
+      - easycom-dev-network
+    depends_on:
+      - gateway
+
+# ==========================================
+# RÉSEAUX
+# ==========================================
+networks:
+  easycom-dev-network:
+    driver: bridge
+    name: easycom-dev-network
+
+# ==========================================
+# VOLUMES
+# ==========================================
+volumes:
+  mysql-dev-data:
+    name: easycom-mysql-dev-data

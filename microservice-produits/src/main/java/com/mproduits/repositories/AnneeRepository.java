@@ -5,7 +5,10 @@
 package com.mproduits.repositories;
 
 import com.mproduits.model.Annee;
+import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -15,4 +18,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface AnneeRepository extends JpaRepository<Annee, Integer>{
     public Annee findById(int id);
+     Optional<Annee> findByCode(String code);
+
+    @Query("SELECT a FROM Annee a ORDER BY a.code DESC")
+    List<Annee> findAllOrderByCodeDesc();
 }

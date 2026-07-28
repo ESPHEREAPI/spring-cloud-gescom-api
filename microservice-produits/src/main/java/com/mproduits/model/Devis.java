@@ -90,6 +90,10 @@ public class Devis implements Serializable {
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "date_creation", nullable = false, updatable = false)
     private Date dateCreation;
+    
+      @JoinColumn(name = "Boutiqueid", referencedColumnName = "id")
+    @ManyToOne(optional = false)
+    private Boutique boutique;
 
     @UpdateTimestamp
     @Temporal(TemporalType.TIMESTAMP)

@@ -7,7 +7,6 @@ package com.mproduits.web.controller;
 import com.mproduits.dto.MargeVenteDto;
 import com.mproduits.dto.VenteDto;
 import com.mproduits.model.Annee;
-import com.mproduits.model.Vente;
 import com.mproduits.services.HistoriqueCaisseService;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -36,40 +35,40 @@ public class HistoriqueCaisseController {
     HistoriqueCaisseService historiqueCaisseService;
 
     //recuperation des annee pour les ventes
-    @GetMapping("/{vendeur}/annees")
-    public ResponseEntity<List<Annee>> listAnnee(@PathVariable("vendeur") String vendeur) {
-        List<Annee> allAnnees = historiqueCaisseService.listeAnneeByVenteAndVendeur(vendeur);
+    @GetMapping("/{vendeur}/{boutiqueid}/annees")
+    public ResponseEntity<List<Annee>> listAnnee(@PathVariable("vendeur") String vendeur,@PathVariable("boutiqueid") Long boutiqueid) {
+        List<Annee> allAnnees = historiqueCaisseService.listeAnneeByVenteAndVendeur(vendeur,boutiqueid);
         return ResponseEntity.ok(allAnnees);
     }
     
-    @GetMapping("/annees")
-    public ResponseEntity<List<Annee>> listAnnee() {
-        List<Annee> allAnnees = historiqueCaisseService.listeAnneeByVente();
+    @GetMapping("/annees/{boutiqueid}")
+    public ResponseEntity<List<Annee>> listAnnee(@PathVariable Long boutiqueid) {
+        List<Annee> allAnnees = historiqueCaisseService.listeAnneeByVente(boutiqueid);
         return ResponseEntity.ok(allAnnees);
     }
     
-    @GetMapping("/all-dates/{anneeId}")
-    public ResponseEntity<List<Date>> listDates(@PathVariable("anneeId") Long anneeId) {
-        List<Date> allDates = historiqueCaisseService.listeDateVenteByAnnee(anneeId);
+    @GetMapping("/all-dates/{anneeId}/{boutiqueid}")
+    public ResponseEntity<List<Date>> listDates(@PathVariable("anneeId") Long anneeId,@PathVariable("boutiqueid") Long boutiqueid) {
+        List<Date> allDates = historiqueCaisseService.listeDateVenteByAnnee(anneeId,boutiqueid);
         return ResponseEntity.ok(allDates);
     }
     
     @GetMapping("/dates/{vendeur}")
-    public ResponseEntity<List<Date>> listDates(@PathVariable("vendeur") String vendeur, @RequestParam("anneeId") Long anneeid) {
-        List<Date> allDates = historiqueCaisseService.listeDateVente(anneeid, vendeur);
+    public ResponseEntity<List<Date>> listDates(@PathVariable("vendeur") String vendeur, @RequestParam("anneeId") int anneeid,@RequestParam("boutiqueid") Long boutiqueid) {
+        List<Date> allDates = historiqueCaisseService.listeDateVente(anneeid, vendeur,boutiqueid);
         return ResponseEntity.ok(allDates);
     }
      @GetMapping("/dates")
-    public ResponseEntity<List<Date>> listDatesCaisse( @RequestParam("anneeId") Long anneeid) {
-        List<Date> allDates = historiqueCaisseService.listeDateVente(anneeid);
+    public ResponseEntity<List<Date>> listDatesCaisse( @RequestParam("anneeId") int anneeid,@RequestParam("boutiqueid") Long boutiqueid) {
+        List<Date> allDates = historiqueCaisseService.listeDateVente(anneeid,boutiqueid);
         return ResponseEntity.ok(allDates);
     }
     @GetMapping("{datevente}/historique")
-    public ResponseEntity<List<VenteDto>> listDates(@PathVariable("datevente") String datevente, @RequestParam("anneeId") Long anneeid, @RequestParam("vendeur") String vendeur) {
+    public ResponseEntity<List<VenteDto>> listDates(@PathVariable("datevente") String datevente, @RequestParam("anneeId") int anneeid, @RequestParam("vendeur") String vendeur, @RequestParam("boutiqueid") Long boutiqueid) {
         try {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
             Date parsedDate = sdf.parse(datevente);
-            List<VenteDto> allventes = historiqueCaisseService.allVenteByVendeurByDate(parsedDate, anneeid, vendeur);
+            List<VenteDto> allventes = historiqueCaisseService.allVenteByVendeurByDate(parsedDate, anneeid, vendeur,boutiqueid);
             return ResponseEntity.ok(allventes);
 
             // return ResponseEntity.ok(allventes);
@@ -96,12 +95,13 @@ public class HistoriqueCaisseController {
     @GetMapping("/marge-journalier")
     public ResponseEntity<?> margeJournaliere(
             @RequestParam("dateVente") String dateVente,
-            @RequestParam("anneeId") Long anneeid) {
+            @RequestParam("anneeId") int anneeid,
+             @RequestParam("boutiqueid") Long boutiqueid) {
         try {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
             Date parsedDate = sdf.parse(dateVente);
             
-            List<MargeVenteDto> allventes = historiqueCaisseService.margeJournaliere(parsedDate, anneeid);
+            List<MargeVenteDto> allventes = historiqueCaisseService.margeJournaliere(parsedDate, anneeid,boutiqueid);
             return ResponseEntity.ok(allventes);
             
         } catch (ParseException e) {
@@ -131,19 +131,20 @@ public class HistoriqueCaisseController {
     public ResponseEntity<?> margeMensuel(
             @RequestParam("debut") String debut,
             @RequestParam("fin") String fin,
-            @RequestParam("anneeId") Long anneeId) {
+            @RequestParam("anneeId") int anneeId,
+            @RequestParam("boutiqueid") Long boutiqueid) {
         try {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
             Date parsedDebut = sdf.parse(debut);
             Date parsedFin = sdf.parse(fin);
-            
-            List<MargeVenteDto> allventes = historiqueCaisseService.margeMensuel(parsedDebut, parsedFin, anneeId);
+
+            List<MargeVenteDto> allventes = historiqueCaisseService.margeMensuel(parsedDebut, parsedFin, anneeId,boutiqueid);
             return ResponseEntity.ok(allventes);
-            
+
         } catch (ParseException e) {
             return ResponseEntity.badRequest().body("Format de date invalide. Utilisez yyyy-MM-dd.");
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Erreur serveur: " + e.getMessage()+"causse "+e.getLocalizedMessage());
+            return ResponseEntity.internalServerError().body("Erreur serveur: " + e.getMessage() + "causse " + e.getLocalizedMessage());
         }
     }
     
@@ -170,5 +171,7 @@ public class HistoriqueCaisseController {
         cal.set(Calendar.MILLISECOND, 999);
         return cal.getTime();
     }
+    
+  
   
 }

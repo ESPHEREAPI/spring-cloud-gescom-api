@@ -40,7 +40,7 @@ public interface FactureRepository extends JpaRepository<Facture, Long>, JpaSpec
      * Recherche toutes les factures d'un client donné,
      * triées par date de facture décroissante.
      */
-    List<Facture> findByClientIdOrderByDateFactureDesc(Long clientId);
+    List<Facture> findByClientIdAndBoutiqueIdOrderByDateFactureDesc(Long clientId,Long boutiqueid);
     
     List<Facture> findByNombreRelances(int NombreRelances);
     

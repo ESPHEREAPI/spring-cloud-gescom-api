@@ -200,4 +200,44 @@ public class ClientController {
     public ResponseEntity<?> getStatistics() {
         return ResponseEntity.ok(clientService.getStatistics());
     }
+    
+    
+    /**
+ * ✅ Recherche autocomplete limitée à 20 résultats
+ * GET /api/v1/clients/search-autocomplete?q=dupont&limit=20
+ */
+@GetMapping("/search-autocomplete")
+public ResponseEntity<List<ClientDto>> searchAutocomplete(
+        @RequestParam String q,
+        @RequestParam(defaultValue = "20") int limit) {
+    
+    List<Client> results = clientService.search(q);
+    
+    return ResponseEntity.ok(
+        results.stream()
+            .limit(limit)
+            .map(mapper::mapperClientByClientDto)
+            .toList()
+    );
+}
+
+/**
+ * ✅ Top 50 clients actifs pour liste initiale
+ * GET /api/v1/clients/actifs-top?limit=50
+ */
+@GetMapping("/actifs-top")
+public ResponseEntity<List<ClientDto>> getTopActifs(
+        @RequestParam(defaultValue = "50") int limit) {
+    
+    List<Client> clients = clientService.findAllByStatut("ACTIF");
+    
+    return ResponseEntity.ok(
+        clients.stream()
+            .limit(limit)
+            .map(mapper::mapperClientByClientDto)
+            .toList()
+    );
+}
+    
+    
 }

@@ -1,0 +1,3 @@
+[submodule "web/easycompro-gescom/AdminLTE-3_2_0-angular/adminlte-angular-app"]
+	path = web/easycompro-gescom/AdminLTE-3_2_0-angular/adminlte-angular-app
+	url = https://github.com/ESPHEREAPI/template-angular.git

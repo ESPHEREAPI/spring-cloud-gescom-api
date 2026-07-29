@@ -22,7 +22,7 @@ Microservices Spring Cloud : découverte de service via Eureka, configuration ce
 
 Tous les services Spring Boot tournent en Java 21 / Spring Boot 3.4.x / Spring Cloud 2024.0.1, lisent leur config au démarrage depuis le Config Server (`spring.cloud.config.uri`, codé en dur à `http://localhost:9101` dans le `bootstrap.properties`/`application.properties` de chaque module pour le dev local — Docker le surcharge via la variable d'environnement `SPRING_CLOUD_CONFIG_URI`), et s'enregistrent auprès d'Eureka.
 
-Les deux services métier (`microservice-produits`, `microservice-administration`) pointent vers la même base/schéma MySQL (`librairie`), avec `spring.jpa.hibernate.ddl-auto=update`.
+Les deux services métier (`microservice-produits`, `microservice-administration`) pointent vers la même base/schéma MySQL (`easycom_db`), avec `spring.jpa.hibernate.ddl-auto=update`.
 
 ## Commandes
 
@@ -55,7 +55,7 @@ L'ordre de démarrage compte : config-server → eureka-server → gateway → (
 - **Docker (dev, frontend en hot-reload) :** `docker-compose.dev.yml` — jeu de services plus léger (mysql, config-server, eureka, gateway, frontend sur `:4200`), mais suppose une arborescence `./backend/*` et `./frontend` qui **ne correspond pas** à la structure actuelle du dépôt (`config-serveur/`, `eureka-server/`, etc. directement à la racine) — à considérer comme obsolète/aspirationnel tant que ce n'est pas réconcilié.
 - **Sur poste Windows, à partir des JAR déjà construits :** `start.bat` — attend `config-serveur.jar`, `eureka-server.jar`, `gateway-proxy.jar`, `service-admin.jar`, `mproduits.jar` à côté de lui, et les lance séquentiellement avec des délais fixes (30s/30s/30s/5s/5s) via `java -jar`, en journalisant dans `.\logs\`.
 
-En local (hors Docker), la BDD par défaut est `jdbc:mysql://localhost:3306/librairie` avec `root` / `DeepWater@2021` (codé en dur par module dans `bootstrap.properties`, non surchargé par `.env`). Le chemin `.env` / `docker-compose.yml` utilise lui aussi par défaut `root` / `DeepWater@2021` sur `librairie` via `MYSQL_ROOT_PASSWORD`, mais exposé sur le port hôte `3307`. Ce sont deux configurations de BDD distinctes — ne pas supposer que les valeurs du `.env` s'appliquent à un lancement local (hors Docker).
+En local (hors Docker, profil `dev`), la BDD par défaut est `jdbc:mysql://localhost:3306/easycom_db` avec `root` / `DeepWater@2021`, définie dans `cloud-config-gescom/<service>-dev.properties` (pas dans le module lui-même — voir « Travailler avec le dépôt de config » ci-dessous). En profil `prod`, aucun identifiant DB n'est défini dans un fichier versionné : `docker-compose.yml` exige `MYSQL_ROOT_PASSWORD` via `.env` (pas de valeur par défaut, le démarrage échoue si absent), exposé sur le port hôte `3307`. Ce sont deux chemins de configuration distincts — ne pas supposer que les valeurs du `.env` s'appliquent à un lancement local (hors Docker).
 
 ## Travailler avec le dépôt de config
 

@@ -4,6 +4,7 @@
  */
 package sid.service_admin.repository;
 
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import sid.service_admin.model.Boutique;
 
@@ -12,5 +13,6 @@ import sid.service_admin.model.Boutique;
  * @author USER01
  */
 public interface BoutiqueRepository extends JpaRepository<Boutique, Long>{
-    
+
+    List<Boutique> findByCompagnieId(Long compagnieId);
 }

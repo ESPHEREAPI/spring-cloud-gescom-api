@@ -5,6 +5,7 @@
 package sid.service_admin.repository;
 
 import feign.Param;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -25,5 +26,11 @@ public interface PersonneRepository extends JpaRepository<Personne, Long>{
     public Personne getAuthentification(@Param("userName") String  userName, @Param("password") String  password);
      @Query("SELECT p FROM Personne p WHERE p.userName = :userName AND p.password = :password")
     Personne findByUserNameAndassword(@Param("userName") String userName, @Param("password") String password);
-    
+
+    // Hierarchie multi-compagnies
+    Optional<Personne> findFirstByRoleid_Name(String roleName);
+    List<Personne> findByRoleid_Name(String roleName);
+    List<Personne> findByCompagnie_Id(Long compagnieId);
+    long countByCompagnie_Id(Long compagnieId);
+    List<Personne> findByRoleid_NameAndCreatedBy(String roleName, String createdBy);
 }

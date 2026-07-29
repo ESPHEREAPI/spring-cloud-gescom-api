@@ -28,7 +28,8 @@ import sid.service_admin.model.Menu;
 import sid.service_admin.model.Modulesecurite;
 import sid.service_admin.model.Personne;
 import sid.service_admin.model.Profil;
-import sid.service_admin.utils.JwtExpiration;
+import sid.service_admin.security.JwtService;
+import sid.service_admin.service.AuditAccessService;
 
 /**
  *
@@ -41,6 +42,10 @@ public class MapperDtoImpl {
     ApplicationPropertiesConfiguration properties;
     @Autowired
     RolePermissionsRepositorie rolePermissionsRepositorie;
+    @Autowired
+    JwtService jwtService;
+    @Autowired
+    AuditAccessService auditAccessService;
 
     public UserDTO mapToDTO(Personne user) {
         UserDTO userDTO = new UserDTO();
@@ -51,10 +56,18 @@ public class MapperDtoImpl {
         if (user.getRoleid() != null && user.getRoleid().getId() != null) {
             userDTO.setRoleid(user.getRoleid().getId());
             userDTO.setRole(mapRoleToDTO(user.getRoleid()));
+        }
+        // profil est optionnel (les comptes de la hierarchie admin n'en ont pas)
+        if (user.getProfilid() != null) {
             userDTO.setProfil(mapToDTOProfil(user.getProfilid()));
         }
-        System.out.println("userDto :"+userDTO.toString() );
-      userDTO.setBoutiqueid(user.getBoutique().getId());
+        // boutique/compagnie sont optionnels (les admins systeme n'ont ni l'un ni l'autre)
+        if (user.getBoutique() != null) {
+            userDTO.setBoutiqueid(user.getBoutique().getId());
+        }
+        if (user.getCompagnie() != null) {
+            userDTO.setCompagnieId(user.getCompagnie().getId());
+        }
         return userDTO;
     }
 
@@ -116,7 +129,7 @@ public class MapperDtoImpl {
     public UserSessionDTO mapUserSessionDTOByuserDTO(UserDTO userDTO) {
         UserSessionDTO userSessionDTO = new UserSessionDTO();
         userSessionDTO.setUsersDTO(userDTO);
-        userSessionDTO.setExpiresAt(JwtExpiration.expiresAt(properties.getJwtExpirationMs()));
+        userSessionDTO.setExpiresAt(jwtService.expiresAt(properties.getJwtExpirationMs()));
         List<String> permission = Optional
                 .ofNullable(rolePermissionsRepositorie.listePermissionsByRoles(userDTO.getRoleid()))
                 .orElse(Collections.emptyList())
@@ -124,7 +137,9 @@ public class MapperDtoImpl {
                 .map(per -> per.getName())
                 .collect(Collectors.toList());
         userSessionDTO.setPermissions(permission);
-        userSessionDTO.setToken(JwtExpiration.generateJwtToken(userSessionDTO.getUsersDTO().getUserName(), userSessionDTO.getExpiresAt()));
+        String roleName = userDTO.getRole() != null ? userDTO.getRole().getName() : null;
+        userSessionDTO.setToken(jwtService.generateToken(userDTO.getUserName(), userDTO.getCompagnieId(), roleName, userSessionDTO.getExpiresAt()));
+        userSessionDTO.setHasAuditAccess(auditAccessService.hasAuditAccess(userDTO.getUserName()));
 
         return userSessionDTO;
     }

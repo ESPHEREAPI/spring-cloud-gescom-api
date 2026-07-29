@@ -6,7 +6,6 @@ package sid.service_admin.service;
 
 import java.util.Collection;
 import java.util.List;
-import sid.service_admin.dto.UserDTO;
 import sid.service_admin.model.Menu;
 import sid.service_admin.model.Modulesecurite;
 import sid.service_admin.model.Pays;
@@ -35,10 +34,6 @@ public interface InitDB {
     public List<Roles> createRoles();
 
     public List<Permission> createPermission();
-
-    //public UserDTO createAdmin();
-
-    public UserDTO getAdmin();
 
 //     public Collection<Regime> getAllRegime();
 //     public Collection<Jour> getAllJour();

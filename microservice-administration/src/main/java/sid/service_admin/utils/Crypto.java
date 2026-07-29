@@ -59,11 +59,4 @@ public static String sha256(String base) {
             return null;
         }
     }
-    public static void main(String[] args){
-        
-        String texte="admin";
-        System.out.println(Crypto.sha256(texte));
-         //System.out.println(new Crypto().cryptoMD5(texte));
-        
-    }
 }

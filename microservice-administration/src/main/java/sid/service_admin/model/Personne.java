@@ -187,10 +187,16 @@ public class Personne implements Serializable {
     private Date lastModifiedDate;
 
       @JoinColumn(name = "Boutiqueid", referencedColumnName = "Id")
-    @ManyToOne(optional = false)
+    @ManyToOne(optional = true)
     //@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Boutique boutique;
-    
+
+    // null = administrateur systeme (super-admin ou admin systeme), renseigne = administrateur/utilisateur de compagnie
+    @JoinColumn(name = "Compagnieid", referencedColumnName = "Id")
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "personneList"})
+    private Compagnie compagnie;
+
 
     public Personne(String userName) {
 

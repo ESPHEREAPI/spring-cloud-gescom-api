@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sid.service_admin.repository.RoleRepository;
@@ -30,6 +31,7 @@ import sid.service_admin.dto.UserUpdateDTO;
 import sid.service_admin.exceptions.ResourceNotFoundException;
 import sid.service_admin.mapper.MapperDtoImpl;
 import sid.service_admin.model.Boutique;
+import sid.service_admin.model.Compagnie;
 import sid.service_admin.model.Indicatifpays;
 import sid.service_admin.model.Menu;
 import sid.service_admin.model.Modulesecurite;
@@ -43,6 +45,7 @@ import sid.service_admin.model.UsermodulePK;
 import sid.service_admin.repository.IndicatifpaysRepository;
 import sid.service_admin.repository.MenuRepository;
 
+import sid.service_admin.repository.CompagnieRepository;
 import sid.service_admin.repository.PaysRepository;
 import sid.service_admin.repository.PersonneRepository;
 import sid.service_admin.repository.ProfilRepository;
@@ -73,12 +76,12 @@ public class UserService implements Serializable {
     private IndicatifpaysRepository indicatifpaysRepository;
     private UsermoduleRepository usermoduleRepository;
     private UsermenuRepository usermenuRepository;
- 
+    private CompagnieRepository compagnieRepository;
+    private LicenceService licenceService;
 
     private ISecurite securiteService;
 
-//    @Autowired
-//    private PasswordEncoder passwordEncoder;
+    private PasswordEncoder passwordEncoder;
     //@Autowired
     MapperDtoImpl mapToDTO;
 
@@ -97,15 +100,29 @@ public class UserService implements Serializable {
     }
 
     @Transactional
-    public UserDTO createUser(UserCreateDTO userCreateDTO) {
+    public UserDTO createUser(UserCreateDTO userCreateDTO, String actorUsername) {
 
         Personne user = null;
         if (personneRepository.existsByEmail(userCreateDTO.getEmail()) == Boolean.FALSE && personneRepository.findByUserName(userCreateDTO.getUserName()).isEmpty()) {
+
+            // Rattachement compagnie : explicite (SUPER_ADMIN/SYSTEM_ADMIN ciblant une
+            // compagnie precise) sinon herite de la compagnie de l'acteur (cas
+            // COMPANY_ADMIN creant un employe). null = compte systeme, pas de quota.
+            Long compagnieId = userCreateDTO.getCompagnieId();
+            if (compagnieId == null && actorUsername != null) {
+                compagnieId = personneRepository.findByUserName(actorUsername)
+                        .map(Personne::getCompagnie)
+                        .map(Compagnie::getId)
+                        .orElse(null);
+            }
+            if (compagnieId != null) {
+                licenceService.verifierQuotaUtilisateurs(compagnieId);
+            }
+
             user = new Personne();
             user = mapToDTO.mapToDTOUserCreate(userCreateDTO);
 
-            String currentUsername = userCreateDTO.getCreatedBy();
-            user.setCreatedBy(currentUsername == null ? "Systeme" : currentUsername);
+            user.setCreatedBy(actorUsername == null ? "Systeme" : actorUsername);
             user.setCreatedAt(new java.util.Date());
             Optional<Roles> role = roleRepository.findById(userCreateDTO.getRoleid());
             if (role.isPresent()) {
@@ -116,13 +133,17 @@ public class UserService implements Serializable {
                 user.setProfilid(profil.get());
 
             }
+            if (compagnieId != null) {
+                Long finalCompagnieId = compagnieId;
+                user.setCompagnie(compagnieRepository.findById(finalCompagnieId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Compagnie non trouvee : " + finalCompagnieId)));
+            }
 
 //            user.setBp(userCreateDTO.getAdresse().getBp());
 //            user.setEmail(userCreateDTO.getAdresse().getEmail());
 //            user.setIndicatifPays(userCreateDTO.getAdresse().getIndicatifPays());
 //            user.setPhoneNumber(userCreateDTO.getAdresse().getTel());
-            String pwd = Crypto.sha256(userCreateDTO.getPassword());
-            user.setPassword(pwd);
+            user.setPassword(passwordEncoder.encode(userCreateDTO.getPassword()));
             user.setBoutique(userCreateDTO.getBoutique());
             Personne savedUser = personneRepository.save(user);
 //        roles.stream()
@@ -180,7 +201,7 @@ public class UserService implements Serializable {
 
     @Transactional
     public UserDTO updateUserDataAndPassWord(Long id, UserUpdateDTO userUpdateDTO) {
-        String pwd = Crypto.sha256(userUpdateDTO.getPassword());
+        String pwd = passwordEncoder.encode(userUpdateDTO.getPassword());
 
         Personne user = personneRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
@@ -201,15 +222,17 @@ public class UserService implements Serializable {
         user.setLastModifiedDate(new java.util.Date());
         user.setPassword(pwd);
 
-        // mise a jour du role et profile
-        if (user.getRoleid() == null || user.getRoleid().getId().equals(userUpdateDTO.getRoleid()) == Boolean.FALSE) {
+        // mise a jour du role et profile (profil optionnel pour les comptes de la hierarchie admin)
+        if (userUpdateDTO.getRoleid() != null
+                && (user.getRoleid() == null || user.getRoleid().getId().equals(userUpdateDTO.getRoleid()) == Boolean.FALSE)) {
             Roles role = roleRepository.findById(userUpdateDTO.getRoleid())
                     .orElseThrow(() -> new ResourceNotFoundException("Role not found with id: " + userUpdateDTO.getRoleid()));
             user.setRoleid(role);
         }
-        if (user.getProfilid() == null || user.getProfilid().getId().equals(userUpdateDTO.getProfilid()) == Boolean.FALSE) {
+        if (userUpdateDTO.getProfilid() != null
+                && (user.getProfilid() == null || user.getProfilid().getId().equals(userUpdateDTO.getProfilid()) == Boolean.FALSE)) {
             Profil profil = profilRepository.findById(userUpdateDTO.getProfilid())
-                    .orElseThrow(() -> new ResourceNotFoundException("Profil not found with id: " + userUpdateDTO.getRoleid()));
+                    .orElseThrow(() -> new ResourceNotFoundException("Profil not found with id: " + userUpdateDTO.getProfilid()));
             user.setProfilid(profil);
         }
 
@@ -250,17 +273,30 @@ public class UserService implements Serializable {
             return userDTO;
 
         }
-        String pwd = Crypto.sha256(loginRequest.getPassWord());
+        user = userEntite.get();
+        boolean passwordMatches;
+        String storedHash = user.getPassword();
+        if (storedHash != null && storedHash.startsWith("$2")) {
+            // hash BCrypt (deja migre)
+            passwordMatches = passwordEncoder.matches(loginRequest.getPassWord(), storedHash);
+        } else {
+            // ancien hash SHA-256 non sale : verifie avec l'ancien algorithme, puis
+            // migre transparement vers BCrypt si le mot de passe est correct
+            passwordMatches = storedHash != null && storedHash.equals(Crypto.sha256(loginRequest.getPassWord()));
+            if (passwordMatches) {
+                user.setPassword(passwordEncoder.encode(loginRequest.getPassWord()));
+                personneRepository.save(user);
+            }
+        }
 
-        user = personneRepository.getAuthentification(loginRequest.getUserName(), pwd);
-        if (user == null || user.getId() == null) {
+        if (!passwordMatches) {
             userDTO = new UserDTO();
             userDTO.setEcheck_connection(Boolean.TRUE);
             userDTO.setMessageEcheck("User or PassWord Not Correct...");
             // throw new ResourceNotFoundException("User not Exist : " + loginRequest.getUserName());
             return userDTO;
             //  throw new ResourceNotFoundException("User or PassWord Not Correct...");
-        } else if (user != null && user.getId() != null && user.getIsActive() == Boolean.FALSE) {
+        } else if (user.getIsActive() == Boolean.FALSE) {
             userDTO = new UserDTO();
             userDTO.setEcheck_connection(Boolean.TRUE);
             userDTO.setMessageEcheck("The User is Not Active please Contact your Administrator..." + loginRequest.getUserName());

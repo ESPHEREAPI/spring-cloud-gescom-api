@@ -19,6 +19,6 @@ public class UserSessionDTO {
     private String token;
     private List<String> permissions;
     private Date expiresAt;
-      private int anneeid;
-;
+    private int anneeid;
+    private boolean hasAuditAccess;
 }

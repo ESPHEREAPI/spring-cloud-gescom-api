@@ -92,6 +92,18 @@ public class GlobalExceptionHandler {
                 .body(errorResponse);
     }
     
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ErrorDetails> handleBadRequestException(BadRequestException ex) {
+        ErrorDetails errorDetails = new ErrorDetails(LocalDateTime.now(), ex.getMessage(), "", HttpStatus.BAD_REQUEST.value());
+        return new ResponseEntity<>(errorDetails, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ErrorDetails> handleConflictException(ConflictException ex) {
+        ErrorDetails errorDetails = new ErrorDetails(LocalDateTime.now(), ex.getMessage(), "", HttpStatus.CONFLICT.value());
+        return new ResponseEntity<>(errorDetails, HttpStatus.CONFLICT);
+    }
+
     /**
      * Gestion générique des autres exceptions
      */

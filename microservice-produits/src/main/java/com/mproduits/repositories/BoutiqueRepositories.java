@@ -24,4 +24,6 @@ public interface BoutiqueRepositories extends JpaRepository<Boutique, Long>{
            "LOWER(b.nom) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(b.quartier) LIKE LOWER(CONCAT('%', :search, '%'))")
     Page<Boutique> findBySearch(@Param("search") String search, Pageable pageable);
+
+    long countByCompagnieId(Long compagnieId);
 }

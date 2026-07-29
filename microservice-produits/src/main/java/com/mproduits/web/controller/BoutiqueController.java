@@ -49,8 +49,9 @@ public class BoutiqueController {
     }
     
     @PostMapping
-    public ResponseEntity<Boutique> createBoutique(@RequestBody Boutique boutique) {
-        Boutique savedBoutique = boutiqueService.save(boutique);
+    public ResponseEntity<Boutique> createBoutique(@RequestBody Boutique boutique,
+            @RequestAttribute(required = false) Long compagnieId) {
+        Boutique savedBoutique = boutiqueService.createForCompagnie(boutique, compagnieId);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedBoutique);
     }
     

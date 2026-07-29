@@ -7,7 +7,7 @@ REM  (JAR deja construits = scenario de deploiement).
 REM  Variables d'environnement Windows a definir AVANT d'executer
 REM  ce script - elles ne sont JAMAIS codees en dur ici :
 REM    SPRING_CLOUD_CONFIG_URI     (optionnel, defaut http://localhost:9101)
-REM    SPRING_DATASOURCE_URL       (ex: jdbc:mysql://localhost:3306/librairie?...)
+REM    SPRING_DATASOURCE_URL       (ex: jdbc:mysql://localhost:3306/easycom_db?...)
 REM    SPRING_DATASOURCE_USERNAME
 REM    SPRING_DATASOURCE_PASSWORD
 REM    APP_JWTSECRET               (secret JWT du service-admin)

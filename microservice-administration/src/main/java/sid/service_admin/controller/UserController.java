@@ -11,7 +11,8 @@ package sid.service_admin.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-//import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -48,34 +49,33 @@ public class UserController {
     private PersonneRepository personneRepository;
 
     @GetMapping("/users/all")
-    //@PreAuthorize("hasRole('ADMIN') or hasPermission('USER_READ')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','SYSTEM_ADMIN','COMPANY_ADMIN')")
     public ResponseEntity<List<UserDTO>> getAllUsers() {
         List<UserDTO> users = userService.getAllUsers();
         return new ResponseEntity<>(users, HttpStatus.OK);
     }
 
     @GetMapping("/users/{id}")
-    //@PreAuthorize("hasRole('ADMIN') or hasPermission('USER_READ')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','SYSTEM_ADMIN','COMPANY_ADMIN')")
     public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
         UserDTO user = userService.getUserById(id);
         return new ResponseEntity<>(user, HttpStatus.OK);
     }
 
     @DeleteMapping("/users/{id}")
-    //@PreAuthorize("hasRole('ADMIN') or hasPermission('USER_DELETE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','SYSTEM_ADMIN','COMPANY_ADMIN')")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
-    @DeleteMapping("/users/{userName}")
-    //@PreAuthorize("hasRole('ADMIN') or hasPermission('USER_DELETE')")
+    @DeleteMapping("/users/by-username/{userName}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','SYSTEM_ADMIN','COMPANY_ADMIN')")
     public ResponseEntity<Void> deleteUser(@PathVariable String userName) {
         userService.deleteUser(userName);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
      @GetMapping("/users/check/{username}")
-    //@PreAuthorize("hasRole('ADMIN') or hasPermission('USER_DELETE')")
     public ResponseEntity<Boolean> userexiste(@PathVariable String username) {
        Boolean resultat= userService.userExist(username);
         return new ResponseEntity<>(resultat,HttpStatus.OK);
@@ -84,9 +84,10 @@ public class UserController {
     @PostMapping(value = "/users/register",
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
-    public UserDTO registerUser(@RequestBody UserCreateDTO userCreateDTO) {
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','SYSTEM_ADMIN','COMPANY_ADMIN')")
+    public UserDTO registerUser(@RequestBody UserCreateDTO userCreateDTO, Authentication authentication) {
         System.out.println("" + userCreateDTO);
-        UserDTO user = userService.createUser(userCreateDTO);
+        UserDTO user = userService.createUser(userCreateDTO, authentication.getName());
         //return ResponseEntity.ok(user);
         // return new ResponseEntity<>(user, HttpStatus.OK);
         return user;

@@ -10,8 +10,8 @@ package sid.service_admin.exceptions;
  */
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-//import org.springframework.security.access.AccessDeniedException;
-//import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -62,31 +62,31 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorDetails, HttpStatus.CONFLICT);
     }
     
-//    @ExceptionHandler(BadCredentialsException.class)
-//    public ResponseEntity<ErrorDetails> handleBadCredentialsException(
-//            BadCredentialsException ex, WebRequest request) {
-//        
-//        ErrorDetails errorDetails = new ErrorDetails(
-//                LocalDateTime.now(),
-//                "Identifiants incorrects",
-//                request.getDescription(false),
-//                HttpStatus.UNAUTHORIZED.value());
-//        
-//        return new ResponseEntity<>(errorDetails, HttpStatus.UNAUTHORIZED);
-//    }
-//    
-//     @ExceptionHandler(AccessDeniedException.class)
-//    public ResponseEntity<ErrorDetails> handleAccessDeniedException(
-//            AccessDeniedException ex, WebRequest request) {
-//        
-//        ErrorDetails errorDetails = new ErrorDetails(
-//                LocalDateTime.now(),
-//                "Vous n'avez pas les droits nécessaires pour accéder à cette ressource",
-//                request.getDescription(false),
-//                HttpStatus.FORBIDDEN.value());
-//        
-//        return new ResponseEntity<>(errorDetails, HttpStatus.FORBIDDEN);
-//    }
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ErrorDetails> handleBadCredentialsException(
+            BadCredentialsException ex, WebRequest request) {
+
+        ErrorDetails errorDetails = new ErrorDetails(
+                LocalDateTime.now(),
+                "Identifiants incorrects",
+                request.getDescription(false),
+                HttpStatus.UNAUTHORIZED.value());
+
+        return new ResponseEntity<>(errorDetails, HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorDetails> handleAccessDeniedException(
+            AccessDeniedException ex, WebRequest request) {
+
+        ErrorDetails errorDetails = new ErrorDetails(
+                LocalDateTime.now(),
+                "Vous n'avez pas les droits nécessaires pour accéder à cette ressource",
+                request.getDescription(false),
+                HttpStatus.FORBIDDEN.value());
+
+        return new ResponseEntity<>(errorDetails, HttpStatus.FORBIDDEN);
+    }
     
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Object> handleMethodArgumentNotValidException(

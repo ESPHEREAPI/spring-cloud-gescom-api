@@ -12,7 +12,7 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Definissez MYSQL_ROOT_PASSWORD dans .env}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-librairie}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-easycom_db}
     ports:
       - "3307:3306"
     volumes:
@@ -124,9 +124,12 @@ services:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_CLOUD_CONFIG_URI: http://config-server:9101
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/librairie?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/easycom_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      APP_JWTSECRET: ${APP_JWTSECRET:?Definissez APP_JWTSECRET dans .env}
+      APP_INTERNAL_SERVICE_SECRET: ${APP_INTERNAL_SERVICE_SECRET:?Definissez APP_INTERNAL_SERVICE_SECRET dans .env}
+      APP_LICENCE_ADMIN_BASE_URL: http://microservice-admin:9008
     networks:
       - easycom-network
     depends_on:
@@ -161,10 +164,12 @@ services:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_CLOUD_CONFIG_URI: http://config-server:9101
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/librairie?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/easycom_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       APP_JWTSECRET: ${APP_JWTSECRET:?Definissez APP_JWTSECRET dans .env}
+      APP_INTERNAL_SERVICE_SECRET: ${APP_INTERNAL_SERVICE_SECRET:?Definissez APP_INTERNAL_SERVICE_SECRET dans .env}
+      APP_LICENCE_RSA_PRIVATE_KEY: ${APP_LICENCE_RSA_PRIVATE_KEY:?Definissez APP_LICENCE_RSA_PRIVATE_KEY dans .env}
     networks:
       - easycom-network
     depends_on:

@@ -65,7 +65,13 @@ public class Boutique implements Serializable {
     @JoinColumn(name = "Villeid", referencedColumnName = "id")
     @ManyToOne
     private Ville ville;
-    
+
+    // Rattachement compagnie pour le quota de licence (max boutiques) - doit
+    // correspondre exactement a la colonne ajoutee dans la copie de cette
+    // entite cote microservice-produits (meme table physique partagee).
+    @Column(name = "compagnie_id")
+    private Long compagnieId;
+
 
     public Boutique() {
     }
@@ -140,7 +146,15 @@ public class Boutique implements Serializable {
         this.ville = villeid;
     }
 
-   
+    public Long getCompagnieId() {
+        return compagnieId;
+    }
+
+    public void setCompagnieId(Long compagnieId) {
+        this.compagnieId = compagnieId;
+    }
+
+
 
     @Override
     public int hashCode() {

@@ -6,7 +6,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.context.annotation.Bean;
-import sid.service_admin.repository.PersonneRepository;
 import sid.service_admin.service.InitiationDb;
 
 @SpringBootApplication
@@ -19,12 +18,8 @@ public class ServiceAdminApplication {
     }
 
     @Bean
-    CommandLineRunner start(InitiationDb initiationDb,PersonneRepository personneRepository) {
+    CommandLineRunner start(InitiationDb initiationDb) {
        return args -> {
-
-            //creation d un utilisateur admin
-            //initiationDb.createPermission();
-           // initiationDb.createRoles();
             initiationDb.addIndicatifPays();
             initiationDb.getAllPays();
             initiationDb.getAllReligions();
@@ -34,10 +29,6 @@ public class ServiceAdminApplication {
             initiationDb.getMenuByModulePhotocopie();
             initiationDb.getMenuByModuleStock();
             initiationDb.getMenuByModuleVente();
-           // if (personneRepository.findByUserName("admin").isPresent()==Boolean.FALSE) {
-              // initiationDb.getAdmin(); 
-           //}
-           
         };
     }
     

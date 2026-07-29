@@ -38,4 +38,7 @@ public class UserCreateDTO {
     private Long profilid;
     private Boutique boutique;
 
+    /** Optionnel : si absent, l'utilisateur cree herite de la compagnie de l'acteur (cas COMPANY_ADMIN). */
+    private Long compagnieId;
+
 }

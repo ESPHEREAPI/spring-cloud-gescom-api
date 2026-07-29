@@ -77,6 +77,12 @@ public class Boutique implements Serializable {
     @OneToMany(mappedBy = "boutique")
     private Collection<PointVente> pointventeCollection;
 
+    // Rattachement compagnie pour le quota de licence (max boutiques) - doit
+    // correspondre exactement a la colonne ajoutee dans la copie de cette
+    // entite cote microservice-administration (meme table physique partagee).
+    @Column(name = "compagnie_id")
+    private Long compagnieId;
+
     public Boutique() {
     }
 
@@ -170,6 +176,14 @@ public class Boutique implements Serializable {
 
     public void setPointventeCollection(Collection<PointVente> pointventeCollection) {
         this.pointventeCollection = pointventeCollection;
+    }
+
+    public Long getCompagnieId() {
+        return compagnieId;
+    }
+
+    public void setCompagnieId(Long compagnieId) {
+        this.compagnieId = compagnieId;
     }
 
     @Override

@@ -1,8 +1,11 @@
 package com.mproduits.services;
 
 
+import com.mproduits.exceptions.ConflictException;
 import com.mproduits.model.Boutique;
 import com.mproduits.repositories.BoutiqueRepositories;
+import com.mproduits.security.LicenceCheckResult;
+import com.mproduits.security.LicenceStatusService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,9 +19,27 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Transactional
 public class BoutiqueService {
-    
+
     private final BoutiqueRepositories boutiqueRepository;
-    
+    private final LicenceStatusService licenceStatusService;
+
+    /**
+     * compagnieId vient de l'attribut de requete pose par JwtAuthFilter (claim
+     * du token de l'utilisateur qui cree la boutique) - jamais du corps de la
+     * requete, pour ne pas laisser un client choisir la compagnie ciblee.
+     */
+    public Boutique createForCompagnie(Boutique boutique, Long compagnieId) {
+        if (compagnieId != null) {
+            LicenceCheckResult result = licenceStatusService.check(compagnieId);
+            Integer maxBoutiques = result.getStatut() != null ? result.getStatut().getMaxBoutiques() : null;
+            if (maxBoutiques != null && boutiqueRepository.countByCompagnieId(compagnieId) >= maxBoutiques) {
+                throw new ConflictException("Quota de boutiques atteint pour cette compagnie (max " + maxBoutiques + ")");
+            }
+            boutique.setCompagnieId(compagnieId);
+        }
+        return boutiqueRepository.save(boutique);
+    }
+
     public Page<Boutique> findAll(Pageable pageable, String search) {
         if (search != null && !search.isEmpty()) {
             return boutiqueRepository.findBySearch(search, pageable);
@@ -32,10 +53,6 @@ public class BoutiqueService {
     
     public Optional<Boutique> findById(Long id) {
         return boutiqueRepository.findById(id);
-    }
-    
-    public Boutique save(Boutique boutique) {
-        return boutiqueRepository.save(boutique);
     }
     
     public Boutique update(Long id, Boutique boutique) {

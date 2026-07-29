@@ -38,6 +38,8 @@ public class UserDTO {
   
     private Long boutiqueid;
 
+    private Long compagnieId;
+
     private Boolean autorisationDeletes;
 
 }

@@ -13,6 +13,8 @@ import java.util.Date;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import sid.service_admin.dto.LoginRequest;
@@ -70,9 +72,11 @@ public class AuthController {
        
         Mois mois = moisRepositories.findOneByAnneeAndNumero(dateCurent, nombre);
         Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
-       userSessionDTO.setAnneeid(e.getAnnee().getId());
+        if (e != null) {
+            userSessionDTO.setAnneeid(e.getAnnee().getId());
+            session.setAttribute("entreprise", e);
+        }
         session.setAttribute("mois", mois);
-        session.setAttribute("entreprise", e); // si nécessaire
         return ResponseEntity.ok(userSessionDTO);
 
     }
@@ -84,18 +88,21 @@ public class AuthController {
     }
 
     @PostMapping("/auth/register")
-    public ResponseEntity<?> registerUser(@RequestBody UserCreateDTO userCreateDTO) {
-        UserDTO user = userService.createUser(userCreateDTO);
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','SYSTEM_ADMIN','COMPANY_ADMIN')")
+    public ResponseEntity<?> registerUser(@RequestBody UserCreateDTO userCreateDTO, Authentication authentication) {
+        UserDTO user = userService.createUser(userCreateDTO, authentication.getName());
         return ResponseEntity.ok(user);
     }
 
     @GetMapping("/all-users")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','SYSTEM_ADMIN','COMPANY_ADMIN')")
     public List<UserDTO> allUers() {
         List<UserDTO> allUsersList = userService.getAllUsers();
         return allUsersList;
     }
-    
+
     @GetMapping("/all-boutiques")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','SYSTEM_ADMIN','COMPANY_ADMIN')")
     public ResponseEntity<List<Boutique>> allBoutiques(){
         List<Boutique>boutiques=boutiqueRepository.findAll();
            return ResponseEntity.ok(boutiques);

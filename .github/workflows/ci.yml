@@ -1,0 +1,87 @@
+name: CI
+
+# Se declenche a chaque push et pull request vers main : valide que chaque
+# module backend compile et que le frontend Angular compile + passe ses tests
+# unitaires. Ne deploie rien (pas de serveur cible pour l'instant) - c'est une
+# premiere brique (integration continue), la partie deploiement viendra
+# s'ajouter separement une fois un serveur disponible.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend - ${{ matrix.module }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Chaque module a son propre pom.xml independant (pas de POM parent/
+        # reactor) - voir CLAUDE.md. mexpedition/microservice-expedition est
+        # volontairement absent : squelette non branche dans le systeme reel.
+        module:
+          - config-serveur
+          - eureka-server
+          - gateway-proxy
+          - microservice-administration
+          - microservice-produits
+    steps:
+      - name: Recuperer le code (avec les sous-modules git)
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Configurer Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: ${{ matrix.module }}/pom.xml
+
+      - name: Rendre mvnw executable
+        # mvnw est commite depuis Windows (bit executable jamais positionne) -
+        # necessaire sur les runners Linux, sinon "Permission denied".
+        working-directory: ${{ matrix.module }}
+        run: chmod +x mvnw
+
+      - name: Compiler (tests desactives - voir note ci-dessous)
+        working-directory: ${{ matrix.module }}
+        run: ./mvnw --batch-mode --no-transfer-progress clean package -DskipTests
+        # Note : microservice-administration et microservice-produits n'ont
+        # aucun test aujourd'hui ; config-serveur/eureka-server/gateway-proxy
+        # n'ont que le test "contextLoads" genere par defaut, qui demarre tout
+        # le contexte Spring et suppose une infra live (MySQL, config-server,
+        # Eureka) non disponible ici. Activer les tests en CI est une suite
+        # logique une fois de vrais tests ecrits (voir Testcontainers pour
+        # une base MySQL ephemere plutot que -DskipTests).
+
+  frontend:
+    name: Frontend Angular
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web/easycompro-gescom/AdminLTE-3_2_0-angular/adminlte-angular-app
+    steps:
+      - name: Recuperer le code (avec les sous-modules git)
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Configurer Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: web/easycompro-gescom/AdminLTE-3_2_0-angular/adminlte-angular-app/package-lock.json
+
+      - name: Installer les dependances (npm ci, reproductible)
+        run: npm ci
+
+      - name: Tests unitaires (Karma/Jasmine, Chrome headless)
+        run: npm test -- --watch=false --browsers=ChromeHeadless
+
+      - name: Build de production
+        run: npm run build

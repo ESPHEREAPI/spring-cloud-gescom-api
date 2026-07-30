@@ -1,45 +1,101 @@
-2026-07-29 00:31:37.749 [ProduitHikariPool housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - ProduitHikariPool - Thread starvation or clock leap detected (housekeeper delta=7h17m49s122ms916µs400ns).
-2026-07-29 02:00:35.423 [ProduitHikariPool housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - ProduitHikariPool - Thread starvation or clock leap detected (housekeeper delta=59m3s947ms829µs800ns).
-2026-07-29 07:39:28.166 [ProduitHikariPool housekeeper] WARN  com.zaxxer.hikari.pool.HikariPool - ProduitHikariPool - Thread starvation or clock leap detected (housekeeper delta=5h8m59s71ms388µs).
-2026-07-29 11:42:34.597 [main] INFO  com.mproduits.MproduitsApplication - Starting MproduitsApplication using Java 21.0.1 with PID 30700 (E:\ProjetSpringBoot\spring-cloud-gescom-api\microservice-produits\target\classes started by USER01 in E:\ProjetSpringBoot\spring-cloud-gescom-api\microservice-produits)
-2026-07-29 11:42:34.599 [main] DEBUG com.mproduits.MproduitsApplication - Running with Spring Boot v3.4.3, Spring v6.2.3
-2026-07-29 11:42:34.600 [main] INFO  com.mproduits.MproduitsApplication - The following 1 profile is active: "dev"
-2026-07-29 11:42:34.647 [main] INFO  o.s.c.c.c.ConfigServerConfigDataLoader - Fetching config from server at : http://localhost:9101
-2026-07-29 11:42:34.648 [main] INFO  o.s.c.c.c.ConfigServerConfigDataLoader - Located environment: name=microservice-produits, profiles=[default], label=null, version=f6b52a0420b8964066a1fe85c379ab8c585ce0a4, state=
-2026-07-29 11:42:34.648 [main] INFO  o.s.c.c.c.ConfigServerConfigDataLoader - Fetching config from server at : http://localhost:9101
-2026-07-29 11:42:34.648 [main] INFO  o.s.c.c.c.ConfigServerConfigDataLoader - Located environment: name=microservice-produits, profiles=[dev], label=null, version=f6b52a0420b8964066a1fe85c379ab8c585ce0a4, state=
-2026-07-29 11:42:36.331 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
-2026-07-29 11:42:36.737 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 396 ms. Found 56 JPA repository interfaces.
-2026-07-29 11:42:37.172 [main] INFO  o.s.cloud.context.scope.GenericScope - BeanFactory id=49190173-7fa2-3856-bc28-281e947c8ad3
-2026-07-29 11:42:37.973 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port 9001 (http)
-2026-07-29 11:42:38.079 [main] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 3430 ms
-2026-07-29 11:42:38.728 [main] ERROR o.s.b.w.e.tomcat.TomcatStarter - Error starting Tomcat context. Exception: org.springframework.beans.factory.UnsatisfiedDependencyException. Message: Error creating bean with name 'jwtAuthFilter': Unsatisfied dependency expressed through field 'jwtService': Error creating bean with name 'jwtService': Injection of autowired dependencies failed
-2026-07-29 11:42:38.769 [main] WARN  o.s.b.w.s.c.AnnotationConfigServletWebServerApplicationContext - Exception encountered during context initialization - cancelling refresh attempt: org.springframework.context.ApplicationContextException: Unable to start web server
-2026-07-29 11:42:39.780 [main] WARN  z.r.i.AsyncReporter$BoundedAsyncReporter - Timed out waiting for in-flight spans to send
-2026-07-29 11:42:39.792 [main] INFO  o.s.b.a.l.ConditionEvaluationReportLogger - 
-
-Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
-2026-07-29 11:42:39.808 [main] ERROR o.s.boot.SpringApplication - Application run failed
-org.springframework.context.ApplicationContextException: Unable to start web server
-	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.onRefresh(ServletWebServerApplicationContext.java:170)
-	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:621)
-	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
-	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
-	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
-	at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
-	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
-	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
-	at com.mproduits.MproduitsApplication.main(MproduitsApplication.java:16)
-Caused by: org.springframework.boot.web.server.WebServerException: Unable to start embedded Tomcat
-	at org.springframework.boot.web.embedded.tomcat.TomcatWebServer.initialize(TomcatWebServer.java:147)
-	at org.springframework.boot.web.embedded.tomcat.TomcatWebServer.<init>(TomcatWebServer.java:107)
-	at org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory.getTomcatWebServer(TomcatServletWebServerFactory.java:520)
-	at org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory.getWebServer(TomcatServletWebServerFactory.java:222)
-	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.createWebServer(ServletWebServerApplicationContext.java:193)
-	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.onRefresh(ServletWebServerApplicationContext.java:167)
-	... 8 common frames omitted
-Caused by: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'jwtAuthFilter': Unsatisfied dependency expressed through field 'jwtService': Error creating bean with name 'jwtService': Injection of autowired dependencies failed
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:788)
+2026-07-30 07:45:51.069 [http-nio-9001-exec-2] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 2 : I/O error on GET request for "http://localhost:9008/internal/licences/compagnie/2/statut": Connection refused: no further information
+2026-07-30 07:45:51.069 [http-nio-9001-exec-4] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 2 : I/O error on GET request for "http://localhost:9008/internal/licences/compagnie/2/statut": Connection refused: no further information
+2026-07-30 09:10:16.359 [http-nio-9001-exec-10] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,9,10,16,343622600],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 09:11:39.879 [http-nio-9001-exec-9] WARN  c.m.s.JwtAuthenticationEntryPoint - Acces non authentifie a /microservice-produits/health : Full authentication is required to access this resource
+2026-07-30 09:13:37.914 [http-nio-9001-exec-4] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,9,13,37,909524900],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 09:21:28.896 [http-nio-9001-exec-6] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,9,21,28,883875000],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 09:21:28.942 [http-nio-9001-exec-5] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,9,21,28,934776000],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 09:21:36.937 [http-nio-9001-exec-10] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,9,21,36,929067600],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 09:21:37.025 [http-nio-9001-exec-3] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,9,21,37,20041500],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 09:22:29.429 [http-nio-9001-exec-6] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,9,22,29,425267000],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 09:23:20.611 [http-nio-9001-exec-7] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,9,23,20,607261600],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 09:23:21.761 [http-nio-9001-exec-8] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,9,23,21,758893500],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 09:23:21.771 [http-nio-9001-exec-10] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,9,23,21,767882700],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 09:23:23.115 [http-nio-9001-exec-3] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,9,23,23,110012800],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 09:23:23.115 [http-nio-9001-exec-9] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,9,23,23,110012800],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 09:23:25.925 [http-nio-9001-exec-1] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,9,23,25,921249200],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 09:23:26.576 [http-nio-9001-exec-2] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,9,23,26,572549600],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 09:34:04.241 [http-nio-9001-exec-8] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,9,34,4,236399900],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 09:34:04.323 [http-nio-9001-exec-10] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,9,34,4,319922500],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 09:34:04.397 [http-nio-9001-exec-3] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,9,34,4,393415300],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 10:08:18.389 [http-nio-9001-exec-2] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,10,8,18,370789000],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 10:08:18.389 [http-nio-9001-exec-4] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,10,8,18,370789000],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 10:08:18.435 [http-nio-9001-exec-6] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,10,8,18,429835300],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 10:08:24.301 [http-nio-9001-exec-5] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,10,8,24,296220400],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 10:08:34.139 [http-nio-9001-exec-7] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,10,8,34,133795600],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 10:11:03.084 [http-nio-9001-exec-3] WARN  c.m.s.JwtAuthenticationEntryPoint - Acces non authentifie a /microservice-produits/health : Full authentication is required to access this resource
+2026-07-30 10:12:42.996 [http-nio-9001-exec-1] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,10,12,42,991839700],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 10:15:04.960 [http-nio-9001-exec-4] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,10,15,4,956088900],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 10:36:05.913 [main] INFO  com.mproduits.MproduitsApplication - Starting MproduitsApplication using Java 21.0.1 with PID 7624 (E:\ProjetSpringBoot\spring-cloud-gescom-api\microservice-produits\target\classes started by USER01 in E:\ProjetSpringBoot\spring-cloud-gescom-api\microservice-produits)
+2026-07-30 10:36:05.915 [main] DEBUG com.mproduits.MproduitsApplication - Running with Spring Boot v3.4.3, Spring v6.2.3
+2026-07-30 10:36:05.916 [main] INFO  com.mproduits.MproduitsApplication - The following 1 profile is active: "dev"
+2026-07-30 10:36:05.962 [main] INFO  o.s.c.c.c.ConfigServerConfigDataLoader - Fetching config from server at : http://localhost:9101
+2026-07-30 10:36:05.962 [main] INFO  o.s.c.c.c.ConfigServerConfigDataLoader - Located environment: name=microservice-produits, profiles=[default], label=null, version=42fd47a71b89cc299d86e040e325d021ba349907, state=
+2026-07-30 10:36:05.962 [main] INFO  o.s.c.c.c.ConfigServerConfigDataLoader - Fetching config from server at : http://localhost:9101
+2026-07-30 10:36:05.963 [main] INFO  o.s.c.c.c.ConfigServerConfigDataLoader - Located environment: name=microservice-produits, profiles=[dev], label=null, version=42fd47a71b89cc299d86e040e325d021ba349907, state=
+2026-07-30 10:36:07.314 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-07-30 10:36:07.605 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 276 ms. Found 56 JPA repository interfaces.
+2026-07-30 10:36:07.948 [main] INFO  o.s.cloud.context.scope.GenericScope - BeanFactory id=49190173-7fa2-3856-bc28-281e947c8ad3
+2026-07-30 10:36:08.710 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port 9001 (http)
+2026-07-30 10:36:08.797 [main] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 2833 ms
+2026-07-30 10:36:09.936 [main] WARN  org.hibernate.orm.deprecation - HHH90000025: MySQL8Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-07-30 10:36:09.937 [main] WARN  org.hibernate.orm.deprecation - HHH90000026: MySQL8Dialect has been deprecated; use org.hibernate.dialect.MySQLDialect instead
+2026-07-30 10:36:13.144 [main] WARN  o.h.t.s.i.ExceptionHandlerLoggedImpl - GenerationTarget encountered exception accepting command : Error executing DDL "alter table facturecommandefournisseur add constraint FKl3b40o1yts7mmwqtf5elre88 foreign key (produit) references produit (libelle)" via JDBC [Failed to add the foreign key constraint. Missing unique key for constraint 'FKl3b40o1yts7mmwqtf5elre88' in the referenced table 'produit']
+org.hibernate.tool.schema.spi.CommandAcceptanceException: Error executing DDL "alter table facturecommandefournisseur add constraint FKl3b40o1yts7mmwqtf5elre88 foreign key (produit) references produit (libelle)" via JDBC [Failed to add the foreign key constraint. Missing unique key for constraint 'FKl3b40o1yts7mmwqtf5elre88' in the referenced table 'produit']
+	at org.hibernate.tool.schema.internal.exec.GenerationTargetToDatabase.accept(GenerationTargetToDatabase.java:94)
+	at org.hibernate.tool.schema.internal.AbstractSchemaMigrator.applySqlString(AbstractSchemaMigrator.java:576)
+	at org.hibernate.tool.schema.internal.AbstractSchemaMigrator.applySqlStrings(AbstractSchemaMigrator.java:516)
+	at org.hibernate.tool.schema.internal.AbstractSchemaMigrator.applyForeignKeys(AbstractSchemaMigrator.java:448)
+	at org.hibernate.tool.schema.internal.AbstractSchemaMigrator.performMigration(AbstractSchemaMigrator.java:269)
+	at org.hibernate.tool.schema.internal.AbstractSchemaMigrator.doMigration(AbstractSchemaMigrator.java:112)
+	at org.hibernate.tool.schema.spi.SchemaManagementToolCoordinator.performDatabaseAction(SchemaManagementToolCoordinator.java:280)
+	at org.hibernate.tool.schema.spi.SchemaManagementToolCoordinator.lambda$process$5(SchemaManagementToolCoordinator.java:144)
+	at java.base/java.util.HashMap.forEach(HashMap.java:1429)
+	at org.hibernate.tool.schema.spi.SchemaManagementToolCoordinator.process(SchemaManagementToolCoordinator.java:141)
+	at org.hibernate.boot.internal.SessionFactoryObserverForSchemaExport.sessionFactoryCreated(SessionFactoryObserverForSchemaExport.java:37)
+	at org.hibernate.internal.SessionFactoryObserverChain.sessionFactoryCreated(SessionFactoryObserverChain.java:35)
+	at org.hibernate.internal.SessionFactoryImpl.<init>(SessionFactoryImpl.java:324)
+	at org.hibernate.boot.internal.SessionFactoryBuilderImpl.build(SessionFactoryBuilderImpl.java:463)
+	at org.hibernate.jpa.boot.internal.EntityManagerFactoryBuilderImpl.build(EntityManagerFactoryBuilderImpl.java:1517)
+	at org.springframework.orm.jpa.vendor.SpringHibernateJpaPersistenceProvider.createContainerEntityManagerFactory(SpringHibernateJpaPersistenceProvider.java:66)
+	at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalContainerEntityManagerFactoryBean.java:390)
+	at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.buildNativeEntityManagerFactory(AbstractEntityManagerFactoryBean.java:419)
+	at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.afterPropertiesSet(AbstractEntityManagerFactoryBean.java:400)
+	at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.afterPropertiesSet(LocalContainerEntityManagerFactoryBean.java:366)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.invokeInitMethods(AbstractAutowireCapableBeanFactory.java:1859)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1808)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:601)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:523)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:346)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202)
+	at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:365)
+	at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveValueIfNecessary(BeanDefinitionValueResolver.java:135)
+	at org.springframework.beans.factory.support.ConstructorResolver.resolveConstructorArguments(ConstructorResolver.java:691)
+	at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:513)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1361)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1191)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:563)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:523)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:346)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202)
+	at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:365)
+	at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveValueIfNecessary(BeanDefinitionValueResolver.java:135)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.applyPropertyValues(AbstractAutowireCapableBeanFactory.java:1711)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1460)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:600)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:523)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:346)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202)
+	at org.springframework.beans.factory.config.DependencyDescriptor.resolveCandidate(DependencyDescriptor.java:254)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1664)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1552)
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:785)
 	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.inject(AutowiredAnnotationBeanPostProcessor.java:768)
 	at org.springframework.beans.factory.annotation.InjectionMetadata.inject(InjectionMetadata.java:146)
 	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:509)
@@ -82,58 +138,11 @@ Caused by: org.springframework.beans.factory.UnsatisfiedDependencyException: Err
 	at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:164)
 	at org.apache.catalina.startup.Tomcat.start(Tomcat.java:437)
 	at org.springframework.boot.web.embedded.tomcat.TomcatWebServer.initialize(TomcatWebServer.java:128)
-	... 13 common frames omitted
-Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'jwtService': Injection of autowired dependencies failed
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:515)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1445)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:600)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:523)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
-	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:346)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202)
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1606)
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1552)
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:785)
-	... 55 common frames omitted
-Caused by: org.springframework.util.PlaceholderResolutionException: Could not resolve placeholder 'app.jwtSecret' in value "${app.jwtSecret}"
-	at org.springframework.util.PlaceholderResolutionException.withValue(PlaceholderResolutionException.java:81)
-	at org.springframework.util.PlaceholderParser$ParsedValue.resolve(PlaceholderParser.java:423)
-	at org.springframework.util.PlaceholderParser.replacePlaceholders(PlaceholderParser.java:128)
-	at org.springframework.util.PropertyPlaceholderHelper.parseStringValue(PropertyPlaceholderHelper.java:118)
-	at org.springframework.util.PropertyPlaceholderHelper.replacePlaceholders(PropertyPlaceholderHelper.java:114)
-	at org.springframework.core.env.AbstractPropertyResolver.doResolvePlaceholders(AbstractPropertyResolver.java:255)
-	at org.springframework.core.env.AbstractPropertyResolver.resolveRequiredPlaceholders(AbstractPropertyResolver.java:226)
-	at org.springframework.context.support.PropertySourcesPlaceholderConfigurer.lambda$processProperties$0(PropertySourcesPlaceholderConfigurer.java:201)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.resolveEmbeddedValue(AbstractBeanFactory.java:971)
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1574)
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1552)
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:785)
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.inject(AutowiredAnnotationBeanPostProcessor.java:768)
-	at org.springframework.beans.factory.annotation.InjectionMetadata.inject(InjectionMetadata.java:146)
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:509)
-	... 65 common frames omitted
-2026-07-29 11:49:17.787 [main] INFO  com.mproduits.MproduitsApplication - Starting MproduitsApplication using Java 21.0.1 with PID 20644 (E:\ProjetSpringBoot\spring-cloud-gescom-api\microservice-produits\target\classes started by USER01 in E:\ProjetSpringBoot\spring-cloud-gescom-api\microservice-produits)
-2026-07-29 11:49:17.790 [main] DEBUG com.mproduits.MproduitsApplication - Running with Spring Boot v3.4.3, Spring v6.2.3
-2026-07-29 11:49:17.792 [main] INFO  com.mproduits.MproduitsApplication - The following 1 profile is active: "dev"
-2026-07-29 11:49:17.859 [main] INFO  o.s.c.c.c.ConfigServerConfigDataLoader - Fetching config from server at : http://localhost:9101
-2026-07-29 11:49:17.859 [main] INFO  o.s.c.c.c.ConfigServerConfigDataLoader - Located environment: name=microservice-produits, profiles=[default], label=null, version=f6b52a0420b8964066a1fe85c379ab8c585ce0a4, state=
-2026-07-29 11:49:17.859 [main] INFO  o.s.c.c.c.ConfigServerConfigDataLoader - Fetching config from server at : http://localhost:9101
-2026-07-29 11:49:17.859 [main] INFO  o.s.c.c.c.ConfigServerConfigDataLoader - Located environment: name=microservice-produits, profiles=[dev], label=null, version=f6b52a0420b8964066a1fe85c379ab8c585ce0a4, state=
-2026-07-29 11:49:19.413 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
-2026-07-29 11:49:19.722 [main] INFO  o.s.d.r.c.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 301 ms. Found 56 JPA repository interfaces.
-2026-07-29 11:49:20.062 [main] INFO  o.s.cloud.context.scope.GenericScope - BeanFactory id=49190173-7fa2-3856-bc28-281e947c8ad3
-2026-07-29 11:49:20.858 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port 9001 (http)
-2026-07-29 11:49:20.937 [main] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 3076 ms
-2026-07-29 11:49:21.510 [main] ERROR o.s.b.w.e.tomcat.TomcatStarter - Error starting Tomcat context. Exception: org.springframework.beans.factory.UnsatisfiedDependencyException. Message: Error creating bean with name 'jwtAuthFilter': Unsatisfied dependency expressed through field 'jwtService': Error creating bean with name 'jwtService': Injection of autowired dependencies failed
-2026-07-29 11:49:21.563 [main] WARN  o.s.b.w.s.c.AnnotationConfigServletWebServerApplicationContext - Exception encountered during context initialization - cancelling refresh attempt: org.springframework.context.ApplicationContextException: Unable to start web server
-2026-07-29 11:49:22.567 [main] WARN  z.r.i.AsyncReporter$BoundedAsyncReporter - Timed out waiting for in-flight spans to send
-2026-07-29 11:49:22.607 [main] INFO  o.s.b.a.l.ConditionEvaluationReportLogger - 
-
-Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
-2026-07-29 11:49:22.647 [main] ERROR o.s.boot.SpringApplication - Application run failed
-org.springframework.context.ApplicationContextException: Unable to start web server
-	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.onRefresh(ServletWebServerApplicationContext.java:170)
+	at org.springframework.boot.web.embedded.tomcat.TomcatWebServer.<init>(TomcatWebServer.java:107)
+	at org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory.getTomcatWebServer(TomcatServletWebServerFactory.java:520)
+	at org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory.getWebServer(TomcatServletWebServerFactory.java:222)
+	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.createWebServer(ServletWebServerApplicationContext.java:193)
+	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.onRefresh(ServletWebServerApplicationContext.java:167)
 	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:621)
 	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
 	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
@@ -142,86 +151,80 @@ org.springframework.context.ApplicationContextException: Unable to start web ser
 	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
 	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
 	at com.mproduits.MproduitsApplication.main(MproduitsApplication.java:16)
-Caused by: org.springframework.boot.web.server.WebServerException: Unable to start embedded Tomcat
-	at org.springframework.boot.web.embedded.tomcat.TomcatWebServer.initialize(TomcatWebServer.java:147)
-	at org.springframework.boot.web.embedded.tomcat.TomcatWebServer.<init>(TomcatWebServer.java:107)
-	at org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory.getTomcatWebServer(TomcatServletWebServerFactory.java:520)
-	at org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory.getWebServer(TomcatServletWebServerFactory.java:222)
-	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.createWebServer(ServletWebServerApplicationContext.java:193)
-	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.onRefresh(ServletWebServerApplicationContext.java:167)
-	... 8 common frames omitted
-Caused by: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'jwtAuthFilter': Unsatisfied dependency expressed through field 'jwtService': Error creating bean with name 'jwtService': Injection of autowired dependencies failed
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:788)
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.inject(AutowiredAnnotationBeanPostProcessor.java:768)
-	at org.springframework.beans.factory.annotation.InjectionMetadata.inject(InjectionMetadata.java:146)
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:509)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1445)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:600)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:523)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
-	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:346)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:207)
-	at org.springframework.boot.web.servlet.ServletContextInitializerBeans.getOrderedBeansOfType(ServletContextInitializerBeans.java:211)
-	at org.springframework.boot.web.servlet.ServletContextInitializerBeans.addAsRegistrationBean(ServletContextInitializerBeans.java:174)
-	at org.springframework.boot.web.servlet.ServletContextInitializerBeans.addAsRegistrationBean(ServletContextInitializerBeans.java:169)
-	at org.springframework.boot.web.servlet.ServletContextInitializerBeans.addAdaptableBeans(ServletContextInitializerBeans.java:154)
-	at org.springframework.boot.web.servlet.ServletContextInitializerBeans.<init>(ServletContextInitializerBeans.java:87)
-	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.getServletContextInitializerBeans(ServletWebServerApplicationContext.java:271)
-	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.selfInitialize(ServletWebServerApplicationContext.java:245)
-	at org.springframework.boot.web.embedded.tomcat.TomcatStarter.onStartup(TomcatStarter.java:52)
-	at org.apache.catalina.core.StandardContext.startInternal(StandardContext.java:4467)
-	at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:164)
-	at org.apache.catalina.core.ContainerBase$StartChild.call(ContainerBase.java:1203)
-	at org.apache.catalina.core.ContainerBase$StartChild.call(ContainerBase.java:1193)
-	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
-	at org.apache.tomcat.util.threads.InlineExecutorService.execute(InlineExecutorService.java:75)
-	at java.base/java.util.concurrent.AbstractExecutorService.submit(AbstractExecutorService.java:145)
-	at org.apache.catalina.core.ContainerBase.startInternal(ContainerBase.java:749)
-	at org.apache.catalina.core.StandardHost.startInternal(StandardHost.java:772)
-	at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:164)
-	at org.apache.catalina.core.ContainerBase$StartChild.call(ContainerBase.java:1203)
-	at org.apache.catalina.core.ContainerBase$StartChild.call(ContainerBase.java:1193)
-	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317)
-	at org.apache.tomcat.util.threads.InlineExecutorService.execute(InlineExecutorService.java:75)
-	at java.base/java.util.concurrent.AbstractExecutorService.submit(AbstractExecutorService.java:145)
-	at org.apache.catalina.core.ContainerBase.startInternal(ContainerBase.java:749)
-	at org.apache.catalina.core.StandardEngine.startInternal(StandardEngine.java:203)
-	at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:164)
-	at org.apache.catalina.core.StandardService.startInternal(StandardService.java:415)
-	at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:164)
-	at org.apache.catalina.core.StandardServer.startInternal(StandardServer.java:870)
-	at org.apache.catalina.util.LifecycleBase.start(LifecycleBase.java:164)
-	at org.apache.catalina.startup.Tomcat.start(Tomcat.java:437)
-	at org.springframework.boot.web.embedded.tomcat.TomcatWebServer.initialize(TomcatWebServer.java:128)
-	... 13 common frames omitted
-Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'jwtService': Injection of autowired dependencies failed
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:515)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1445)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:600)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:523)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
-	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:346)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202)
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1606)
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1552)
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:785)
-	... 55 common frames omitted
-Caused by: org.springframework.util.PlaceholderResolutionException: Could not resolve placeholder 'app.jwtSecret' in value "${app.jwtSecret}"
-	at org.springframework.util.PlaceholderResolutionException.withValue(PlaceholderResolutionException.java:81)
-	at org.springframework.util.PlaceholderParser$ParsedValue.resolve(PlaceholderParser.java:423)
-	at org.springframework.util.PlaceholderParser.replacePlaceholders(PlaceholderParser.java:128)
-	at org.springframework.util.PropertyPlaceholderHelper.parseStringValue(PropertyPlaceholderHelper.java:118)
-	at org.springframework.util.PropertyPlaceholderHelper.replacePlaceholders(PropertyPlaceholderHelper.java:114)
-	at org.springframework.core.env.AbstractPropertyResolver.doResolvePlaceholders(AbstractPropertyResolver.java:255)
-	at org.springframework.core.env.AbstractPropertyResolver.resolveRequiredPlaceholders(AbstractPropertyResolver.java:226)
-	at org.springframework.context.support.PropertySourcesPlaceholderConfigurer.lambda$processProperties$0(PropertySourcesPlaceholderConfigurer.java:201)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.resolveEmbeddedValue(AbstractBeanFactory.java:971)
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1574)
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1552)
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:785)
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.inject(AutowiredAnnotationBeanPostProcessor.java:768)
-	at org.springframework.beans.factory.annotation.InjectionMetadata.inject(InjectionMetadata.java:146)
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:509)
-	... 65 common frames omitted
+Caused by: java.sql.SQLException: Failed to add the foreign key constraint. Missing unique key for constraint 'FKl3b40o1yts7mmwqtf5elre88' in the referenced table 'produit'
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:121)
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:114)
+	at com.mysql.cj.jdbc.StatementImpl.executeInternal(StatementImpl.java:837)
+	at com.mysql.cj.jdbc.StatementImpl.execute(StatementImpl.java:685)
+	at com.zaxxer.hikari.pool.ProxyStatement.execute(ProxyStatement.java:94)
+	at com.zaxxer.hikari.pool.HikariProxyStatement.execute(HikariProxyStatement.java)
+	at org.hibernate.tool.schema.internal.exec.GenerationTargetToDatabase.accept(GenerationTargetToDatabase.java:80)
+	... 108 common frames omitted
+2026-07-30 10:36:13.787 [main] INFO  o.s.d.j.r.query.QueryEnhancerFactory - Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-07-30 10:36:14.093 [main] DEBUG c.m.security.LicenceCheckFilter - Filter 'licenceCheckFilter' configured for use
+2026-07-30 10:36:14.094 [main] DEBUG c.mproduits.security.JwtAuthFilter - Filter 'jwtAuthFilter' configured for use
+2026-07-30 10:36:17.574 [main] INFO  com.mproduits.CacheConfig - Configuration du cache manager Caffeine
+2026-07-30 10:36:17.741 [main] WARN  o.s.b.a.o.j.JpaBaseConfiguration$JpaWebConfiguration - spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-07-30 10:36:17.773 [main] WARN  o.s.b.a.s.s.UserDetailsServiceAutoConfiguration - 
+
+Using generated security password: 2564ad69-7697-43d2-8af5-1a0ffbe952cb
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2026-07-30 10:36:18.271 [main] INFO  o.s.b.a.e.web.EndpointLinksResolver - Exposing 3 endpoints beneath base path '/actuator'
+2026-07-30 10:36:18.392 [main] INFO  o.s.v.b.OptionalValidatorFactoryBean - Failed to set up a Bean Validation provider: jakarta.validation.NoProviderFoundException: Unable to create a Configuration, because no Jakarta Bean Validation provider could be found. Add a provider like Hibernate Validator (RI) to your classpath.
+2026-07-30 10:36:18.783 [main] INFO  o.s.c.n.e.c.DiscoveryClientOptionalArgsConfiguration - Eureka HTTP Client uses RestTemplate.
+2026-07-30 10:36:18.902 [main] INFO  o.s.c.n.eureka.InstanceInfoFactory - Setting initial instance status as: STARTING
+2026-07-30 10:36:19.057 [main] INFO  o.s.c.n.e.s.EurekaServiceRegistry - Registering application MICROSERVICE-PRODUITS with eureka with status UP
+2026-07-30 10:36:19.085 [main] INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port 9001 (http) with context path '/'
+2026-07-30 10:36:19.086 [main] INFO  o.s.c.n.e.s.EurekaAutoServiceRegistration - Updating port to 9001
+2026-07-30 10:36:19.109 [main] INFO  com.mproduits.MproduitsApplication - Started MproduitsApplication in 16.43 seconds (process running for 16.834)
+2026-07-30 10:36:20.082 [AsyncReporter{ZipkinRestTemplateSender{http://localhost:9411/api/v2/spans}}] WARN  z.r.i.AsyncReporter$BoundedAsyncReporter - Spans were dropped due to exceptions. All subsequent errors will be logged at FINE level.
+2026-07-30 10:36:20.082 [AsyncReporter{ZipkinRestTemplateSender{http://localhost:9411/api/v2/spans}}] WARN  z.r.i.AsyncReporter$BoundedAsyncReporter - Dropped 2 spans due to ResourceAccessException(I/O error on POST request for "http://localhost:9411/api/v2/spans": Connect to http://localhost:9411 [localhost/127.0.0.1, localhost/0:0:0:0:0:0:0:1] failed: Connection refused: no further information)
+org.springframework.web.client.ResourceAccessException: I/O error on POST request for "http://localhost:9411/api/v2/spans": Connect to http://localhost:9411 [localhost/127.0.0.1, localhost/0:0:0:0:0:0:0:1] failed: Connection refused: no further information
+	at org.springframework.web.client.RestTemplate.createResourceAccessException(RestTemplate.java:925)
+	at org.springframework.web.client.RestTemplate.doExecute(RestTemplate.java:905)
+	at org.springframework.web.client.RestTemplate.execute(RestTemplate.java:840)
+	at org.springframework.web.client.RestTemplate.exchange(RestTemplate.java:701)
+	at org.springframework.boot.actuate.autoconfigure.tracing.zipkin.ZipkinRestTemplateSender.postSpans(ZipkinRestTemplateSender.java:50)
+	at org.springframework.boot.actuate.autoconfigure.tracing.zipkin.HttpSender.postSpans(HttpSender.java:69)
+	at org.springframework.boot.actuate.autoconfigure.tracing.zipkin.HttpSender.postSpans(HttpSender.java:41)
+	at zipkin2.reporter.BaseHttpSender.send(BaseHttpSender.java:123)
+	at zipkin2.reporter.internal.AsyncReporter$BoundedAsyncReporter.flush(AsyncReporter.java:266)
+	at zipkin2.reporter.internal.AsyncReporter$Flusher.run(AsyncReporter.java:352)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+Caused by: org.apache.hc.client5.http.HttpHostConnectException: Connect to http://localhost:9411 [localhost/127.0.0.1, localhost/0:0:0:0:0:0:0:1] failed: Connection refused: no further information
+	at java.base/sun.nio.ch.Net.pollConnect(Native Method)
+	at java.base/sun.nio.ch.Net.pollConnectNow(Net.java:682)
+	at java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(NioSocketImpl.java:542)
+	at java.base/sun.nio.ch.NioSocketImpl.connect(NioSocketImpl.java:592)
+	at java.base/java.net.SocksSocketImpl.connect(SocksSocketImpl.java:327)
+	at java.base/java.net.Socket.connect(Socket.java:751)
+	at org.apache.hc.client5.http.impl.io.DefaultHttpClientConnectionOperator.connect(DefaultHttpClientConnectionOperator.java:216)
+	at org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager.connect(PoolingHttpClientConnectionManager.java:490)
+	at org.apache.hc.client5.http.impl.classic.InternalExecRuntime.connectEndpoint(InternalExecRuntime.java:164)
+	at org.apache.hc.client5.http.impl.classic.InternalExecRuntime.connectEndpoint(InternalExecRuntime.java:174)
+	at org.apache.hc.client5.http.impl.classic.ConnectExec.execute(ConnectExec.java:144)
+	at org.apache.hc.client5.http.impl.classic.ExecChainElement.execute(ExecChainElement.java:51)
+	at org.apache.hc.client5.http.impl.classic.ProtocolExec.execute(ProtocolExec.java:192)
+	at org.apache.hc.client5.http.impl.classic.ExecChainElement.execute(ExecChainElement.java:51)
+	at org.apache.hc.client5.http.impl.classic.ContentCompressionExec.execute(ContentCompressionExec.java:150)
+	at org.apache.hc.client5.http.impl.classic.ExecChainElement.execute(ExecChainElement.java:51)
+	at org.apache.hc.client5.http.impl.classic.HttpRequestRetryExec.execute(HttpRequestRetryExec.java:113)
+	at org.apache.hc.client5.http.impl.classic.ExecChainElement.execute(ExecChainElement.java:51)
+	at org.apache.hc.client5.http.impl.classic.RedirectExec.execute(RedirectExec.java:110)
+	at org.apache.hc.client5.http.impl.classic.ExecChainElement.execute(ExecChainElement.java:51)
+	at org.apache.hc.client5.http.impl.classic.InternalHttpClient.doExecute(InternalHttpClient.java:174)
+	at org.apache.hc.client5.http.impl.classic.CloseableHttpClient.execute(CloseableHttpClient.java:87)
+	at org.apache.hc.client5.http.impl.classic.CloseableHttpClient.execute(CloseableHttpClient.java:55)
+	at org.apache.hc.client5.http.classic.HttpClient.executeOpen(HttpClient.java:183)
+	at org.springframework.http.client.HttpComponentsClientHttpRequest.executeInternal(HttpComponentsClientHttpRequest.java:99)
+	at org.springframework.http.client.AbstractStreamingClientHttpRequest.executeInternal(AbstractStreamingClientHttpRequest.java:71)
+	at org.springframework.http.client.AbstractClientHttpRequest.execute(AbstractClientHttpRequest.java:81)
+	at org.springframework.web.client.RestTemplate.doExecute(RestTemplate.java:899)
+	... 9 common frames omitted
+2026-07-30 10:37:21.004 [http-nio-9001-exec-1] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,10,37,20,987527400],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 10:37:41.511 [http-nio-9001-exec-4] WARN  c.m.s.JwtAuthenticationEntryPoint - Acces non authentifie a /microservice-produits/alert-stock : Full authentication is required to access this resource
+2026-07-30 10:53:45.470 [http-nio-9001-exec-3] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,10,53,45,467387800],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 10:57:18.522 [http-nio-9001-exec-6] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,10,57,18,518046400],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"
+2026-07-30 10:57:18.579 [http-nio-9001-exec-9] WARN  c.mproduits.security.LicenceClient - Verification de licence indisponible pour la compagnie 6 : 401 : "{"timestamp":[2026,7,30,10,57,18,552160200],"message":"Authentification requise","details":"/internal/licences/compagnie/6/statut","status":401}"

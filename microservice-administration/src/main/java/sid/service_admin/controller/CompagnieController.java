@@ -11,9 +11,11 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import sid.service_admin.dto.ActivationDTO;
 import sid.service_admin.dto.CompagnieDTO;
 import sid.service_admin.dto.CreateCompagnieDTO;
 import sid.service_admin.dto.CreateCompagnieResultDTO;
+import sid.service_admin.dto.ResetPasswordResultDTO;
 import sid.service_admin.dto.UpdateCompagnieDTO;
 import sid.service_admin.service.CompagnieService;
 
@@ -55,9 +57,42 @@ public class CompagnieController {
         return ResponseEntity.ok(compagnieService.getOwn(authentication.getName()));
     }
 
+    /** Libre-service : l'admin compagnie complete/corrige les infos que l'admin systeme ne connaissait pas a la creation. */
+    @PutMapping("/me")
+    @PreAuthorize("hasRole('COMPANY_ADMIN')")
+    public ResponseEntity<CompagnieDTO> updateOwn(@RequestBody UpdateCompagnieDTO dto, Authentication authentication) {
+        return ResponseEntity.ok(compagnieService.updateOwn(authentication.getName(), dto));
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','SYSTEM_ADMIN')")
-    public ResponseEntity<CompagnieDTO> update(@PathVariable Long id, @RequestBody UpdateCompagnieDTO dto) {
-        return ResponseEntity.ok(compagnieService.update(id, dto));
+    public ResponseEntity<CompagnieDTO> update(@PathVariable Long id, @RequestBody UpdateCompagnieDTO dto, Authentication authentication) {
+        return ResponseEntity.ok(compagnieService.update(id, dto, authentication.getName()));
+    }
+
+    @PostMapping("/{id}/reset-admin-password")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','SYSTEM_ADMIN')")
+    public ResponseEntity<ResetPasswordResultDTO> resetAdminPassword(@PathVariable Long id, Authentication authentication) {
+        return ResponseEntity.ok(compagnieService.resetAdminPassword(id, authentication.getName()));
+    }
+
+    /** (Re)accorde a l'admin de la compagnie tous les modules/menus applicables a son type de commerce. */
+    @PostMapping("/{id}/resynchroniser-modules")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','SYSTEM_ADMIN')")
+    public ResponseEntity<Void> resynchroniserModulesAdmin(@PathVariable Long id, Authentication authentication) {
+        compagnieService.resynchroniserModulesAdmin(id, authentication.getName());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/activer")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','SYSTEM_ADMIN')")
+    public ResponseEntity<CompagnieDTO> activer(@PathVariable Long id, @RequestBody ActivationDTO dto, Authentication authentication) {
+        return ResponseEntity.ok(compagnieService.setActive(id, true, dto.getMotif(), authentication.getName()));
+    }
+
+    @PostMapping("/{id}/desactiver")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','SYSTEM_ADMIN')")
+    public ResponseEntity<CompagnieDTO> desactiver(@PathVariable Long id, @RequestBody ActivationDTO dto, Authentication authentication) {
+        return ResponseEntity.ok(compagnieService.setActive(id, false, dto.getMotif(), authentication.getName()));
     }
 }

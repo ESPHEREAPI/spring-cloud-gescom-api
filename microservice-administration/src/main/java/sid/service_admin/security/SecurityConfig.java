@@ -37,6 +37,9 @@ public class SecurityConfig {
     private InternalServiceAuthFilter internalServiceAuthFilter;
 
     @Autowired
+    private MustChangePasswordFilter mustChangePasswordFilter;
+
+    @Autowired
     private JwtAuthenticationEntryPoint authenticationEntryPoint;
 
     @Bean
@@ -57,7 +60,8 @@ public class SecurityConfig {
                         .requestMatchers("/internal/**").hasRole("INTERNAL_SERVICE")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(internalServiceAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(internalServiceAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(mustChangePasswordFilter, JwtAuthFilter.class);
 
         return http.build();
     }

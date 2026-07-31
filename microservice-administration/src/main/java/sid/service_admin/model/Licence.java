@@ -10,7 +10,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
@@ -23,14 +23,17 @@ import lombok.NoArgsConstructor;
 import sid.service_admin.enums.LicenceStatut;
 
 /**
- * Licence d'une compagnie : une licence active par compagnie. Redesign
- * complet de l'ancien stub (jamais cable, pensait un modele hors-ligne par
- * adresse MAC) pour un modele en ligne, par compagnie, avec revocation
- * quasi instantanee (voir LicenceService/LicenceStatusService cote produits).
+ * Une ligne = un cycle de vie de licence pour une compagnie (generation ->
+ * activation -> eventuelle suspension/revocation). Une compagnie accumule un
+ * historique de lignes au fil des generations/renouvellements - la ligne
+ * "courante" depend du contexte : la plus recente ACTIVE pour l'application
+ * (voir LicenceService.getCurrentActive, utilise par microservice-produits),
+ * la plus recente tout statut confondu pour la gestion SUPER_ADMIN/SYSTEM_ADMIN
+ * (voir LicenceService.getLatest).
  *
  * Les anciennes colonnes (LicenseType, duree, licenseNumber, adresseMac,
- * version) deviennent orphelines apres ce changement — ddl-auto=update ne
- * les supprime pas, nettoyage manuel a prevoir cote DBA, non bloquant.
+ * version) issues du stub original sont orphelines — ddl-auto=update ne les
+ * supprime pas, nettoyage manuel a prevoir cote DBA, non bloquant.
  */
 @Entity
 @Table(name = "licence")
@@ -44,8 +47,8 @@ public class Licence implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
-    @JoinColumn(name = "compagnie_id", nullable = false, unique = true)
+    @ManyToOne
+    @JoinColumn(name = "compagnie_id", nullable = false)
     private Compagnie compagnie;
 
     @Enumerated(EnumType.STRING)
@@ -73,6 +76,10 @@ public class Licence implements Serializable {
 
     @Column(length = 2000)
     private String cle;
+
+    /** Licence d'essai auto-service (voir LicenceSettings) - une seule autorisee par compagnie. */
+    @Column(nullable = false)
+    private Boolean essai = Boolean.FALSE;
 
     @Column(name = "created_by")
     private String createdBy;

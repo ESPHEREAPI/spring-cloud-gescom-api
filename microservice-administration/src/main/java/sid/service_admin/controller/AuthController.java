@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpSession;
 import java.util.Date;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -57,6 +58,11 @@ public class AuthController {
     public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest, HttpSession session) {
 
         UserDTO user = userService.authetification(loginRequest);
+        if (Boolean.TRUE.equals(user.getEcheck_connection())) {
+            // Identifiants invalides/compte inactif : ne jamais renvoyer 200 ni
+            // generer de jeton pour un echec d'authentification.
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(user);
+        }
         UserSessionDTO userSessionDTO = mapperDtoImpl.mapUserSessionDTOByuserDTO(user);
         int nombre = IdleDate.getMonth(new Date());
         int dateCurent = IdleDate.getYear(new Date());

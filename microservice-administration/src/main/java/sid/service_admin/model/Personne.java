@@ -141,6 +141,11 @@ public class Personne implements Serializable {
     private String userDelete;
     @Column(name = "autorisationDeletes")
     private Boolean autorisationDeletes;
+    // Vrai si le mot de passe actuel a ete assigne par un admin (creation ou
+    // reinitialisation), pas choisi par le titulaire du compte - force un
+    // changement a la prochaine connexion (voir MustChangePasswordFilter).
+    @Column(name = "must_change_password")
+    private Boolean mustChangePassword = Boolean.FALSE;
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "personne", fetch = FetchType.LAZY)
     @JsonIgnoreProperties("personne")
     private List<Usermodule> usermoduleList;

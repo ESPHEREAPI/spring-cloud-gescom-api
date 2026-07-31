@@ -140,6 +140,7 @@ public class MapperDtoImpl {
         String roleName = userDTO.getRole() != null ? userDTO.getRole().getName() : null;
         userSessionDTO.setToken(jwtService.generateToken(userDTO.getUserName(), userDTO.getCompagnieId(), roleName, userSessionDTO.getExpiresAt()));
         userSessionDTO.setHasAuditAccess(auditAccessService.hasAuditAccess(userDTO.getUserName()));
+        userSessionDTO.setMustChangePassword(Boolean.TRUE.equals(userDTO.getMustChangePassword()));
 
         return userSessionDTO;
     }

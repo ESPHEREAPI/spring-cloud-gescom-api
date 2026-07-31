@@ -17,6 +17,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import sid.service_admin.dto.ModuleDTO;
+import sid.service_admin.enums.ModuleLicence;
+import sid.service_admin.enums.ModulesParTypeCommerce;
+import sid.service_admin.enums.TypeCommerce;
 import sid.service_admin.exceptions.ResourceNotFoundException;
 import sid.service_admin.mapper.MapperDtoImpl;
 import sid.service_admin.model.Menu;
@@ -107,8 +110,16 @@ public class SecuriteService implements ISecurite {
     public List<ModuleDTO> getModuleForNotUser(Long userid) {
         Personne p = personneRepository.findById(userid)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userid));
-        return modulesecuriteRepository.findModulesNotAssignedToUser(p.getId()).stream()
-                .map(mod -> mapper.mapToDTOModulel(mod))
+        java.util.stream.Stream<sid.service_admin.model.Modulesecurite> modules =
+                modulesecuriteRepository.findModulesNotAssignedToUser(p.getId()).stream();
+        if (p.getCompagnie() != null) {
+            java.util.Set<String> codesAutorises = sid.service_admin.enums.ModulesParTypeCommerce
+                    .pour(p.getCompagnie().getTypeCommerce()).stream()
+                    .map(sid.service_admin.enums.ModuleLicence::getCode)
+                    .collect(Collectors.toSet());
+            modules = modules.filter(m -> codesAutorises.contains(m.getCode()));
+        }
+        return modules.map(mod -> mapper.mapToDTOModulel(mod))
                 .collect(Collectors.toList());
 
     }
@@ -210,7 +221,8 @@ public class SecuriteService implements ISecurite {
 
     @Override
     public void addMenutoUser(Personne u, Menu m) {
-        UsermenuPK pk = new UsermenuPK(u.getId(), m.getId());
+        // UsermenuPK/Usermenu attendent (menuid, userid) dans cet ordre - ne pas inverser.
+        UsermenuPK pk = new UsermenuPK(m.getId(), u.getId());
         Optional<Usermenu> existingUsermenu = usermenuRepository.findById(pk);
 
         if (existingUsermenu.isPresent()) {
@@ -218,7 +230,7 @@ public class SecuriteService implements ISecurite {
             usermenu.setAutorisation(Boolean.TRUE);
             usermenuRepository.save(usermenu);
         } else {
-            Usermenu usermenu = new Usermenu(u.getId(), m.getId());
+            Usermenu usermenu = new Usermenu(m.getId(), u.getId());
             usermenu.setAutorisation(Boolean.TRUE);
             usermenuRepository.save(usermenu);
         }
@@ -226,7 +238,7 @@ public class SecuriteService implements ISecurite {
 
     @Override
     public void removeMenutoUser(Personne u, Menu m) {
-        UsermenuPK pk = new UsermenuPK(u.getId(), m.getId());
+        UsermenuPK pk = new UsermenuPK(m.getId(), u.getId());
         Optional<Usermenu> existingUsermenu = usermenuRepository.findById(pk);
 
         if (existingUsermenu.isPresent()) {
@@ -234,9 +246,32 @@ public class SecuriteService implements ISecurite {
             usermenu.setAutorisation(Boolean.FALSE);
             usermenuRepository.save(usermenu);
         } else {
-            Usermenu usermenu = new Usermenu(u.getId(), m.getId());
+            Usermenu usermenu = new Usermenu(m.getId(), u.getId());
             usermenu.setAutorisation(Boolean.FALSE);
             usermenuRepository.save(usermenu);
+        }
+    }
+
+    /**
+     * (Re)accorde a un utilisateur tous les modules/menus applicables au type de
+     * commerce donne (voir ModulesParTypeCommerce) - idempotent, n'ajoute que ce
+     * qui manque. Utilise a la creation d'un admin compagnie, et pour
+     * resynchroniser un compte existant apres l'ajout de nouveaux menus au
+     * catalogue (voir InitiationDb).
+     */
+    @Override
+    public void provisionerModulesEtMenusPourTypeCommerce(Personne personne, TypeCommerce typeCommerce) {
+        List<Modulesecurite> modules = ModulesParTypeCommerce.pour(typeCommerce).stream()
+                .map(m -> modulesecuriteRepository.findByCode(m.getCode()))
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toList());
+
+        addModulesToUser(personne, modules);
+
+        for (Modulesecurite module : modules) {
+            for (Menu menu : menuRepository.findByModuleid(module)) {
+                addMenutoUser(personne, menu);
+            }
         }
     }
 

@@ -35,7 +35,7 @@ import sid.service_admin.model.Licence;
 @Component
 public class LicenceKeyService {
 
-    @Value("${app.licence.rsaPrivateKey:}")
+    @Value("${app.licence.rsaPrivateKey}")
     private String rsaPrivateKeyPem;
 
     private PrivateKey privateKey;
@@ -44,7 +44,12 @@ public class LicenceKeyService {
     @PostConstruct
     void init() {
         if (rsaPrivateKeyPem == null || rsaPrivateKeyPem.isBlank()) {
-            return;
+            // Echoue au demarrage plutot que de laisser generer/verifier une cle
+            // de licence echouer silencieusement au premier appel (deja arrive :
+            // plusieurs heures de diagnostic pour un secret jamais configure).
+            throw new IllegalStateException(
+                    "APP_LICENCE_RSA_PRIVATE_KEY n'est pas configure (variable d'environnement obligatoire) - "
+                    + "impossible de generer/verifier une cle de licence.");
         }
         try {
             String pemContent = resolvePemContent(rsaPrivateKeyPem);
@@ -90,11 +95,12 @@ public class LicenceKeyService {
         return Jwts.builder()
                 .setId(jti)
                 .setSubject(licence.getCompagnie().getId().toString())
+                .claim("licenceId", licence.getId())
                 .claim("nom", licence.getCompagnie().getNom())
                 .claim("maxUtilisateurs", licence.getMaxUtilisateurs())
                 .claim("maxBoutiques", licence.getMaxBoutiques())
                 .claim("modules", licence.getModulesActifs())
-                .setIssuedAt(licence.getDateDebut())
+                .setIssuedAt(new java.util.Date())
                 .setExpiration(licence.getDateExpiration())
                 .signWith(privateKey, SignatureAlgorithm.RS256)
                 .compact();

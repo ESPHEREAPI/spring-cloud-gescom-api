@@ -21,4 +21,5 @@ public class UserSessionDTO {
     private Date expiresAt;
     private int anneeid;
     private boolean hasAuditAccess;
+    private boolean mustChangePassword;
 }

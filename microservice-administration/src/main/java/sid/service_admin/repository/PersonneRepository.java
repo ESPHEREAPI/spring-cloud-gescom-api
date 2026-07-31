@@ -20,6 +20,8 @@ import sid.service_admin.model.Personne;
 @Repository
 public interface PersonneRepository extends JpaRepository<Personne, Long>{
      Optional<Personne> findByUserName(String userName);
+     /** Login insensible a la casse (l'utilisateur peut taper "Jdupont" ou "jdupont") - le mot de passe, lui, reste sensible a la casse. */
+     Optional<Personne> findByUserNameIgnoreCase(String userName);
      Optional<Personne> findByEmail(String email);
      boolean existsByEmail(String email);
       @Query("SELECT p  FROM Personne p  WHERE p.userName = :userName and p.password= :password")

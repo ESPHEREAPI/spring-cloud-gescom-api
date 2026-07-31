@@ -273,12 +273,7 @@ public class InitiationDb implements InitDB {
 //            menuone.add(new Menu(ModuleMenu.Impot_Salarier, "impot Salarier", false, "/paiement/gestionImpot", modsec5));
 
         }
-        for (Menu menu : menuone) {
-            if (this.menuRepository.findByCode(menu.getCode()) == null) {
-                menu.setEtat(false);
-                this.menuRepository.save(menu);
-            }
-        }
+        upsertMenus(menuone);
         return menuone;
 
     }
@@ -286,30 +281,24 @@ public class InitiationDb implements InitDB {
      @Override
     public Collection<Menu> getMenuByModuleStock() {
         Modulesecurite modsec5 = this.modulesecuriteRepository.findByCode("stock");
-        Map<String, Object> parMap = new HashMap<>();
-       // parMap.put("moduleid", modsec5.getId());
         Collection<Menu> menuone = new ArrayList<>();
-        //menuone = menudao.findAllEntitiesByUsingQueryName(Menu.FIND_BY_MODULEID, parMap);
         if (modsec5 != null) {
 
+            menuone.add(new Menu("Produits", "Gestion des produits", modsec5));
+            menuone.add(new Menu("Transfert Stock", "Transfert de stock entre boutiques", modsec5));
             menuone.add(new Menu("Dashboard Transfert", "tableau de bord pour le transfert de stock", modsec5));
+            menuone.add(new Menu("Fournisseur", "Gestion des fournisseurs", modsec5));
+            menuone.add(new Menu("Verouillage Stock", "Verouillage du stock", modsec5));
+            menuone.add(new Menu("Pointe de Vente", "Gestion des points de vente", modsec5));
+            menuone.add(new Menu("Commande Fournisseur", "Gestion des commandes fournisseur", modsec5));
+            menuone.add(new Menu("Inventaire", "Gestion de l'inventaire", modsec5));
+            menuone.add(new Menu("Mise a jour du Stock", "Mise a jour du stock", modsec5));
+            menuone.add(new Menu("Destockage", "Gestion du destockage", modsec5));
             menuone.add(new Menu("Static Stock", "Gestion des static de stock", modsec5));
-            //menuone.add(new Menu("Facture", "Facture client", modsec5));
-           // menuone.add(new Menu("Rapport", "Rapport Facturation", modsec5));
-            //menuone.add(new Menu("Versement", "Versement client", modsec5));
-//            menuone.add(new Menu("salaire", "gestion de la paie", false, "/paiement/gestionPaie", modsec5));
-//            menuone.add(new Menu("caisse", "gestion de la caisse", false, "/paiement/gestioncaisse", modsec5));
-//            menuone.add(new Menu(ModuleMenu.mPaGestionAnnciennette, "ANCIENNETE", false, "/paiement/gestionAnciennette", modsec5));
-//            menuone.add(new Menu(ModuleMenu.mPOperationDivert, "Operqtion Diverts", false, "/paiement/operationDiverts", modsec5));
-//            menuone.add(new Menu(ModuleMenu.Impot_Salarier, "impot Salarier", false, "/paiement/gestionImpot", modsec5));
+            menuone.add(new Menu("Code Bare", "Gestion des codes barre", modsec5));
 
         }
-        for (Menu menu : menuone) {
-            if (this.menuRepository.findByCode(menu.getCode()) == null) {
-                menu.setEtat(false);
-                this.menuRepository.save(menu);
-            }
-        }
+        upsertMenus(menuone);
         return menuone;
 
     }
@@ -336,44 +325,126 @@ public class InitiationDb implements InitDB {
 //            menuone.add(new Menu(ModuleMenu.Impot_Salarier, "impot Salarier", false, "/paiement/gestionImpot", modsec5));
 
         }
-        for (Menu menu : menuone) {
-            if (this.menuRepository.findByCode(menu.getCode()) == null) {
-                menu.setEtat(false);
-                this.menuRepository.save(menu);
-            }
-        }
+        upsertMenus(menuone);
         return menuone;
-    
+
     }
 
     @Override
     public Collection<Menu> getMenuByModuleVente() {
         Modulesecurite modsec5 = this.modulesecuriteRepository.findByCode("vente");
-        Map<String, Object> parMap = new HashMap<>();
-       // parMap.put("moduleid", modsec5.getId());
         Collection<Menu> menuone = new ArrayList<>();
-        //menuone = menudao.findAllEntitiesByUsingQueryName(Menu.FIND_BY_MODULEID, parMap);
         if (modsec5 != null) {
 
-            menuone.add(new Menu("Historique Vente", "Gestion Historique Vente", modsec5));
-           // menuone.add(new Menu("Static Stock", "Gestion des static de stock", modsec5));
-            //menuone.add(new Menu("Facture", "Facture client", modsec5));
-           // menuone.add(new Menu("Rapport", "Rapport Facturation", modsec5));
-            //menuone.add(new Menu("Versement", "Versement client", modsec5));
-//            menuone.add(new Menu("salaire", "gestion de la paie", false, "/paiement/gestionPaie", modsec5));
-//            menuone.add(new Menu("caisse", "gestion de la caisse", false, "/paiement/gestioncaisse", modsec5));
-//            menuone.add(new Menu(ModuleMenu.mPaGestionAnnciennette, "ANCIENNETE", false, "/paiement/gestionAnciennette", modsec5));
-//            menuone.add(new Menu(ModuleMenu.mPOperationDivert, "Operqtion Diverts", false, "/paiement/operationDiverts", modsec5));
-//            menuone.add(new Menu(ModuleMenu.Impot_Salarier, "impot Salarier", false, "/paiement/gestionImpot", modsec5));
+            menuone.add(new Menu("Vente Articles", "Vente d'articles", modsec5));
+            menuone.add(new Menu("Vente Art./CodeBare", "Vente d'articles par code barre", modsec5));
+            menuone.add(new Menu("Historique Caisse", "Historique de caisse", modsec5));
+            menuone.add(new Menu("Controle Caisse", "Controle de caisse", modsec5));
+            menuone.add(new Menu("Mode Paiement", "Gestion des modes de paiement", modsec5));
+            menuone.add(new Menu("Bon D Achat", "Gestion des bons d'achat", modsec5));
 
         }
-        for (Menu menu : menuone) {
-            if (this.menuRepository.findByCode(menu.getCode()) == null) {
+        upsertMenus(menuone);
+        return menuone;
+    }
+
+    @Override
+    public Collection<Menu> getMenuByModuleSecurite() {
+        Modulesecurite modsec5 = this.modulesecuriteRepository.findByCode("securite");
+        Collection<Menu> menuone = new ArrayList<>();
+        if (modsec5 != null) {
+
+            menuone.add(new Menu("Module Securite", "Gestion des modules de securite", modsec5));
+            menuone.add(new Menu("Utilisateurs", "Gestion des utilisateurs", modsec5));
+            menuone.add(new Menu("Roles", "Gestion des roles", modsec5));
+            menuone.add(new Menu("Profil", "Gestion des profils", modsec5));
+
+        }
+        upsertMenus(menuone);
+        return menuone;
+    }
+
+    @Override
+    public Collection<Menu> getMenuByModuleAdministration() {
+        Modulesecurite modsec5 = this.modulesecuriteRepository.findByCode("administration");
+        Collection<Menu> menuone = new ArrayList<>();
+        if (modsec5 != null) {
+
+            menuone.add(new Menu("Configuration", "Configuration generale", modsec5));
+            menuone.add(new Menu("Option Entreprise", "Options de l'entreprise", modsec5));
+            menuone.add(new Menu("Recond. session anterieur", "Reconduction de la session anterieure", modsec5));
+
+        }
+        upsertMenus(menuone);
+        return menuone;
+    }
+
+    @Override
+    public Collection<Menu> getMenuByModuleComptabilite() {
+        Modulesecurite modsec5 = this.modulesecuriteRepository.findByCode("comptabilite");
+        Collection<Menu> menuone = new ArrayList<>();
+        if (modsec5 != null) {
+
+            menuone.add(new Menu("Type Resource", "Gestion des types de ressource", modsec5));
+            menuone.add(new Menu("Ressource", "Gestion des ressources", modsec5));
+            menuone.add(new Menu("Historique vente", "Historique des ventes", modsec5));
+            menuone.add(new Menu("Controle Vente", "Controle des ventes", modsec5));
+            menuone.add(new Menu("Marge  Caisse", "Marge de caisse", modsec5));
+            menuone.add(new Menu("Compte Client", "Gestion des comptes client", modsec5));
+            menuone.add(new Menu("Charge", "Gestion des charges", modsec5));
+            menuone.add(new Menu("Marge", "Gestion de la marge", modsec5));
+            menuone.add(new Menu("Type depense", "Gestion des types de depense", modsec5));
+            menuone.add(new Menu("Element Ressource/Depense", "Gestion des elements de ressource/depense", modsec5));
+
+        }
+        upsertMenus(menuone);
+        return menuone;
+    }
+
+    @Override
+    public Collection<Menu> getMenuByModuleParametrage() {
+        Modulesecurite modsec5 = this.modulesecuriteRepository.findByCode("parametrage");
+        Collection<Menu> menuone = new ArrayList<>();
+        if (modsec5 != null) {
+
+            menuone.add(new Menu("Annee", "Gestion des annees", modsec5));
+            menuone.add(new Menu("Employeur", "Gestion des employeurs", modsec5));
+            menuone.add(new Menu("Entreprise", "Gestion de l'entreprise", modsec5));
+            menuone.add(new Menu("Boutique", "Gestion des boutiques", modsec5));
+            menuone.add(new Menu("Categorie Produit", "Gestion des categories de produit", modsec5));
+            menuone.add(new Menu("Specifique Produit", "Gestion des specifiques produit", modsec5));
+            menuone.add(new Menu("Ville", "Gestion des villes", modsec5));
+            menuone.add(new Menu("Magasin", "Gestion des magasins", modsec5));
+            menuone.add(new Menu("Service", "Gestion des services", modsec5));
+            menuone.add(new Menu("Type client", "Gestion des types de client", modsec5));
+            menuone.add(new Menu("Zone Vente", "Gestion des zones de vente", modsec5));
+
+        }
+        upsertMenus(menuone);
+        return menuone;
+    }
+
+    /**
+     * Insere chaque menu s'il n'existe pas encore (recherche par code, insensible
+     * a la casse cote MySQL) ; si un menu du meme code existe deja mais rattache
+     * a un autre module (coquille historique, ex. l'ancien seed errone de
+     * getMenuByModuleVente), le rattache et corrige sa casse plutot que de le
+     * laisser orphelin - sinon la creation du bon menu serait silencieusement
+     * ignoree par idempotence.
+     */
+    private void upsertMenus(Collection<Menu> menus) {
+        for (Menu menu : menus) {
+            Menu existant = this.menuRepository.findByCode(menu.getCode());
+            if (existant == null) {
                 menu.setEtat(false);
                 this.menuRepository.save(menu);
+            } else if (existant.getModuleid() == null
+                    || !existant.getModuleid().getId().equals(menu.getModuleid().getId())) {
+                existant.setCode(menu.getCode());
+                existant.setModuleid(menu.getModuleid());
+                this.menuRepository.save(existant);
             }
         }
-        return menuone;
     }
 
 }

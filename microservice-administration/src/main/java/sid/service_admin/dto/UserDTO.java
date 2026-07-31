@@ -42,4 +42,6 @@ public class UserDTO {
 
     private Boolean autorisationDeletes;
 
+    private Boolean mustChangePassword;
+
 }

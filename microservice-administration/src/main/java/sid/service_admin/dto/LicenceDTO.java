@@ -20,4 +20,5 @@ public class LicenceDTO {
     private Date createdAt;
     private String revokedBy;
     private Date dateRevocation;
+    private Boolean essai;
 }

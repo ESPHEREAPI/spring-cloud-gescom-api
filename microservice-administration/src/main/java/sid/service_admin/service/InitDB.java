@@ -40,24 +40,24 @@ public interface InitDB {
 //     public ConfigGrilleHoraire getConfigGrilleHoraire();
    public Collection<Modulesecurite> getAllModuleSecurite();
 
-////     public Collection<Groupe> getAllGroupe(); 
+////     public Collection<Groupe> getAllGroupe();
 //
     public Collection<Menu> getMenuByModuleFacturation();
-//
-//    public Collection<Menu> getMenuByModuleParametrage();
-//
-//    public Collection<Menu> getMenuByModuleSecurite();
-//
+
+    public Collection<Menu> getMenuByModuleParametrage();
+
+    public Collection<Menu> getMenuByModuleSecurite();
+
    public Collection<Menu> getMenuByModuleStock();
 //
    public Collection<Menu> getMenuByModulePhotocopie();
    public Collection<Menu> getMenuByModuleVente();
-//
-//    public Collection<Menu> getMenuByModuleComptabilite();
+
+    public Collection<Menu> getMenuByModuleComptabilite();
 ////     public Collection<Menu> getMenuByModuleEnseignant();
 //
 ////    public Collection<Menu> getMenuByModuleDiscipline();
-//    public Collection<Menu> getMenuByModuleAdministration();
+    public Collection<Menu> getMenuByModuleAdministration();
 //
 ////    public Collection<Menu> getMenuByModuleBudget();
 //    public Collection<Menu> getMenuByModuleMaintenance();

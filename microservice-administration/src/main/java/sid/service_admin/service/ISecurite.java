@@ -7,6 +7,7 @@ package sid.service_admin.service;
 import java.util.Collection;
 import java.util.List;
 import sid.service_admin.dto.ModuleDTO;
+import sid.service_admin.enums.TypeCommerce;
 import sid.service_admin.model.Menu;
 import sid.service_admin.model.Modulesecurite;
 import sid.service_admin.model.Personne;
@@ -41,8 +42,10 @@ public interface ISecurite {
     void removeModulesToUser(Personne u, List<Modulesecurite> mod);
     
     void addMenutoUser(Personne u, Menu m);
-    
+
     void removeMenutoUser(Personne u, Menu m);
+
+    void provisionerModulesEtMenusPourTypeCommerce(Personne personne, TypeCommerce typeCommerce);
     
     Collection<Menu> getMenusForUser(Personne u);
     

@@ -29,6 +29,10 @@ public class ServiceAdminApplication {
             initiationDb.getMenuByModulePhotocopie();
             initiationDb.getMenuByModuleStock();
             initiationDb.getMenuByModuleVente();
+            initiationDb.getMenuByModuleSecurite();
+            initiationDb.getMenuByModuleAdministration();
+            initiationDb.getMenuByModuleComptabilite();
+            initiationDb.getMenuByModuleParametrage();
         };
     }
     

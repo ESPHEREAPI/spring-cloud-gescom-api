@@ -58,6 +58,34 @@ public class Compagnie implements Serializable {
 
     private String email;
 
+    // Informations legales/facturation - volontairement absentes a la creation
+    // (l'administrateur systeme qui cree la compagnie ne les connait pas) et
+    // remplies ensuite en libre-service par l'administrateur de la compagnie
+    // lui-meme (voir CompagnieController#updateOwn), pour alimenter l'en-tete
+    // des tickets/factures A4 cote microservice-produits.
+    private String capital;
+
+    @Column(name = "numero_contribuable")
+    private String numeroContribuable;
+
+    private String nui;
+
+    private String rccm;
+
+    @Column(name = "site_web")
+    private String siteWeb;
+
+    private String directeur;
+
+    @Column(name = "logo_chemin")
+    private String logoChemin;
+
+    private String bp;
+
+    private String quartier;
+
+    private String ville;
+
     @Column(name = "created_by")
     private String createdBy;
 

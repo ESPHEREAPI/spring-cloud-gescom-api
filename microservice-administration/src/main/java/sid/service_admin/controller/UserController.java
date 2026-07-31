@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import org.springframework.http.MediaType;
+import sid.service_admin.dto.ChangePasswordDTO;
 import sid.service_admin.dto.MenuDto;
 import sid.service_admin.dto.MenuUserDTO;
 import sid.service_admin.dto.ModuleDTO;
@@ -62,6 +63,23 @@ public class UserController {
         return new ResponseEntity<>(user, HttpStatus.OK);
     }
 
+    /**
+     * (Re)accorde a un utilisateur tous les modules/menus applicables au type de
+     * commerce de sa compagnie - utile pour rattraper un compte cree avant l'ajout
+     * de nouveaux menus au catalogue (voir InitiationDb / ModulesParTypeCommerce).
+     */
+    @PostMapping("/users/{id}/resynchroniser-modules")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','SYSTEM_ADMIN','COMPANY_ADMIN')")
+    public ResponseEntity<Void> resynchroniserModules(@PathVariable Long id) {
+        Personne personne = personneRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouve : " + id));
+        if (personne.getCompagnie() == null) {
+            throw new ResourceNotFoundException("Cet utilisateur n'est rattache a aucune compagnie");
+        }
+        securiteService.provisionerModulesEtMenusPourTypeCommerce(personne, personne.getCompagnie().getTypeCommerce());
+        return ResponseEntity.noContent().build();
+    }
+
     @DeleteMapping("/users/{id}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','SYSTEM_ADMIN','COMPANY_ADMIN')")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
@@ -93,6 +111,13 @@ public class UserController {
         return user;
     }
 
+    /** Changement de mot de passe par le titulaire du compte - accessible a tout utilisateur authentifie, y compris pendant l'etat mustChangePassword. */
+    @PostMapping("/users/change-password")
+    public ResponseEntity<Void> changePassword(@RequestBody ChangePasswordDTO dto, Authentication authentication) {
+        userService.changeOwnPassword(authentication.getName(), dto);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/users/roles")
     //@PreAuthorize("hasRole('ADMIN') or hasPermission('USER_READ')")
     public ResponseEntity<List<RoleDTO>> listeRoles() {
@@ -109,8 +134,8 @@ public class UserController {
 
     @GetMapping("/users/modules")
     //@PreAuthorize("hasRole('ADMIN') or hasPermission('USER_READ')")
-    public ResponseEntity<List<ModuleDTO>> listeModules() {
-        List<ModuleDTO> moduleDTOs = userService.allModule();
+    public ResponseEntity<List<ModuleDTO>> listeModules(Authentication authentication) {
+        List<ModuleDTO> moduleDTOs = userService.allModule(authentication.getName());
         return new ResponseEntity<>(moduleDTOs, HttpStatus.OK);
     }
 

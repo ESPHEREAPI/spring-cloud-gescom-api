@@ -28,6 +28,10 @@ import sid.service_admin.dto.RoleDTO;
 import sid.service_admin.dto.UserCreateDTO;
 import sid.service_admin.dto.UserDTO;
 import sid.service_admin.dto.UserUpdateDTO;
+import sid.service_admin.dto.ChangePasswordDTO;
+import sid.service_admin.enums.ModuleLicence;
+import sid.service_admin.enums.ModulesParTypeCommerce;
+import sid.service_admin.exceptions.BadRequestException;
 import sid.service_admin.exceptions.ResourceNotFoundException;
 import sid.service_admin.mapper.MapperDtoImpl;
 import sid.service_admin.model.Boutique;
@@ -90,6 +94,22 @@ public class UserService implements Serializable {
         return personneRepository.findAll().stream()
                 .map(u -> this.mapToDTO.mapToDTO(u))
                 .collect(Collectors.toList());
+    }
+
+    /** Changement de mot de passe par le titulaire du compte lui-meme (ancien mot de passe requis). */
+    @Transactional
+    public void changeOwnPassword(String username, ChangePasswordDTO dto) {
+        Personne user = personneRepository.findByUserName(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouve : " + username));
+        if (dto.getNouveauMotDePasse() == null || dto.getNouveauMotDePasse().isBlank()) {
+            throw new BadRequestException("Le nouveau mot de passe est obligatoire");
+        }
+        if (dto.getAncienMotDePasse() == null || !passwordEncoder.matches(dto.getAncienMotDePasse(), user.getPassword())) {
+            throw new BadRequestException("Ancien mot de passe incorrect");
+        }
+        user.setPassword(passwordEncoder.encode(dto.getNouveauMotDePasse()));
+        user.setMustChangePassword(Boolean.FALSE);
+        personneRepository.save(user);
     }
 
     @Transactional(readOnly = true)
@@ -263,7 +283,9 @@ public class UserService implements Serializable {
     public UserDTO authetification(LoginRequest loginRequest) {
         UserDTO userDTO = null;
         Personne user = null;
-        Optional<Personne> userEntite = personneRepository.findByUserName(loginRequest.getUserName());
+        // Login insensible a la casse : "Jdupont" et "jdupont" doivent aboutir au
+        // meme compte. Le mot de passe, lui, reste verifie tel quel plus bas.
+        Optional<Personne> userEntite = personneRepository.findByUserNameIgnoreCase(loginRequest.getUserName());
 
         if (userEntite.isPresent() == Boolean.FALSE) {
             userDTO = new UserDTO();
@@ -331,8 +353,24 @@ public class UserService implements Serializable {
                 .collect(Collectors.toList());
     }
 
-    public List<ModuleDTO> allModule() {
-        return moduleRepository.findAll().stream()
+    /**
+     * Catalogue de modules pour l'ecran de gestion des utilisateurs. Filtre par le
+     * type de commerce de la compagnie de l'acteur (meme logique que le formulaire
+     * de licence, voir ModulesParTypeCommerce) - non filtre pour un acteur sans
+     * compagnie (SUPER_ADMIN/SYSTEM_ADMIN).
+     */
+    public List<ModuleDTO> allModule(String actorUsername) {
+        List<Modulesecurite> modules = moduleRepository.findAll();
+        Compagnie compagnie = personneRepository.findByUserName(actorUsername)
+                .map(Personne::getCompagnie)
+                .orElse(null);
+        if (compagnie != null) {
+            java.util.Set<String> codesAutorises = ModulesParTypeCommerce.pour(compagnie.getTypeCommerce()).stream()
+                    .map(ModuleLicence::getCode)
+                    .collect(Collectors.toSet());
+            modules = modules.stream().filter(m -> codesAutorises.contains(m.getCode())).collect(Collectors.toList());
+        }
+        return modules.stream()
                 .map(md -> this.mapToDTO.mapToDTOModulel(md))
                 .collect(Collectors.toList());
     }

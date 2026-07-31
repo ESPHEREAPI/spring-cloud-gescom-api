@@ -94,6 +94,7 @@ services:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_CLOUD_CONFIG_URI: http://config-server:9101
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://77.68.94.193}
     networks:
       - easycom-network
     depends_on:

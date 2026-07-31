@@ -26,13 +26,21 @@ public class LicenceClient {
     @Value("${app.licence.adminBaseUrl}")
     private String adminBaseUrl;
 
-    @Value("${app.internal.serviceSecret:}")
+    @Value("${app.internal.service-secret:}")
     private String internalServiceSecret;
 
     private RestClient restClient;
 
     @PostConstruct
     void init() {
+        // Echoue au demarrage plutot que d'envoyer des appels internes jamais
+        // authentifiables (secret vide -> LicenceStatusService refuse tout en
+        // silence, deja arrive et couteux a diagnostiquer).
+        if (internalServiceSecret == null || internalServiceSecret.isBlank()) {
+            throw new IllegalStateException(
+                    "APP_INTERNAL_SERVICE_SECRET n'est pas configure (variable d'environnement obligatoire, "
+                    + "meme valeur que cote microservice-administration) - la verification de licence ne peut pas fonctionner.");
+        }
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(3000);
         factory.setReadTimeout(3000);

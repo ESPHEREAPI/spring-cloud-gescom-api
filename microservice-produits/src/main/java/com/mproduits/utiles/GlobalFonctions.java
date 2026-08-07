@@ -294,13 +294,13 @@ public class GlobalFonctions implements Serializable {
         }
         bw.write("");
 //        Ticket t = (Ticket) data.toArray()[0];
-        bw.write(societe + "  " + vente.getEntreprise().getEmployeur().getSociete());
+        bw.write(societe + "  " + vente.getEntreprise().getCompagnie().getNom());
         bw.newLine();
-        bw.write(vente.getEntreprise().getEmployeur().getPersonne().getQuartier() + " " + vente.getEntreprise().getEmployeur().getPersonne().getVille());
+        bw.write(vente.getEntreprise().getCompagnie().getQuartier() + " " + vente.getEntreprise().getCompagnie().getVille());
         bw.newLine();
-        bw.write("BP:" + vente.getEntreprise().getEmployeur().getPersonne().getBp());
+        bw.write("BP:" + vente.getEntreprise().getCompagnie().getBp());
         bw.newLine();
-        bw.write(vente.getEntreprise().getEmployeur().getPersonne().getTel());
+        bw.write(vente.getEntreprise().getCompagnie().getTel());
         bw.newLine();
 //        java.util.GregorianCalendar calendar = new GregorianCalendar();
 //        bw.write(calendar.getTime().toString());

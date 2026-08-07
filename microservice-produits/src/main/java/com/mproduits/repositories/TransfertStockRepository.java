@@ -24,7 +24,7 @@ public interface TransfertStockRepository extends JpaRepository<TransfertStock, 
 
     /**
      * Récupère tous les transferts d'un magasin source
-     * 
+     *
      * @param magasinSourceId ID du magasin source
      * @return Liste des transferts sortants
      */
@@ -32,7 +32,7 @@ public interface TransfertStockRepository extends JpaRepository<TransfertStock, 
 
     /**
      * Récupère tous les transferts vers un magasin destination
-     * 
+     *
      * @param magasinDestinationId ID du magasin destination
      * @return Liste des transferts entrants
      */
@@ -40,11 +40,27 @@ public interface TransfertStockRepository extends JpaRepository<TransfertStock, 
 
     /**
      * Récupère tous les transferts d'un produit
-     * 
+     *
      * @param produitId ID du produit
      * @return Liste des transferts du produit
      */
     List<TransfertStock> findByProduitId(Long produitId);
+
+    // --- Variantes scopees par compagnie (voir TransfertController) ---
+
+    Optional<TransfertStock> findByIdAndEntreprise_EntreprisePK_CompagnieId(Long id, Long compagnieId);
+
+    @Query("SELECT t FROM TransfertStock t WHERE t.entreprise.entreprisePK.compagnieId = :compagnieId ORDER BY t.dateTransfert DESC")
+    List<TransfertStock> findAllByCompagnieId(@Param("compagnieId") Long compagnieId);
+
+    @Query("SELECT t FROM TransfertStock t WHERE t.source.id = :sourceId AND t.entreprise.entreprisePK.compagnieId = :compagnieId")
+    List<TransfertStock> findBySourceIdAndCompagnieId(@Param("sourceId") Long sourceId, @Param("compagnieId") Long compagnieId);
+
+    @Query("SELECT t FROM TransfertStock t WHERE t.destination.id = :destinationId AND t.entreprise.entreprisePK.compagnieId = :compagnieId")
+    List<TransfertStock> findByDestinationIdAndCompagnieId(@Param("destinationId") Long destinationId, @Param("compagnieId") Long compagnieId);
+
+    @Query("SELECT t FROM TransfertStock t WHERE t.produit.id = :produitId AND t.entreprise.entreprisePK.compagnieId = :compagnieId")
+    List<TransfertStock> findByProduitIdAndCompagnieId(@Param("produitId") Long produitId, @Param("compagnieId") Long compagnieId);
 
     /**
      * Récupère les transferts d'un produit spécifique dans une plage de dates

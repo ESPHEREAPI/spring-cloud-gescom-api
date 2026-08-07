@@ -36,6 +36,7 @@ import com.mproduits.repositories.PointVenteRepositories;
 import com.mproduits.repositories.PrixAchatRepositories;
 import com.mproduits.repositories.PrixArticlesRepositories;
 import com.mproduits.repositories.ProduitRepositories;
+import com.mproduits.security.TenantContext;
 import java.math.BigDecimal;
 import java.util.Calendar;
 import java.util.Date;
@@ -66,16 +67,20 @@ public class MapperDtoImpl {
     @Autowired
     ProduitRepositories produitRepositories;
     @Autowired
+    TenantContext tenantContext;
+    @Autowired
     LigneVenteRepositories ligneVenteRepositories1;
     @Autowired
     ArticlesRepository articlesRepository;
     @Autowired
     EntrepriseRepositories entrepriseRepositories;
+    @Autowired
+    com.mproduits.services.EntrepriseService entrepriseService;
     Entreprise e=null;
     public ProduitDto mapperProduitDto(Produit p,Boutique boutiqueid) {
         ProduitDto produitDto = new ProduitDto();
         BeanUtils.copyProperties(p, produitDto);
-        e=entrepriseRepositories.findByActif(Boolean.TRUE);
+        e=entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
         Optional<PointVente> pv=pointVenteRepositories.findLatestActiveByProduitBoutiqueAndEntreprise(p, boutiqueid, e);
         BigDecimal stock=pv.isPresent() ? pv.get().getStockFinalTheorie():BigDecimal.ZERO;
         produitDto.setStockFinal(stock);
@@ -371,7 +376,7 @@ public class MapperDtoImpl {
     
     public  ProduitDto produitById(Long id,Boutique boutiqueid){
         ProduitDto pdto=new ProduitDto();
-      Optional<Produit> pd =  produitRepositories.findById(id);
+      Optional<Produit> pd =  produitRepositories.findByIdAndCompagnie_Id(id, tenantContext.currentCompagnieId());
       if(pd.isPresent()){
           pdto=this.mapperProduitDto(pd.get(),boutiqueid);
       }

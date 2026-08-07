@@ -19,7 +19,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class EntrepriseResponse {
     private Integer anneeId;
-    private Long employeurId;
+    private Long compagnieId;
     private String directeur;
     private String activite;
     private String conventionCollective;
@@ -36,8 +36,8 @@ public class EntrepriseResponse {
     // Données de l'année
     private AnneeInfo annee;
 
-    // Données de l'employeur
-    private EmployeurInfo employeur;
+    // Données de la compagnie
+    private CompagnieInfo compagnie;
 
     @Data
     @NoArgsConstructor
@@ -52,15 +52,13 @@ public class EntrepriseResponse {
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class EmployeurInfo {
+    public static class CompagnieInfo {
         private Long id;
-        private String matricule;
-        private String societe;
-        private String abreviation;
+        private String nom;
         private String telephone;
         private String email;
         private String adresse;
         private String ville;
     }
-    
+
 }

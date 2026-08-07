@@ -55,14 +55,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String token = header.substring(7);
             if (jwtService.isValid(token)) {
                 String username = jwtService.getUsername(token);
-                personneRepository.findByUserName(username).ifPresent(this::authenticate);
+                personneRepository.findByUserName(username).ifPresent(personne -> authenticate(personne, request));
             }
         }
 
         filterChain.doFilter(request, response);
     }
 
-    private void authenticate(Personne personne) {
+    private void authenticate(Personne personne, HttpServletRequest request) {
+        // compagnieId depuis la base (pas le claim du token), coherent avec le
+        // reste de ce filtre : null = administrateur systeme (SUPER_ADMIN/
+        // SYSTEM_ADMIN), renseigne = utilisateur/admin de cette compagnie.
+        request.setAttribute("compagnieId", personne.getCompagnie() != null ? personne.getCompagnie().getId() : null);
+
         if (SecurityContextHolder.getContext().getAuthentication() != null) {
             return;
         }

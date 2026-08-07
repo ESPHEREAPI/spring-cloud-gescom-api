@@ -5,6 +5,7 @@
 package com.mproduits.repositories;
 
 import com.mproduits.model.Client;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -17,4 +18,8 @@ import org.springframework.stereotype.Repository;
 public interface ClientRepositories extends JpaRepository<Client, Long>{
     
     Optional<Client>findByNom(String nom);
+
+    List<Client> findByCompagnie_Id(Long compagnieId);
+
+    Optional<Client> findByNomAndCompagnie_Id(String nom, Long compagnieId);
 }

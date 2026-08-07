@@ -16,6 +16,7 @@ import com.mproduits.repositories.EntrepriseRepositories;
 import com.mproduits.repositories.PointVenteRepositories;
 import com.mproduits.repositories.PrixArticlesRepositories;
 import com.mproduits.repositories.ProduitRepositories;
+import com.mproduits.security.TenantContext;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -50,6 +51,7 @@ public class ReconductionService {
     private final PointVenteRepositories pointVenteRepository;
     private final PrixArticlesRepositories prixArticlesRepository;
     private final ProduitRepositories produitRepository;
+    private final TenantContext tenantContext;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -57,11 +59,15 @@ public class ReconductionService {
     private final Map<String, ProgressionReconductionResponse> progressions = new ConcurrentHashMap<>();
 
     /**
-     * Valide les pré-requis avant de lancer une reconduction.
+     * Valide les pré-requis avant de lancer une reconduction. La compagnie
+     * n'est jamais fournie par le client - toujours derivee du token JWT de
+     * l'appelant (TenantContext), pour qu'une compagnie ne puisse jamais
+     * reconduire l'exercice d'une autre.
      */
     public ValidationReconductionResponse validerPreRequis(ValidationReconductionRequest request) {
-        log.info("Validation des pré-requis: année {} -> {}, employeur {}",
-                request.getAnneeSourceId(), request.getAnneeCibleId(), request.getEmployeurId());
+        Long compagnieId = tenantContext.currentCompagnieId();
+        log.info("Validation des pré-requis: année {} -> {}, compagnie {}",
+                request.getAnneeSourceId(), request.getAnneeCibleId(), compagnieId);
 
         ValidationReconductionResponse response = ValidationReconductionResponse.builder()
                 .valide(true)
@@ -70,7 +76,7 @@ public class ReconductionService {
                 .build();
 
         // 1. Vérifier l'entreprise source
-        EntreprisePK pkSource = new EntreprisePK(request.getAnneeSourceId(), request.getEmployeurId());
+        EntreprisePK pkSource = new EntreprisePK(request.getAnneeSourceId(), compagnieId);
         Optional<Entreprise> entrepriseSourceOpt = entrepriseRepository.findById(pkSource);
 
         if (entrepriseSourceOpt.isEmpty() || !Boolean.TRUE.equals(entrepriseSourceOpt.get().getActif())) {
@@ -90,7 +96,7 @@ public class ReconductionService {
         }
 
         // 3. Vérifier l'entreprise cible
-        EntreprisePK pkCible = new EntreprisePK(request.getAnneeCibleId(), request.getEmployeurId());
+        EntreprisePK pkCible = new EntreprisePK(request.getAnneeCibleId(), compagnieId);
         boolean cibleExiste = entrepriseRepository.existsById(pkCible);
         response.setEntrepriseCibleExiste(cibleExiste);
 
@@ -195,7 +201,7 @@ public class ReconductionService {
                     .reconductionId(reconductionId)
                     .entrepriseCree(ExecutionReconductionResponse.EntrepriseInfo.builder()
                             .anneeId(request.getAnneeCibleId())
-                            .employeurId(request.getEmployeurId())
+                            .compagnieId(tenantContext.currentCompagnieId())
                             .build())
                     .statistiques(stats)
                     .heureDebut(heureDebut)
@@ -214,7 +220,6 @@ public class ReconductionService {
         ValidationReconductionRequest validationRequest = ValidationReconductionRequest.builder()
                 .anneeSourceId(request.getAnneeSourceId())
                 .anneeCibleId(request.getAnneeCibleId())
-                .employeurId(request.getEmployeurId())
                 .build();
 
         ValidationReconductionResponse validation = validerPreRequis(validationRequest);
@@ -225,11 +230,12 @@ public class ReconductionService {
 
     private Entreprise creerEntrepriseCible(ExecutionReconductionRequest request,
             ProgressionReconductionResponse progression) {
-        EntreprisePK pkSource = new EntreprisePK(request.getAnneeSourceId(), request.getEmployeurId());
+        Long compagnieId = tenantContext.currentCompagnieId();
+        EntreprisePK pkSource = new EntreprisePK(request.getAnneeSourceId(), compagnieId);
         Entreprise source = entrepriseRepository.findById(pkSource)
                 .orElseThrow(() -> new RuntimeException("Entreprise source introuvable"));
 
-        EntreprisePK pkCible = new EntreprisePK(request.getAnneeCibleId(), request.getEmployeurId());
+        EntreprisePK pkCible = new EntreprisePK(request.getAnneeCibleId(), compagnieId);
         Entreprise cible = new Entreprise();
         cible.setEntreprisePK(pkCible);
         cible.setActif(true);
@@ -244,7 +250,7 @@ public class ReconductionService {
         Annee annee = anneeRepository.findById(request.getAnneeCibleId())
                 .orElseThrow(() -> new RuntimeException("Année cible introuvable"));
         cible.setAnnee(annee);
-        cible.setEmployeur(source.getEmployeur());
+        cible.setCompagnie(source.getCompagnie());
 
         return entrepriseRepository.save(cible);
     }
@@ -252,7 +258,7 @@ public class ReconductionService {
     private int reconduirePointsVente(ExecutionReconductionRequest request,
             Entreprise nouvelleEntreprise,
             ProgressionReconductionResponse progression) {
-        EntreprisePK pkSource = new EntreprisePK(request.getAnneeSourceId(), request.getEmployeurId());
+        EntreprisePK pkSource = new EntreprisePK(request.getAnneeSourceId(), tenantContext.currentCompagnieId());
         List<PointVente> pointsSource = pointVenteRepository.findByEntreprise(pkSource);
 
         if (pointsSource.isEmpty()) {
@@ -312,7 +318,7 @@ public class ReconductionService {
     private int reconduirePrixArticles(ExecutionReconductionRequest request,
             Entreprise nouvelleEntreprise,
             ProgressionReconductionResponse progression) {
-        EntreprisePK pkSource = new EntreprisePK(request.getAnneeSourceId(), request.getEmployeurId());
+        EntreprisePK pkSource = new EntreprisePK(request.getAnneeSourceId(), tenantContext.currentCompagnieId());
         List<PrixArticles> prixSource = prixArticlesRepository.findByEntrepriseAndActif(pkSource, true);
 
         if (prixSource.isEmpty()) {
@@ -382,7 +388,7 @@ public class ReconductionService {
     }
 
     private void desactiverEntrepriseSource(ExecutionReconductionRequest request) {
-        EntreprisePK pkSource = new EntreprisePK(request.getAnneeSourceId(), request.getEmployeurId());
+        EntreprisePK pkSource = new EntreprisePK(request.getAnneeSourceId(), tenantContext.currentCompagnieId());
         Entreprise source = entrepriseRepository.findById(pkSource)
                 .orElseThrow(() -> new RuntimeException("Entreprise source introuvable"));
         source.setActif(false);

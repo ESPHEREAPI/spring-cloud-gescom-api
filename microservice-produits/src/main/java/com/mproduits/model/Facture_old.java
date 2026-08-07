@@ -64,7 +64,7 @@ public class Facture_old implements Serializable {
 
     @JoinColumns({
         @JoinColumn(name = "AnneeId", referencedColumnName = "AnneeId"),
-        @JoinColumn(name = "EmployeurId", referencedColumnName = "EmployeurId")})
+        @JoinColumn(name = "EmployeurId", referencedColumnName = "compagnie_id")})
     @ManyToOne(optional = false)
     private Entreprise entreprise;
     @JoinColumn(name = "fournisseurId", referencedColumnName = "id")

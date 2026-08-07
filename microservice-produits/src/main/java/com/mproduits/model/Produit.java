@@ -105,6 +105,12 @@ public class Produit implements Serializable {
     @JoinColumn(name = "Specifiqueid", referencedColumnName = "id")
     @ManyToOne
     private Specifique specifiqueid;
+    // Isolation multi-tenant : catalogue par compagnie. Nullable pour les
+    // lignes existantes en attendant le backfill (voir script de migration).
+    @JsonIgnore
+    @JoinColumn(name = "compagnie_id")
+    @ManyToOne(optional = true)
+    private Compagnie compagnie;
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "artticleId", fetch = FetchType.LAZY)
     @JsonIgnore
     private Collection<Specificationarticles> specificationarticlesCollection;
@@ -265,6 +271,14 @@ public class Produit implements Serializable {
 
     public void setSpecifiqueid(Specifique specifiqueid) {
         this.specifiqueid = specifiqueid;
+    }
+
+    public Compagnie getCompagnie() {
+        return compagnie;
+    }
+
+    public void setCompagnie(Compagnie compagnie) {
+        this.compagnie = compagnie;
     }
 
     public Collection<Specificationarticles> getSpecificationarticlesCollection() {

@@ -13,6 +13,8 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
 import jakarta.persistence.OneToMany;
@@ -49,6 +51,13 @@ public class Specifique implements Serializable {
      @JsonIgnore
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "specifiqueId",fetch = FetchType.LAZY)
     private Collection<Specificationarticles> specificationarticlesCollection;
+
+    // Rattachement compagnie (isolation multi-tenant) - une liste de
+    // specificites produit est propre a chaque compagnie.
+    @JsonIgnore
+    @JoinColumn(name = "compagnie_id")
+    @ManyToOne
+    private Compagnie compagnie;
 
     public Specifique() {
     }
@@ -95,6 +104,22 @@ public class Specifique implements Serializable {
 
     public void setSpecificationarticlesCollection(Collection<Specificationarticles> specificationarticlesCollection) {
         this.specificationarticlesCollection = specificationarticlesCollection;
+    }
+
+    public Compagnie getCompagnie() {
+        return compagnie;
+    }
+
+    public void setCompagnie(Compagnie compagnie) {
+        this.compagnie = compagnie;
+    }
+
+    public Long getCompagnieId() {
+        return compagnie != null ? compagnie.getId() : null;
+    }
+
+    public void setCompagnieId(Long compagnieId) {
+        this.compagnie = compagnieId != null ? new Compagnie(compagnieId) : null;
     }
 
     @Override

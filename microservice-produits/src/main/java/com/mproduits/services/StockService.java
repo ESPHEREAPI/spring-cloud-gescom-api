@@ -8,6 +8,7 @@ import com.mproduits.exceptions.MetierException;
 import com.mproduits.mappers.MapperDtoImpl;
 import com.mproduits.model.*;
 import com.mproduits.repositories.*;
+import com.mproduits.security.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,8 @@ public class StockService {
     private final StockMovementRepository movementRepo;
     private final ProduitRepositories produitRepo;
     private final BoutiqueRepositories boutiqueRepositories;
+    private final TenantContext tenantContext;
+    private final EntrepriseService entrepriseService;
     @Autowired
     MapperDtoImpl mapperdto;
 
@@ -194,7 +197,7 @@ public Map<String, Integer> getCurrentPrixBatch(List<Long> produitIds, Long bout
      */
     @Transactional(readOnly = true)
     public BigDecimal getStockTotal(Long produitId, Long boutiqueid, int anneeid) {
-        //Optional<Boutique> boutique = boutiqueRepositories.findById(boutiqueid);
+        //Optional<Boutique> boutique = boutiqueRepositories.findByIdAndCompagnie_Id(boutiqueid, tenantContext.currentCompagnieId());
         return pointVenteRepo.sumStockByProduit(produitId, boutiqueid, anneeid).orElse(ZERO);
     }
 
@@ -334,7 +337,7 @@ public Map<String, Integer> getCurrentPrixBatch(List<Long> produitIds, Long bout
      * Trouve un produit ou lève une exception
      */
     private Produit findProduitOrThrow(Long produitId) {
-        return produitRepo.findById(produitId)
+        return produitRepo.findByIdAndCompagnie_Id(produitId, tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new MetierException("Produit non trouvé: id=" + produitId));
     }
 
@@ -350,8 +353,7 @@ public Map<String, Integer> getCurrentPrixBatch(List<Long> produitIds, Long bout
      * Trouve l'entreprise active
      */
     private Entreprise findActiveEntreprise() {
-        return Optional.ofNullable(entrepriseRepositories.findByActif(Boolean.TRUE))
-                .orElseThrow(() -> new MetierException("Aucune entreprise active trouvée"));
+        return entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
     }
 
     /**
@@ -408,7 +410,7 @@ public Map<String, Integer> getCurrentPrixBatch(List<Long> produitIds, Long bout
 
     public ProduitDto lastProduitForPointVente(Long produitid, Long boutiqueid) {
         var produit = findProduitOrThrow(produitid);
-        Optional<Boutique> boutique = boutiqueRepositories.findById(produitid);
+        Optional<Boutique> boutique = boutiqueRepositories.findByIdAndCompagnie_Id(boutiqueid, tenantContext.currentCompagnieId());
         return mapperdto.mapperProduitDto(produit, boutique.isPresent() ? boutique.get() : new Boutique());
 
     }
@@ -430,11 +432,11 @@ public Map<String, Integer> getCurrentPrixBatch(List<Long> produitIds, Long bout
         log.info("📉 Décrémentation stock article {} de {}", articleId, quantite);
 
         // Récupérer le produit
-        Produit produit = produitRepo.findById(articleId)
+        Produit produit = produitRepo.findByIdAndCompagnie_Id(articleId, tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new IllegalArgumentException("Article " + articleId + " non trouvé"));
 
         // Vérifier le stock disponible
-        Optional<Boutique> boutique = boutiqueRepositories.findById(boutiqueid);
+        Optional<Boutique> boutique = boutiqueRepositories.findByIdAndCompagnie_Id(boutiqueid, tenantContext.currentCompagnieId());
         ProduitDto produitDto = mapperdto.mapperProduitDto(produit, boutique.get());
         Integer stockActuel = produitDto.getStockFinal().intValue();
         if (stockActuel < quantite) {
@@ -445,7 +447,7 @@ public Map<String, Integer> getCurrentPrixBatch(List<Long> produitIds, Long bout
 
         // Décrémenter
         Integer nouveauStock = stockActuel - quantite;
-        Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
+        Entreprise e = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
         // produitDto.setStockFinal();
         Optional<PointVente> pv = pointVenteRepo.findLatestActiveByProduitBoutiqueAndEntreprise(produit, boutique.get(), e);
         pv.get().setStockFinalTheorie(new BigDecimal(nouveauStock));
@@ -499,7 +501,7 @@ public Map<String, Integer> getCurrentPrixBatch(List<Long> produitIds, Long bout
 
             log.warn("⚠️ Articles non trouvés: {}", missingIds);
         }
-        Optional<Boutique> boutique = boutiqueRepositories.findById(boutiqueid);
+        Optional<Boutique> boutique = boutiqueRepositories.findByIdAndCompagnie_Id(boutiqueid, tenantContext.currentCompagnieId());
         List<ProduitDto> produitsDtos = produits.stream().map(pd -> mapperdto.mapperProduitDto(pd, boutique.get())).toList();
         return produitsDtos;
     }
@@ -556,7 +558,7 @@ public Map<String, Integer> getCurrentPrixBatch(List<Long> produitIds, Long bout
             // ========================================
             // ÉTAPE 3: VALIDER QUE TOUS ONT ASSEZ DE STOCK
             // ========================================
-            Optional<Boutique> boutique = boutiqueRepositories.findById(boutiqueid);
+            Optional<Boutique> boutique = boutiqueRepositories.findByIdAndCompagnie_Id(boutiqueid, tenantContext.currentCompagnieId());
             ProduitDto pdto;
             for (StockDecrementItem item : items) {
                 Produit produit = produitsMap.get(item.getArticleId());
@@ -581,7 +583,7 @@ public Map<String, Integer> getCurrentPrixBatch(List<Long> produitIds, Long bout
             // ========================================
             Map<String, Integer> newStocks = new HashMap<>();
             List<PointVente> produitsToUpdate = new ArrayList<>();
-            Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
+            Entreprise e = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
             //   Optional<PointVente> pv =pointVenteRepo.findLatestActiveByProduitBoutiqueAndEntreprise(cde, b, e)
             for (StockDecrementItem item : items) {
                 Produit produit = produitsMap.get(item.getArticleId());
@@ -647,10 +649,10 @@ public Map<String, Integer> getCurrentPrixBatch(List<Long> produitIds, Long bout
 
         for (StockDecrementItem item : items) {
             try {
-                Produit produit = produitRepo.findById(item.getArticleId())
+                Produit produit = produitRepo.findByIdAndCompagnie_Id(item.getArticleId(), tenantContext.currentCompagnieId())
                         .orElseThrow(() -> new IllegalArgumentException(
                         "Article " + item.getArticleId() + " non trouvé"));
-                Optional<Boutique> boutique = boutiqueRepositories.findById(boutiqueid);
+                Optional<Boutique> boutique = boutiqueRepositories.findByIdAndCompagnie_Id(boutiqueid, tenantContext.currentCompagnieId());
                 ProduitDto pdto = mapperdto.mapperProduitDto(produit, boutique.get());
                 BigDecimal stockActuel = pdto.getStockFinal();
                 Integer quantite = item.getQuantite();
@@ -662,7 +664,7 @@ public Map<String, Integer> getCurrentPrixBatch(List<Long> produitIds, Long bout
                 }
 
                 Integer nouveauStock = stockActuel.intValue() - quantite;
-                Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
+                Entreprise e = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
                 Optional<PointVente> pv = pointVenteRepo.findLatestActiveByProduitBoutiqueAndEntreprise(produit, boutique.get(), e);
 
                 pv.get().setStockFinalTheorie(new BigDecimal(nouveauStock));
@@ -697,7 +699,7 @@ public Map<String, Integer> getCurrentPrixBatch(List<Long> produitIds, Long bout
         for (Long articleId : articleIds) {
             try {
                 // Récupérer le produit
-                Produit produit = produitRepo.findById(articleId)
+                Produit produit = produitRepo.findByIdAndCompagnie_Id(articleId, tenantContext.currentCompagnieId())
                         .orElse(null);
 
                 if (produit != null) {
@@ -723,7 +725,7 @@ public Map<String, Integer> getCurrentPrixBatch(List<Long> produitIds, Long bout
     private Integer calculateStock(Produit produit, Long boutiqueid) {
         // Adapter selon votre logique métier
         // Exemple :
-        Optional<Boutique> boutique = boutiqueRepositories.findById(boutiqueid);
+        Optional<Boutique> boutique = boutiqueRepositories.findByIdAndCompagnie_Id(boutiqueid, tenantContext.currentCompagnieId());
         ProduitDto pdto = mapperdto.mapperProduitDto(produit, boutique.get());
         return pdto.getStockFinal().intValue(); // ou votre méthode de calcul
     }

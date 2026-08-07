@@ -40,11 +40,23 @@ public interface MagasinFournisseurRepositories extends JpaRepository<MagasinFou
       @Query("SELECT df FROM MagasinFournisseur df WHERE df.magasin.boutique IS NULL")
     Collection<MagasinFournisseur> findDepotByFournisseurInAnnee();
 
+    @Query("SELECT df FROM MagasinFournisseur df WHERE df.magasin.boutique IS NULL AND df.magasin.compagnie.id = :compagnieId")
+    Collection<MagasinFournisseur> findDepotByFournisseurInAnneeAndCompagnieId(@Param("compagnieId") Long compagnieId);
+
     @Query("SELECT df FROM MagasinFournisseur df GROUP BY df.magasin")
     Collection<MagasinFournisseur> findDepotByFournisseurByGroupDepot();
 
+    @Query("SELECT df FROM MagasinFournisseur df WHERE df.magasin.compagnie.id = :compagnieId GROUP BY df.magasin")
+    Collection<MagasinFournisseur> findDepotByFournisseurByGroupDepotAndCompagnieId(@Param("compagnieId") Long compagnieId);
+
     @Query("SELECT df FROM MagasinFournisseur df WHERE df.magasin.boutique IS NOT NULL")
     Collection<MagasinFournisseur> findDepotByFournisseurHaveBoutique();
+
+    @Query("SELECT df FROM MagasinFournisseur df WHERE df.magasin.boutique IS NOT NULL AND df.magasin.compagnie.id = :compagnieId")
+    Collection<MagasinFournisseur> findDepotByFournisseurHaveBoutiqueAndCompagnieId(@Param("compagnieId") Long compagnieId);
+
+    @Query("SELECT df FROM MagasinFournisseur df WHERE df.magasin.compagnie.id = :compagnieId")
+    List<MagasinFournisseur> findAllByCompagnieId(@Param("compagnieId") Long compagnieId);
 
     @Query("SELECT df FROM MagasinFournisseur df WHERE df.magasin = :d AND df.fournisseur = :f")
     Optional<MagasinFournisseur> findByFournisseurAndDepot(@Param("f") Fournisseur f, @Param("d") Magasin d);

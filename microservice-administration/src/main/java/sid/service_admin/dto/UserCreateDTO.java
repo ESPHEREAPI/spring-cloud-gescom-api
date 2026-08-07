@@ -29,8 +29,6 @@ public class UserCreateDTO {
     private String codepays;
     private String createdBy;
 
-    private Long roleid;
-
     private Boolean autorisationDeletes;
 
     private Boolean isActive;

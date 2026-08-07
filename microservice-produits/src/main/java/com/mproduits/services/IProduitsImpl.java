@@ -13,6 +13,7 @@ import com.mproduits.model.Produit;
 import com.mproduits.repositories.BoutiqueRepositories;
 import com.mproduits.repositories.PointVenteRepositories;
 import com.mproduits.repositories.ProduitRepositories;
+import com.mproduits.security.TenantContext;
 import jakarta.transaction.Transactional;
 import java.awt.PointerInfo;
 import java.math.BigDecimal;
@@ -39,51 +40,50 @@ public class IProduitsImpl implements IProduits{
      private final ProduitRepositories produitRepository;
      private final PointVenteRepositories  pvRepositories;
      private final BoutiqueRepositories btRepositories;
+     private final TenantContext tenantContext;
      @Autowired
      MapperDtoImpl mapperDto;
 
     @Override
     public Page<ProduitDto> getAllProduits(Entreprise entreprise, Pageable pageable) {
-         return produitRepository.findAll(pageable)
+         return produitRepository.findAllByCompagnie_Id(tenantContext.currentCompagnieId(), pageable)
                 .map(this::convertToDto);
     }
 
     @Override
     public List<ProduitDto> searchByLibelleOrReference(String query, Entreprise entreprise) {
-     return produitRepository.findAll()
-        
-                
+     return produitRepository.findAllByCompagnie_Id(tenantContext.currentCompagnieId())
                 .stream()
                 .map(this::convertToDto)
-                .collect(Collectors.toList()); 
-    
+                .collect(Collectors.toList());
+
     }
 
     @Override
     public Produit findById(Long id) {
-        return produitRepository.findById(id)
+        return produitRepository.findByIdAndCompagnie_Id(id, tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new RuntimeException("Produit non trouvé avec l'ID: " + id));
     }
 
     @Override
     public ProduitDto findByReference(String reference) {
-         Produit p= produitRepository.findByReference(reference)
+         Produit p= produitRepository.findByReferenceAndCompagnie_Id(reference, tenantContext.currentCompagnieId())
                 .orElse(null);
          return this.convertToDto(p);
     }
 
     @Override
     public Produit findByLibelle(String libelle) {
-       return produitRepository.findByLibelle(libelle)
-                .orElse(null); 
+       return produitRepository.findByLibelleAndCompagnie_Id(libelle, tenantContext.currentCompagnieId())
+                .orElse(null);
     }
 
     @Override
     public List<ProduitDto> getAllProduit() {
-    return produitRepository.findAll().stream()
+    return produitRepository.findAllByCompagnie_Id(tenantContext.currentCompagnieId()).stream()
             .filter(pd-> pd.getDeletes()==false)
             .map(this::convertToDto)
-            .collect(Collectors.toList()); 
+            .collect(Collectors.toList());
     }
 
     @Override
@@ -101,7 +101,7 @@ public class IProduitsImpl implements IProduits{
         if (!StringUtils.hasText(reference)) {
             return false;
         }
-        return produitRepository.findByReference(reference.trim()).isPresent();
+        return produitRepository.findByReferenceAndCompagnie_Id(reference.trim(), tenantContext.currentCompagnieId()).isPresent();
     }
 
     @Override

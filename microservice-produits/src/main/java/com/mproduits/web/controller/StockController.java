@@ -7,6 +7,7 @@ package com.mproduits.web.controller;
 
 import com.mproduits.dto.ProduitDto;
 import com.mproduits.mappers.MapperDtoImpl;
+import com.mproduits.security.BoutiqueAccessGuard;
 import com.mproduits.services.StockService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class StockController {
     
     private final StockService stockService;
+    private final BoutiqueAccessGuard boutiqueAccessGuard;
      @Autowired
     MapperDtoImpl mapperdto;
     /**
@@ -43,6 +45,7 @@ public class StockController {
      */
     @GetMapping("/produit/{produitId}/{boutiqueid}/{anneeid}")
     public ResponseEntity<Map<String, Object>> getStockTotal(@PathVariable Long produitId,@PathVariable Long boutiqueid,@PathVariable int anneeid) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         BigDecimal stock = stockService.getStockTotal(produitId,boutiqueid,anneeid);
         return ResponseEntity.ok(Map.of("stock", stock));
     }
@@ -63,6 +66,7 @@ public class StockController {
     }
     @GetMapping("/produit/{articleId}/{boutiqueid}")
     public ResponseEntity<ProduitDto>currentProduit(@PathVariable Long articleId,@PathVariable Long boutiqueid){
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         ProduitDto pdo=stockService.lastProduitForPointVente(articleId, boutiqueid);
           return ResponseEntity.ok(pdo);
      

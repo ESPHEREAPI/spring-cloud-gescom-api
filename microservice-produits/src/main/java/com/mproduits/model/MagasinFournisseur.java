@@ -34,7 +34,7 @@ public class MagasinFournisseur implements Serializable {
     protected MagasinFournisseurPK magasinFournisseurPK;
    @JoinColumns({
         @JoinColumn(name = "Anneeid", referencedColumnName = "Anneeid"),
-        @JoinColumn(name = "Employeurid", referencedColumnName = "Employeurid")})
+        @JoinColumn(name = "Employeurid", referencedColumnName = "compagnie_id")})
     @ManyToOne(optional = true, fetch = FetchType.LAZY)  // ← LAZY
     private Entreprise entreprise;
     

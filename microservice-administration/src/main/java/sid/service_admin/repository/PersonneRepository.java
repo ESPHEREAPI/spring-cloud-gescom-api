@@ -33,6 +33,7 @@ public interface PersonneRepository extends JpaRepository<Personne, Long>{
     Optional<Personne> findFirstByRoleid_Name(String roleName);
     List<Personne> findByRoleid_Name(String roleName);
     List<Personne> findByCompagnie_Id(Long compagnieId);
+    Optional<Personne> findByIdAndCompagnie_Id(Long id, Long compagnieId);
     long countByCompagnie_Id(Long compagnieId);
     List<Personne> findByRoleid_NameAndCreatedBy(String roleName, String createdBy);
 }

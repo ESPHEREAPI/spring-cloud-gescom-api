@@ -12,6 +12,8 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
 import jakarta.persistence.OneToMany;
@@ -45,6 +47,13 @@ public class Categories implements Serializable {
     @JsonIgnore
     @OneToMany(mappedBy = "categories",fetch = FetchType.LAZY)
     private Collection<Produit> produitCollection;
+
+    // Rattachement compagnie (isolation multi-tenant) - un catalogue de
+    // categories est propre a chaque compagnie.
+    @JsonIgnore
+    @JoinColumn(name = "compagnie_id")
+    @ManyToOne
+    private Compagnie compagnie;
 
     public Categories() {
     }
@@ -83,6 +92,22 @@ public class Categories implements Serializable {
 
     public void setProduitCollection(Collection<Produit> produitCollection) {
         this.produitCollection = produitCollection;
+    }
+
+    public Compagnie getCompagnie() {
+        return compagnie;
+    }
+
+    public void setCompagnie(Compagnie compagnie) {
+        this.compagnie = compagnie;
+    }
+
+    public Long getCompagnieId() {
+        return compagnie != null ? compagnie.getId() : null;
+    }
+
+    public void setCompagnieId(Long compagnieId) {
+        this.compagnie = compagnieId != null ? new Compagnie(compagnieId) : null;
     }
 
     @Override

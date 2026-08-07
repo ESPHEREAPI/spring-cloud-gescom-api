@@ -21,6 +21,13 @@ public interface PersonneRepositories extends JpaRepository<Personne, Long> {
 
     Optional<Personne> findByUserName(String userName);
 
+    // Lookup par username scope compagnie - a utiliser a la place de
+    // findByUserName() partout ou le username vient d'une requete client
+    // (evite qu'un utilisateur d'une compagnie A fasse reference a une
+    // personne appartenant a une compagnie B, ex: attribution du vendeur
+    // d'une vente).
+    Optional<Personne> findByUserNameAndBoutique_Compagnie_Id(String userName, Long compagnieId);
+
     Optional<Personne> findByEmail(String email);
 
     boolean existsByEmail(String email);

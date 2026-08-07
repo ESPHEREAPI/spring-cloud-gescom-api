@@ -37,8 +37,8 @@ public class ReconductionController {
     public ResponseEntity<ValidationReconductionResponse> valider(
             @Valid @RequestBody ValidationReconductionRequest request) {
         
-        log.info("API: Validation reconduction - année {} -> {}, employeur {}",
-                request.getAnneeSourceId(), request.getAnneeCibleId(), request.getEmployeurId());
+        log.info("API: Validation reconduction - année {} -> {}",
+                request.getAnneeSourceId(), request.getAnneeCibleId());
         
         try {
             ValidationReconductionResponse response = reconductionService.validerPreRequis(request);
@@ -60,8 +60,8 @@ public class ReconductionController {
     public ResponseEntity<ExecutionReconductionResponse> executer(
             @Valid @RequestBody ExecutionReconductionRequest request) {
         
-        log.info("API: Exécution reconduction - année {} -> {}, employeur {}",
-                request.getAnneeSourceId(), request.getAnneeCibleId(), request.getEmployeurId());
+        log.info("API: Exécution reconduction - année {} -> {}",
+                request.getAnneeSourceId(), request.getAnneeCibleId());
         
         try {
             ExecutionReconductionResponse response = reconductionService.executerReconduction(request);

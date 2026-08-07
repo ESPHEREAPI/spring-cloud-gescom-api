@@ -91,10 +91,20 @@ public class VersementService {
     private final HistoriquePaiementService historiquePaiementService;
     private final VersementStatistiqueService versementStatistiqueService;
     private final PDFGenerator pdfGenerator;
+    private final com.mproduits.security.TenantContext tenantContext;
     //private final JavaMailSender mailSender;
-    
+
     @Autowired
     private MapperDtoImpl mappers;
+
+    /** La compagnie n'est jamais fournie par le client - toujours derivee du token JWT de l'appelant. */
+    private Long compagnieCourante() {
+        Long compagnieId = tenantContext.currentCompagnieId();
+        if (compagnieId == null) {
+            throw new BadRequestException("Aucune compagnie associee a ce compte");
+        }
+        return compagnieId;
+    }
 
     /**
      * Crée un nouveau versement pour une facture
@@ -111,7 +121,7 @@ public class VersementService {
         log.info("Création d'un versement pour la facture ID: {}", request.getFactureId());
 
         // 1. Validation de la facture
-        Facture facture = factureRepository.findById(request.getFactureId())
+        Facture facture = factureRepository.findByIdAndClient_Compagnie_Id(request.getFactureId(), compagnieCourante())
                 .orElseThrow(() -> new ResourceNotFoundException("Facture introuvable avec l'ID: " + request.getFactureId()));
         
         if (!facture.isPeutRecevoirPaiement()) {
@@ -172,7 +182,7 @@ public class VersementService {
         log.info("Validation du versement ID: {}", request.getVersementId());
 
         // 1. Récupération du versement
-        VersementClient versement = versementRepository.findById(request.getVersementId())
+        VersementClient versement = versementRepository.findByIdAndClient_Compagnie_Id(request.getVersementId(), compagnieCourante())
                 .orElseThrow(() -> new ResourceNotFoundException("Versement introuvable avec l'ID: " + request.getVersementId()));
 
         // 2. Vérification du statut
@@ -232,6 +242,9 @@ public class VersementService {
     @Transactional(readOnly = true)
     public byte[] exporterRapportExcel(Long clientId, LocalDateTime dateDebut, LocalDateTime dateFin) {
         log.info("Export Excel du rapport pour le client {} entre {} et {}", clientId, dateDebut, dateFin);
+
+        clientRepository.findByIdAndCompagnie_Id(clientId, compagnieCourante())
+                .orElseThrow(() -> new ResourceNotFoundException("Client introuvable avec l'ID: " + clientId));
 
         // Récupérer les versements
         List<VersementClient> versements = versementRepository.findByClientIdAndDateVersementBetweenOrderByDateVersementDesc(clientId, dateDebut, dateFin);
@@ -304,6 +317,9 @@ public class VersementService {
     public byte[] genererRapportClientPDF(Long clientId, LocalDateTime dateDebut, LocalDateTime dateFin) {
         log.info("Génération du rapport PDF pour le client {} entre {} et {}", clientId, dateDebut, dateFin);
 
+        clientRepository.findByIdAndCompagnie_Id(clientId, compagnieCourante())
+                .orElseThrow(() -> new ResourceNotFoundException("Client introuvable avec l'ID: " + clientId));
+
         // Récupérer les versements du client pour la période
         List<VersementClient> versements = versementRepository
                 .findByClientIdAndDateVersementBetweenOrderByDateVersementDesc(
@@ -327,7 +343,7 @@ public class VersementService {
         log.info("Annulation du versement ID: {}", request.getVersementId());
 
         // 1. Récupération du versement
-        VersementClient versement = versementRepository.findById(request.getVersementId())
+        VersementClient versement = versementRepository.findByIdAndClient_Compagnie_Id(request.getVersementId(), compagnieCourante())
                 .orElseThrow(() -> new ResourceNotFoundException("Versement introuvable avec l'ID: " + request.getVersementId()));
 
         // 2. Vérification du statut
@@ -381,7 +397,7 @@ public class VersementService {
      */
     @Transactional(readOnly = true)
     public VersementResponse getVersement(Long id) {
-        VersementClient versement = versementRepository.findById(id)
+        VersementClient versement = versementRepository.findByIdAndClient_Compagnie_Id(id, compagnieCourante())
                 .orElseThrow(() -> new ResourceNotFoundException("Versement introuvable avec l'ID: " + id));
         return mapToResponse(versement);
     }
@@ -391,7 +407,7 @@ public class VersementService {
      */
     @Transactional(readOnly = true)
     public VersementResponse getVersementParNumero(String numeroVersement) {
-        VersementClient versement = versementRepository.findByNumeroVersement(numeroVersement)
+        VersementClient versement = versementRepository.findByNumeroVersementAndCompagnieId(numeroVersement, compagnieCourante())
                 .orElseThrow(() -> new ResourceNotFoundException("Versement introuvable avec le numéro: " + numeroVersement));
         return mapToResponse(versement);
     }
@@ -402,12 +418,12 @@ public class VersementService {
     @Transactional(readOnly = true)
     public Page<VersementSummary> listerVersements(VersementSearchCriteria criteria) {
         Pageable pageable = createPageable(criteria);
-        
+
         Page<VersementClient> versements = versementRepository.findAll(
-                VersementSpecifications.withCriteria(criteria),
+                VersementSpecifications.withCriteriaAndCompagnie(criteria, compagnieCourante()),
                 pageable
         );
-        
+
         return versements.map(this::mapToSummary);
     }
 
@@ -416,7 +432,7 @@ public class VersementService {
      */
     @Transactional(readOnly = true)
     public List<VersementResponse> getVersementsFacture(Long factureId) {
-        List<VersementClient> versements = versementRepository.findByFactureId(factureId);
+        List<VersementClient> versements = versementRepository.findByFactureIdAndCompagnieId(factureId, compagnieCourante());
         return versements.stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -427,6 +443,8 @@ public class VersementService {
      */
     @Transactional(readOnly = true)
     public List<VersementResponse> getVersementsClient(Long clientId) {
+        clientRepository.findByIdAndCompagnie_Id(clientId, compagnieCourante())
+                .orElseThrow(() -> new ResourceNotFoundException("Client introuvable avec l'ID: " + clientId));
         List<VersementClient> versements = versementRepository.findByClientIdOrderByDateVersementDesc(clientId);
         return versements.stream()
                 .map(this::mapToResponse)
@@ -446,9 +464,9 @@ public class VersementService {
      */
     @Transactional(readOnly = true)
     public HistoriquePaiementClient getHistoriquePaiementClient(Long clientId) {
-        Client client = clientRepository.findById(clientId)
+        Client client = clientRepository.findByIdAndCompagnie_Id(clientId, compagnieCourante())
                 .orElseThrow(() -> new ResourceNotFoundException("Client introuvable avec l'ID: " + clientId));
-        
+
         return historiquePaiementService.getHistoriquePaiementClient(clientId);
     }
 
@@ -457,7 +475,7 @@ public class VersementService {
      */
     @Transactional(readOnly = true)
     public RecuPaiementDTO genererRecuPaiement(Long versementId) {
-        VersementClient versement = versementRepository.findById(versementId)
+        VersementClient versement = versementRepository.findByIdAndClient_Compagnie_Id(versementId, compagnieCourante())
                 .orElseThrow(() -> new ResourceNotFoundException("Versement introuvable avec l'ID: " + versementId));
         
         if (!"VALIDE".equals(versement.getStatut())) {
@@ -705,8 +723,8 @@ public class VersementService {
      * les clients aayant deja effectuer un versement
      */
     public List<ClientDto> listeClientVersement() {
-        
-        List<ClientDto> listeClientdto = versementRepository.listeClientVersement().stream()
+
+        List<ClientDto> listeClientdto = versementRepository.listeClientVersementByCompagnieId(compagnieCourante()).stream()
                 .map(cl -> mappers.mapperClientByClientDto(cl)).toList();
         return listeClientdto;
     }

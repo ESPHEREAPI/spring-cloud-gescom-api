@@ -132,6 +132,14 @@ public class UserController {
         return new ResponseEntity<>(profilDTOs, HttpStatus.OK);
     }
 
+    /** Cree une nouvelle categorie de droits (profil) - voir UserService#createProfil. */
+    @PostMapping("/users/profils")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','SYSTEM_ADMIN','COMPANY_ADMIN')")
+    public ResponseEntity<ProfilDTO> creerProfil(@RequestBody ProfilDTO profilDTO) {
+        ProfilDTO created = userService.createProfil(profilDTO.getCode(), profilDTO.getDescription());
+        return new ResponseEntity<>(created, HttpStatus.CREATED);
+    }
+
     @GetMapping("/users/modules")
     //@PreAuthorize("hasRole('ADMIN') or hasPermission('USER_READ')")
     public ResponseEntity<List<ModuleDTO>> listeModules(Authentication authentication) {

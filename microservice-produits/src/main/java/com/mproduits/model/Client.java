@@ -83,6 +83,14 @@ public class Client implements Serializable {
     @ManyToOne(optional = true)
     private Ville villeid;
 
+    // Isolation multi-tenant : un client appartient a une compagnie. Nullable
+    // pour les lignes existantes en attendant le backfill (voir script de
+    // migration) ; les nouveaux clients doivent toujours en avoir un.
+    @JsonIgnore
+    @JoinColumn(name = "compagnie_id")
+    @ManyToOne(optional = true)
+    private Compagnie compagnie;
+
     private boolean fidelite;
     @JsonIgnore
     @OneToMany(mappedBy = "client")

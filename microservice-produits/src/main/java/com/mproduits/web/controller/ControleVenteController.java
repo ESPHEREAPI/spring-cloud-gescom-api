@@ -2,6 +2,7 @@ package com.mproduits.web.controller;
 
 import com.mproduits.dto.ControleVenteDTO;
 import com.mproduits.dto.ControleVenteSummaryDTO;
+import com.mproduits.security.BoutiqueAccessGuard;
 import com.mproduits.services.ControleVenteService;
 
 
@@ -37,6 +38,7 @@ import java.util.List;
 public class ControleVenteController {
 
     private final ControleVenteService controleVenteService;
+    private final BoutiqueAccessGuard boutiqueAccessGuard;
 
     /**
      * Génère le contrôle des ventes pour un mois donné.
@@ -62,8 +64,9 @@ public class ControleVenteController {
             @RequestParam Long moisId,
             @Parameter(description = "ID de l'entreprise", required = true)
             @RequestParam int anneeid,  @RequestParam Long  boutiqueid) {
-        
-        log.info("Requête de génération du contrôle des ventes - Mois: {}, Entreprise: {}", 
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+
+        log.info("Requête de génération du contrôle des ventes - Mois: {}, Entreprise: {}",
                 moisId, anneeid,boutiqueid);
 
         List<ControleVenteDTO> controles = controleVenteService.generateControleVentes(
@@ -104,8 +107,9 @@ public class ControleVenteController {
             @Parameter(description = "Date de fin")
             @RequestParam(required = false) 
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFin) {
-        
-        log.info("Requête de génération du contrôle pour période - Mois: {}, Période: {} - {}", 
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+
+        log.info("Requête de génération du contrôle pour période - Mois: {}, Période: {} - {}",
                 moisId, dateDebut, dateFin);
 
         List<ControleVenteDTO> controles = controleVenteService.generateControleVentesForPeriod(
@@ -139,11 +143,12 @@ public class ControleVenteController {
             @Parameter(description = "ID de l'entreprise", required = true)
             @RequestParam int anneeid, 
             @RequestParam Long boutiqueid) {
-        
-        log.info("Requête de résumé du contrôle des ventes - Mois: {}, Entreprise: {}", 
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+
+        log.info("Requête de résumé du contrôle des ventes - Mois: {}, Entreprise: {}",
                 moisId, anneeid);
 
-        ControleVenteSummaryDTO summary = controleVenteService.getSummary(boutiqueid, anneeid);
+        ControleVenteSummaryDTO summary = controleVenteService.getSummary(moisId, boutiqueid, anneeid);
 
         return ResponseEntity.ok(summary);
     }

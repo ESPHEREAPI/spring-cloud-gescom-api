@@ -20,15 +20,15 @@ public class EntreprisePK implements Serializable {
     @Column(name = "Anneeid")
     private int anneeId;
     @Basic(optional = false)
-    @Column(name = "Employeurid")
-    private long employeurId;
+    @Column(name = "compagnie_id")
+    private long compagnieId;
 
     public EntreprisePK() {
     }
 
-    public EntreprisePK(int anneeId, long employeurId) {
+    public EntreprisePK(int anneeId, long compagnieId) {
         this.anneeId = anneeId;
-        this.employeurId = employeurId;
+        this.compagnieId = compagnieId;
     }
 
     public int getAnneeId() {
@@ -39,19 +39,19 @@ public class EntreprisePK implements Serializable {
         this.anneeId = anneeId;
     }
 
-    public long getEmployeurId() {
-        return employeurId;
+    public long getCompagnieId() {
+        return compagnieId;
     }
 
-    public void setEmployeurId(long employeurId) {
-        this.employeurId = employeurId;
+    public void setCompagnieId(long compagnieId) {
+        this.compagnieId = compagnieId;
     }
 
     @Override
     public int hashCode() {
         int hash = 0;
         hash += (int) anneeId;
-        hash += (int) employeurId;
+        hash += (int) compagnieId;
         return hash;
     }
 
@@ -65,7 +65,7 @@ public class EntreprisePK implements Serializable {
         if (this.anneeId != other.anneeId) {
             return false;
         }
-        if (this.employeurId != other.employeurId) {
+        if (this.compagnieId != other.compagnieId) {
             return false;
         }
         return true;
@@ -73,7 +73,7 @@ public class EntreprisePK implements Serializable {
 
     @Override
     public String toString() {
-        return "com.mproduits.model.EntreprisePK[ anneeId=" + anneeId + ", employeurId=" + employeurId + " ]";
+        return "com.mproduits.model.EntreprisePK[ anneeId=" + anneeId + ", compagnieId=" + compagnieId + " ]";
     }
     
 }

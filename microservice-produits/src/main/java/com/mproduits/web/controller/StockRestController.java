@@ -7,6 +7,7 @@ package com.mproduits.web.controller;
 import com.mproduits.dto.StockUpdateRequest;
 import com.mproduits.dto.StockUpdateResponse;
 import com.mproduits.exceptions.InsufficientStockException;
+import com.mproduits.security.BoutiqueAccessGuard;
 import com.mproduits.services.StockService;
 import com.mproduits.exceptions.ProductNotFoundException;
 import lombok.extern.slf4j.Slf4j;
@@ -32,10 +33,13 @@ public class StockRestController {
     
     @Autowired
     private StockService stockService;
+    @Autowired
+    private BoutiqueAccessGuard boutiqueAccessGuard;
 
     @PostMapping("/update-after-sale")
     @Transactional
     public ResponseEntity<?> updateStockAfterSale(@RequestBody StockUpdateRequest request) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(request.getBoutiqueid());
         try {
             StockUpdateResponse response = stockService.updateStockAfterSale(
                 request.getProductId(), 
@@ -69,6 +73,7 @@ public class StockRestController {
     public ResponseEntity<Boolean> checkStockAvailability(
             @PathVariable Long productId, 
             @PathVariable Integer quantity, @PathVariable Long boutiqueid) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         try {
             boolean available = stockService.isStockAvailable(productId,boutiqueid, quantity);
             return ResponseEntity.ok(available);
@@ -79,6 +84,7 @@ public class StockRestController {
 
     @GetMapping("/current/{productId}/{boutiqueid}")
     public ResponseEntity<Integer> getCurrentStock(@PathVariable Long productId,@PathVariable Long boutiqueid) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         try {
             Integer currentStock = stockService.getCurrentStock(productId,boutiqueid);
             return ResponseEntity.ok(currentStock);

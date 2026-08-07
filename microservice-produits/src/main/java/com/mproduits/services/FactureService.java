@@ -10,6 +10,7 @@ import com.mproduits.mappers.MapperDtoImpl;
 import com.mproduits.model.*;
 import com.mproduits.repositorieCustom.FactureRepositoryCustom;
 import com.mproduits.repositories.*;
+import com.mproduits.security.TenantContext;
 import com.mproduits.specifications.FactureSpecifications;
 import com.mproduits.utiles.IdleDate;
 import com.mproduits.utiles.PDFGenerator;
@@ -64,6 +65,7 @@ public class FactureService {
     private final NumeroGeneratorService numeroGeneratorService;
     private final BoutiqueRepositories boutiqueRepositories;
     private final PDFGeneratorProfessionnel pdfGenerator;
+    private final TenantContext tenantContext;
     @Autowired
     private MapperDtoImpl mappers;
 
@@ -467,7 +469,7 @@ public class FactureService {
      * Ajoute un article à une facture
      */
     private void ajouterArticle(Facture facture, FactureItemRequest request) {
-        Produit produit = produitRepository.findById(request.getProduitId())
+        Produit produit = produitRepository.findByIdAndCompagnie_Id(request.getProduitId(), tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new ResourceNotFoundException("Produit introuvable avec l'ID: " + request.getProduitId()));
         
         FactureItem item = FactureItem.builder()

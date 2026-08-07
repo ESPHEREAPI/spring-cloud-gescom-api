@@ -16,9 +16,7 @@ import com.mproduits.model.Barcodeproduit;
 import com.mproduits.model.Boutique;
 import com.mproduits.model.Categories;
 import com.mproduits.model.Commande;
-import com.mproduits.model.Employeur;
 import com.mproduits.model.Entreprise;
-import com.mproduits.model.Fournisseur;
 import com.mproduits.model.Magasin;
 import com.mproduits.model.MagasinFournisseur;
 import com.mproduits.model.MagasinFournisseurPK;
@@ -27,15 +25,15 @@ import com.mproduits.model.PointVente;
 import com.mproduits.model.PrixArticles;
 import com.mproduits.model.Produit;
 import com.mproduits.repositories.SpecifiqueRepositories;
+import com.mproduits.security.BoutiqueAccessGuard;
+import com.mproduits.security.TenantContext;
 import com.mproduits.model.Taxeproduit;
 import com.mproduits.model.Ville;
 import com.mproduits.repositories.AnneeRepository;
 import com.mproduits.repositories.BarcodeproduitRepositories;
 import com.mproduits.repositories.BoutiqueRepositories;
 import com.mproduits.repositories.CategorieRepositories;
-import com.mproduits.repositories.EmployeurRepository;
 import com.mproduits.repositories.EntrepriseRepositories;
-import com.mproduits.repositories.FournisseurRepositories;
 import com.mproduits.repositories.MagasinFournisseurRepositories;
 import com.mproduits.repositories.MagasinRepositories;
 import com.mproduits.repositories.MagasinRepository;
@@ -91,7 +89,6 @@ public class CommandeController implements Serializable {
     private final IServiceCommande commandeService;
     private final MoisRepositories moisService;
     private final TaxeproduitRepositories taxeProduitService;
-    private final CategorieRepositories categorieService;
     private final SpecifiqueRepositories specifiqueService;
     private final SpecificationarticlesRepositories specificationArticlesService;
     private final PrixArticlesRepositories prixArticlesService;
@@ -101,15 +98,17 @@ public class CommandeController implements Serializable {
     private final BarcodeproduitRepositories barcodeProduitService;
     private final MagasinRepositories depotService;
     private final MagasinFournisseurRepositories magasinFournisseurRepositories;
-    private final FournisseurRepositories fourniService;
     private final IParamModule paramModuleService;
     private final AnneeRepository anneerepository;
     private final EntrepriseRepositories entrepriseRepositories;
     private final VilleRepositories villeRepositories;
     private final BoutiqueRepositories boutiqueRepositories;
     private final AnneeRepository anneeRepository;
-    private final EmployeurRepository employeurRepository;
     private final MagasinRepositories magasinRepository;
+    private final BoutiqueAccessGuard boutiqueAccessGuard;
+    private final TenantContext tenantContext;
+    private final com.mproduits.services.EntrepriseService entrepriseService;
+    private final com.mproduits.repositories.CommandeRepositories commandeRepositories;
     @Autowired
     private MapperDtoImpl mapperDto;
 
@@ -137,6 +136,7 @@ public class CommandeController implements Serializable {
             @RequestParam(required = false) Long boutiqueId,
             HttpSession session) {
 
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueId);
         Entreprise entreprise = getEntrepriseFromSession(session);
 
         try {
@@ -160,7 +160,7 @@ public class CommandeController implements Serializable {
             @PathVariable Long produitId
         ) {
 
-        Entreprise entreprise = entrepriseRepositories.findByActif(Boolean.TRUE);
+        Entreprise entreprise = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
 
         try {
             Produit produit = produitService.findById(produitId);
@@ -178,6 +178,11 @@ public class CommandeController implements Serializable {
             return (ResponseEntity<Map<String, BigDecimal>>) ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR);
 
         }
+    }
+
+    @GetMapping("/commandes")
+    public ResponseEntity<List<Commande>> getCommandes() {
+        return ResponseEntity.ok(commandeRepositories.findByCompagnieId(tenantContext.currentCompagnieId()));
     }
 
     @PostMapping("/approvisionner")
@@ -228,11 +233,12 @@ public class CommandeController implements Serializable {
             HttpSession session) {
 
         List<MagasinFournisseur> destinations;
+        Long compagnieId = tenantContext.currentCompagnieId();
 
         if (destinationDepot) {
-            destinations = (List<MagasinFournisseur>) depotFournisseurService.findDepotByFournisseurInAnnee();
+            destinations = (List<MagasinFournisseur>) depotFournisseurService.findDepotByFournisseurInAnneeAndCompagnieId(compagnieId);
         } else {
-            destinations = (List<MagasinFournisseur>) depotFournisseurService.findDepotByFournisseurHaveBoutique();
+            destinations = (List<MagasinFournisseur>) depotFournisseurService.findDepotByFournisseurHaveBoutiqueAndCompagnieId(compagnieId);
         }
 
         return ResponseEntity.ok(destinations);
@@ -258,6 +264,7 @@ public class CommandeController implements Serializable {
     }
    @GetMapping("/produits/id/{produitid}/{boutiqueid}")
     public ResponseEntity<ProduitDto> produitsByReference(@PathVariable Long produitid,@PathVariable Long boutiqueid) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
 
         Produit pdto = produitService.findById(produitid);
         Optional<Boutique> boutique=boutiqueRepositories.findById(boutiqueid);
@@ -266,9 +273,12 @@ public class CommandeController implements Serializable {
 
     @GetMapping("/produits/reference/{barcode}/{boutiqueid}")
     public ResponseEntity<ProduitDto> produitsBycodeBar(@PathVariable String barcode,@PathVariable Long boutiqueid) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
 
-        Barcodeproduit barcodeProduit = barcodeProduitService.findByCodeBard(barcode);
- Optional<Boutique> boutique=boutiqueRepositories.findById(boutiqueid);
+        Barcodeproduit barcodeProduit = barcodeProduitService
+                .findByCodeBardAndCompagnieId(barcode, tenantContext.currentCompagnieId())
+                .orElse(null);
+ Optional<Boutique> boutique=boutiqueRepositories.findByIdAndCompagnie_Id(boutiqueid, tenantContext.currentCompagnieId());
         return ResponseEntity.ok(barcodeProduit != null ? mapperDto.mapperProduitDto(barcodeProduit.getProduit(),boutique.isPresent() ? boutique.get(): new Boutique()) : new ProduitDto());
     }
 
@@ -281,18 +291,12 @@ public class CommandeController implements Serializable {
         return ResponseEntity.ok(taxes);
     }
 
-    @GetMapping("/categories")
-    public ResponseEntity<List<Categories>> allCategories() {
-
-        List<Categories> categories = categorieService.findAll();
-        return ResponseEntity.ok(categories);
-    }
-
     @GetMapping("/depots/{boutiqueid}")
     public ResponseEntity<List<DepoteDto>> allDepots(@PathVariable Long boutiqueid) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         List<DepoteDto> depots = new ArrayList<>();
         try {
-            depots = magasinFournisseurRepositories.findAll().stream()
+            depots = magasinFournisseurRepositories.findAllByCompagnieId(tenantContext.currentCompagnieId()).stream()
                     .filter(dp -> dp.getMagasin().getBoutiqueId()!=null && dp.getMagasin().getBoutiqueId().getId().equals(boutiqueid)==Boolean.TRUE)
                     .map(d -> mapperDto.mapperDepot(d))
                     .collect(Collectors.toList());
@@ -309,7 +313,7 @@ public class CommandeController implements Serializable {
     public ResponseEntity<List<DepoteDto>> allDepotsStockage() {
         List<DepoteDto> depots = new ArrayList<>();
         try {
-            depots = magasinFournisseurRepositories.findAll().stream()
+            depots = magasinFournisseurRepositories.findAllByCompagnieId(tenantContext.currentCompagnieId()).stream()
                     .filter(depot -> depot.getMagasin().getBoutiqueId()==null)
                     .map(d -> mapperDto.mapperDepot(d))
                     .collect(Collectors.toList());
@@ -328,7 +332,7 @@ public class CommandeController implements Serializable {
     public ResponseEntity<List<DepoteDto>> allDepotsHaveBoutique() {
         List<DepoteDto> depots = new ArrayList<>();
         try {
-            depots = depotService.findByBoutiqueDistinctIsNotNull().stream()
+            depots = depotService.findByBoutiqueIsNotNullAndCompagnie_Id(tenantContext.currentCompagnieId()).stream()
                     .map(d -> mapperDto.mapperDepot(d))
                     .collect(Collectors.toList());
             // Authentification de l'utilisateur ici
@@ -343,29 +347,13 @@ public class CommandeController implements Serializable {
     
      @GetMapping("/boutique")
     public ResponseEntity<List<Boutique>> allBoutique() {
-        List<Boutique> boutiques = new ArrayList<>();
-        try {
-            boutiques = depotService.findAll().stream()
-                    .filter(dp-> dp.getBoutiqueId()!=null  && dp.getBoutiqueId().getId()!=null)
-                    .map(d -> d.getBoutiqueId())
-                    .collect(Collectors.toList());
-            // Authentification de l'utilisateur ici
-            // ...
-
-        } catch (Exception e) {
-            System.out.println("com.mproduits.web.controller.CommandeController.allDepots()" + e.getMessage() + ' ' + e.getLocalizedMessage());
-        }
-
+        Long compagnieId = tenantContext.currentCompagnieId();
+        List<Boutique> boutiques = compagnieId != null
+                ? boutiqueRepositories.findByCompagnie_Id(compagnieId)
+                : new ArrayList<>();
         return ResponseEntity.ok(boutiques);
     }
 
-    @GetMapping("/fournisseurs")
-    public ResponseEntity<List<Fournisseur>> allFournisseur() {
-
-        List<Fournisseur> fournisseurs = fourniService.findAll();
-        return ResponseEntity.ok(fournisseurs);
-    }
-    
     @GetMapping("/all-annee")
     public ResponseEntity<List<Annee>> allAnnee() {
 
@@ -374,13 +362,6 @@ public class CommandeController implements Serializable {
     }
 
     
-    @GetMapping("/employeur")
-    public ResponseEntity<List<Employeur>> employeur() {
-
-        List<Employeur> employeurs = employeurRepository.findAll();
-        return ResponseEntity.ok(employeurs);
-    }
-
     @GetMapping("/produits")
     public ResponseEntity<List<ProduitDto>> produits() {
 
@@ -390,6 +371,7 @@ public class CommandeController implements Serializable {
     
     @GetMapping("/produits/have-stock/{anneeid}/{boutiqueid}")
     public ResponseEntity<List<ProduitDto>> produitsHaveStock(@PathVariable int anneeid,@PathVariable int boutiqueid) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante((long) boutiqueid);
 
         List<ProduitDto> allProduits = produitService.getAllProduitHaveStock(boutiqueid, anneeid);
         return ResponseEntity.ok(allProduits);
@@ -417,16 +399,19 @@ public class CommandeController implements Serializable {
 
     @GetMapping("/produits/barcode/{barcode}/{boutiqueid}")
     public ResponseEntity<ProduitDto> getProduitBarCode(@PathVariable String barcode,@PathVariable Long boutiqueid, HttpSession session) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         System.out.println("code bar " + barcode);
 
         Barcodeproduit bar = null;
         try {
-            bar = barcodeProduitService.findByCodeBard(barcode);
+            bar = barcodeProduitService
+                    .findByCodeBardAndCompagnieId(barcode, tenantContext.currentCompagnieId())
+                    .orElse(null);
             //log.debug("✅ Produit trouvé : {}", bar.toString());
 
             Produit produit = bar == null ? new Produit() : bar.getPrixArticles().getPointVente().getProduit();
             //System.out.println("produit " +produit.toString());
-            Optional<Boutique> boutique=boutiqueRepositories.findById(boutiqueid);
+            Optional<Boutique> boutique=boutiqueRepositories.findByIdAndCompagnie_Id(boutiqueid, tenantContext.currentCompagnieId());
             return ResponseEntity.ok(mapperDto.mapperProduitDto(produit,boutique.isPresent() ? boutique.get():new Boutique()));
         } catch (Exception e) {
             log.debug("❌ Aucun produit trouvé pour le code-barres : {}", barcode);
@@ -442,6 +427,7 @@ public class CommandeController implements Serializable {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String search
     ) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         Page<PrixArticles> prixArticles = commandeService.getPrixArticles(page, size, search,boutiqueid);
 
         Map<String, Object> response = new HashMap<>();
@@ -457,14 +443,16 @@ public class CommandeController implements Serializable {
     public ResponseEntity<List<PrixArticles>> getPrixArticles(@PathVariable Long boutiqueid,
             @RequestParam(required = false) String filters
     ) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         List<PrixArticles> results = commandeService.getPrixArticlesFilster(filters,boutiqueid);
         return ResponseEntity.ok(results);
     }
-    
+
      @GetMapping("/prix-articles/all/{boutiqueid}")
     public ResponseEntity<List<PrixArticles>> getAllPrixArticles(@PathVariable Long boutiqueid
-          
+
     ) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         List<PrixArticles> results = commandeService.getPrixArticlesFilster("",boutiqueid);
         return ResponseEntity.ok(results);
     }
@@ -482,6 +470,7 @@ public class CommandeController implements Serializable {
 //            return ResponseEntity.ok(stock);
 //        }
         Long boutiqueid = stockDepotAndBoutique.getBoutiqueid();
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
        Optional<Magasin>  depot=magasinRepository.findById(stockDepotAndBoutique.getDepotid());
         if (depot.isPresent() &&  depot.get().getBoutiqueId()==null) {
            stock= commandeService.stockDepot(produitId, stockDepotAndBoutique.getDepotid());
@@ -493,6 +482,7 @@ public class CommandeController implements Serializable {
 
     @GetMapping("/produits/{produitId}/{boutiqueid}/depot")
     public ResponseEntity<BigDecimal> getStockProduitDepot(@PathVariable Long produitId, @PathVariable Long boutiqueid) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         BigDecimal stock = commandeService.stockDepot(produitId, boutiqueid);
         return ResponseEntity.ok(stock);
     }
@@ -716,6 +706,7 @@ public class CommandeController implements Serializable {
     
     @GetMapping("/boutique/{id}")
     public ResponseEntity<Boutique> boutiqueid(@PathVariable Long id) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(id);
       
         try {
          Optional<Boutique>  boutique = boutiqueRepositories.findById(id);
@@ -735,7 +726,7 @@ public class CommandeController implements Serializable {
     public ResponseEntity<List<DepoteDto>> allDepots() {
         List<DepoteDto> depots = new ArrayList<>();
         try {
-            depots = magasinFournisseurRepositories.findDepotByFournisseurByGroupDepot().stream()
+            depots = magasinFournisseurRepositories.findDepotByFournisseurByGroupDepotAndCompagnieId(tenantContext.currentCompagnieId()).stream()
                     //.filter(depot -> depot.getMagasin().getBoutiqueId()==null)
                     .map(d -> mapperDto.mapperDepot(d))
                     .collect(Collectors.toList());

@@ -38,6 +38,7 @@ import com.mproduits.repositories.MagasinRepositories;
 import com.mproduits.repositories.MoisRepositories;
 import com.mproduits.repositories.PointVenteRepositories;
 import com.mproduits.repositories.PrixAchatRepositories;
+import com.mproduits.security.TenantContext;
 import com.mproduits.repositories.PrixArticlesRepositories;
 import com.mproduits.repositories.PrixVenteRepositories;
 import com.mproduits.repositories.ProduitRepositories;
@@ -81,6 +82,8 @@ public class ServiceCommande implements IServiceCommande {
     @Autowired
     ProduitRepositories produitRepositories;
     @Autowired
+    TenantContext tenantContext;
+    @Autowired
     MagasinRepositories magasinRepositories;
     @Autowired
     PointVenteRepositories pointVenteRepositories;
@@ -108,16 +111,24 @@ public class ServiceCommande implements IServiceCommande {
     BarcodeproduitRepositories barcodeproduitRepositories;
     @Autowired
     BoutiqueRepositories boutiqueRepositories;
+    @Autowired
+    EntrepriseService entrepriseService;
 
+    /**
+     * L'exercice actif est toujours celui de la compagnie de l'appelant
+     * (derive du TenantContext) - le parametre "actif" est conserve pour
+     * compatibilite d'interface mais n'a plus d'effet, un seul exercice actif
+     * existe par compagnie a la fois (voir EntrepriseService).
+     */
     @Override
     public Entreprise getEntrepriseActif(Boolean actif) {
-        return entrepriseRepositories.findByActif(actif);
+        return entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
 
     }
 
     @Override
     public BigInteger calculateStock(Long produitId, Long depotId, Long boutiqueId, Entreprise entreprise) {
-        Optional<Produit> produit = produitRepositories.findById(produitId);
+        Optional<Produit> produit = produitRepositories.findByIdAndCompagnie_Id(produitId, tenantContext.currentCompagnieId());
         Optional<Magasin> depot = magasinRepositories.findById(depotId);
 
         if (boutiqueId != null && produit.isPresent() && depot.isPresent()) {
@@ -148,7 +159,7 @@ public class ServiceCommande implements IServiceCommande {
         commande.setEntreeProduit(commandeDto.getQuantite());
 
         // Récupération du produit
-        Optional<Produit> produit = produitRepositories.findById(commandeDto.getProduitid());
+        Optional<Produit> produit = produitRepositories.findByIdAndCompagnie_Id(commandeDto.getProduitid(), tenantContext.currentCompagnieId());
 
         commande.setProduit(produit.get());
 
@@ -877,7 +888,7 @@ public class ServiceCommande implements IServiceCommande {
     private Optional<Commande> getCommandeDecembrePrecedent(Commande c, Entreprise e, Mois m) {
         EntreprisePK ancienneAnneePK = new EntreprisePK(
                 e.getAnnee().getId().intValue() - 1,
-                e.getEntreprisePK().getEmployeurId()
+                e.getEntreprisePK().getCompagnieId()
         );
 
         return entrepriseRepositories.findById(ancienneAnneePK)
@@ -1031,7 +1042,7 @@ public class ServiceCommande implements IServiceCommande {
     private Optional<PointVente> getStockFromPreviousYear(Commande cde, Boutique b, Entreprise e) {
         EntreprisePK ancienneAnneePK = new EntreprisePK(
                 e.getAnnee().getId().intValue() - 1,
-                e.getEntreprisePK().getEmployeurId()
+                e.getEntreprisePK().getCompagnieId()
         );
 
         return entrepriseRepositories.findById(ancienneAnneePK)
@@ -1107,7 +1118,7 @@ public class ServiceCommande implements IServiceCommande {
     @Override
     public Page<PrixArticles> getPrixArticles(int page, int size, String search, Long boutiqueid) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
+        Entreprise e = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
 
         if (search != null && !search.isEmpty()) {
             return prixArticlesRepositories.findProduitLibelleByEntrepriseWithFilter(e, search, pageable, boutiqueid);
@@ -1118,7 +1129,7 @@ public class ServiceCommande implements IServiceCommande {
 
     @Override
     public List<PrixArticles> getPrixArticlesFilster(String search, Long boutiqueid) {
-        Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
+        Entreprise e = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
         if (search != null && !search.trim().isEmpty()) {
             return prixArticlesRepositories.findProduitLibelleByEntrepriseWithFilter(e, search, boutiqueid);
         }
@@ -1127,16 +1138,16 @@ public class ServiceCommande implements IServiceCommande {
 
     @Override
     public BigDecimal stockProduit(Long produitId, Long boutiqueid) {
-        Optional<Produit> produit = produitRepositories.findById(produitId);
+        Optional<Produit> produit = produitRepositories.findByIdAndCompagnie_Id(produitId, tenantContext.currentCompagnieId());
         if (produit.isEmpty()) {
             return BigDecimal.ZERO;
         }
-        Optional<Boutique> boutique = boutiqueRepositories.findById(boutiqueid);
+        Optional<Boutique> boutique = boutiqueRepositories.findByIdAndCompagnie_Id(boutiqueid, tenantContext.currentCompagnieId());
         if (boutique.isEmpty()) {
 
             return stockDepot(produitId, boutiqueid);
         }
-        Entreprise entreprise = entrepriseRepositories.findByActif(Boolean.TRUE);
+        Entreprise entreprise = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
         Optional<BigDecimal> stock = pointVenteRepositories.stockFinalProduit(produit.get(), boutique.get(), entreprise);
 
         if (stock.isPresent()) {
@@ -1150,15 +1161,15 @@ public class ServiceCommande implements IServiceCommande {
     @Override
     public BigDecimal stockDepot(Long produitId, Long boutiqueid) {
 
-        Optional<Produit> produit = produitRepositories.findById(produitId);
+        Optional<Produit> produit = produitRepositories.findByIdAndCompagnie_Id(produitId, tenantContext.currentCompagnieId());
         if (produit.isEmpty()) {
             return BigDecimal.ZERO;
         }
-        Optional<Magasin> boutique = magasinRepositories.findById(boutiqueid);
+        Optional<Magasin> boutique = magasinRepositories.findByIdAndCompagnie_Id(boutiqueid, tenantContext.currentCompagnieId());
         if (boutique.isEmpty()) {
             return BigDecimal.ZERO;
         }
-        Entreprise entreprise = entrepriseRepositories.findByActif(Boolean.TRUE);
+        Entreprise entreprise = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
         Optional<BigDecimal> stock = commandeRepositories.stockFinalDepot(boutique.get(), produit.get(), entreprise);
 
         if (stock.isPresent()) {
@@ -1170,7 +1181,7 @@ public class ServiceCommande implements IServiceCommande {
 
     @Override
     public List<PrixArticles> alertstock(BigDecimal seuilStock) {
-        Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
+        Entreprise e = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
 
         return prixArticlesRepositories.findAllByEntrepriseProduitActifWithSeuilStock(e, Boolean.TRUE, seuilStock);
     }

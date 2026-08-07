@@ -31,8 +31,4 @@ public class ValidationReconductionRequest {
     @NotNull(message = "L'année cible est obligatoire")
     @Positive(message = "L'année cible doit être positive")
     private Integer anneeCibleId;
-
-    @NotNull(message = "L'employeur est obligatoire")
-    @Positive(message = "L'employeur doit être positif")
-    private Long employeurId;
 }

@@ -18,6 +18,8 @@ import org.springframework.data.jpa.repository.Query;
 public interface MagasinRepositories  extends JpaRepository<Magasin, Long>{
     @Query("SELECT m FROM Magasin m WHERE m.boutique is not null GROUP BY m.boutique")
     List<Magasin> findByBoutiqueDistinctIsNotNull();
+
+    List<Magasin> findByBoutiqueIsNotNullAndCompagnie_Id(Long compagnieId);
     Optional<Magasin> findByCode(String code);
     List<Magasin> findByLibelle(String libelle);
     
@@ -43,6 +45,9 @@ public interface MagasinRepositories  extends JpaRepository<Magasin, Long>{
      * Trouve un magasin par son ID
      */
     Optional<Magasin> findById(Long id);
+
+    /** Trouve un magasin par son ID, verifie qu'il appartient bien a la compagnie de l'appelant. */
+    Optional<Magasin> findByIdAndCompagnie_Id(Long id, Long compagnieId);
 
     /**
      * Liste tous les magasins actifs

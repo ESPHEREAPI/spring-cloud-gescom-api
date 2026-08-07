@@ -78,7 +78,7 @@ public class Photocopie {
      */
     @JoinColumns({
         @JoinColumn(name = "Anneeid", referencedColumnName = "Anneeid"),
-        @JoinColumn(name = "Employeurid", referencedColumnName = "Employeurid")
+        @JoinColumn(name = "Employeurid", referencedColumnName = "compagnie_id")
     })
     @ManyToOne(optional = false)
     private Entreprise entreprise;

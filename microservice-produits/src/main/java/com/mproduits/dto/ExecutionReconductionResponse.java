@@ -40,7 +40,7 @@ public class ExecutionReconductionResponse {
     @AllArgsConstructor
     public static class EntrepriseInfo {
         private Integer anneeId;
-        private Long employeurId;
+        private Long compagnieId;
         private String libelleSociete;
         private String codeAnnee;
     }

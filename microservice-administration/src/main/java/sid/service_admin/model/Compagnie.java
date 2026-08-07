@@ -92,6 +92,10 @@ public class Compagnie implements Serializable {
     @OneToMany(mappedBy = "compagnie")
     private List<Personne> personneList;
 
+    public Compagnie(Long id) {
+        this.id = id;
+    }
+
     public Compagnie(String nom, TypeCommerce typeCommerce) {
         this.nom = nom;
         this.typeCommerce = typeCommerce;

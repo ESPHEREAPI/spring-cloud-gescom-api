@@ -4,6 +4,7 @@
  */
 package com.mproduits.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Basic;
 import jakarta.persistence.CascadeType;
@@ -12,6 +13,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
 import jakarta.persistence.OneToMany;
@@ -73,7 +76,13 @@ public class Fournisseur implements Serializable {
    
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "fournisseur")
     private Collection<MagasinFournisseur> magasinFournisseurCollection;
- 
+
+    // Rattachement compagnie (isolation multi-tenant) - un fournisseur est
+    // propre a chaque compagnie.
+    @JsonIgnore
+    @JoinColumn(name = "compagnie_id")
+    @ManyToOne
+    private Compagnie compagnie;
 
     public Fournisseur() {
     }
@@ -187,7 +196,23 @@ public class Fournisseur implements Serializable {
         this.magasinFournisseurCollection = magasinFournisseurCollection;
     }
 
-    
+    public Compagnie getCompagnie() {
+        return compagnie;
+    }
+
+    public void setCompagnie(Compagnie compagnie) {
+        this.compagnie = compagnie;
+    }
+
+    public Long getCompagnieId() {
+        return compagnie != null ? compagnie.getId() : null;
+    }
+
+    public void setCompagnieId(Long compagnieId) {
+        this.compagnie = compagnieId != null ? new Compagnie(compagnieId) : null;
+    }
+
+
 
     @Override
     public int hashCode() {

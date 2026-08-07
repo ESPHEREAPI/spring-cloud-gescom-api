@@ -13,6 +13,8 @@ import com.mproduits.model.Entreprise;
 import com.mproduits.model.PrixArticles;
 import com.mproduits.repositories.EntrepriseRepositories;
 import com.mproduits.repositories.PrixArticlesRepositories;
+import com.mproduits.security.TenantContext;
+import com.mproduits.services.EntrepriseService;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
@@ -36,7 +38,9 @@ public class PrixArticlesServicesImpl implements PrixArticlesServices {
     private PrixArticlesRepositories prixArticleRepository;
     private CategoriesRepository categoriesRepository;
     private EntrepriseRepositories entrepriseRepositories;
-  
+    private EntrepriseService entrepriseService;
+    private TenantContext tenantContext;
+
     @Override
     public List<PrixarticlesDTO> listeProduits() {
         log.info("lister des produits");
@@ -49,7 +53,7 @@ public class PrixArticlesServicesImpl implements PrixArticlesServices {
 
     @Override
     public List<PrixarticlesDTO> searchProduitByLibelle(String keyword) {
-              Entreprise e=entrepriseRepositories.findByActif(Boolean.TRUE);
+              Entreprise e=entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
         List<PrixArticles> listeProduits = prixArticleRepository.searchProduit(keyword,e.getAnnee().getId());
         List<PrixarticlesDTO> colletcDTO = listeProduits.stream().map(prod -> dtoMapper.formPrixarticles(prod)).collect(Collectors.toList());
         return colletcDTO;
@@ -58,7 +62,7 @@ public class PrixArticlesServicesImpl implements PrixArticlesServices {
 
     @Override
     public List<PrixarticlesDTO> searchProduitByCategorie(long idCategorie) {
-        Entreprise e=entrepriseRepositories.findByActif(Boolean.TRUE);
+        Entreprise e=entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
         List<PrixArticles> listeProduits = prixArticleRepository.searchProduitBycategories(idCategorie,e.getAnnee().getId());
         List<PrixarticlesDTO> colletcDTO = listeProduits.stream().map(prod -> dtoMapper.formPrixarticles(prod)).collect(Collectors.toList());
         return colletcDTO;

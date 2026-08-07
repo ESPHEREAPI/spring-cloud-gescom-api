@@ -7,6 +7,7 @@ package com.mproduits.web.controller;
 import com.mproduits.dto.ApiResponse;
 import com.mproduits.dto.InventaireDto;
 import com.mproduits.dto.PointVenteDto;
+import com.mproduits.security.BoutiqueAccessGuard;
 import com.mproduits.services.InventairesService;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,9 +29,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class InventairesControllers {
     @Autowired
     InventairesService inventairesService;
+    @Autowired
+    BoutiqueAccessGuard boutiqueAccessGuard;
      //recuperation des annee pour les ventes
     @GetMapping("/inventaires/boutique/{boutiqueid}/categorie/{categorieid}")
     public ResponseEntity<List<InventaireDto>> listePointVente(@PathVariable("boutiqueid") Long  boutiqueid,@PathVariable("categorieid") Long  categorieid) {
+     boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
      List<InventaireDto> allStockPv=inventairesService.chargeInventaire(boutiqueid, categorieid);
         return ResponseEntity.ok(allStockPv);
     }
@@ -38,6 +42,9 @@ public class InventairesControllers {
      @PostMapping("/corrections-stock")
     public ResponseEntity<ApiResponse<Void>> saveCorrections(@RequestBody List<PointVenteDto> pointsVente) {
         try {
+            // Chaque ligne doit porter sur une boutique de la compagnie courante -
+            // sans ce controle, un client pourrait corriger le stock d'une autre compagnie.
+            pointsVente.forEach(pv -> boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(pv.getBoutique().getId()));
             // Traitement ici : par exemple, mise à jour des stocks
             this.inventairesService.saveStockInventaire(pointsVente);
 
@@ -56,6 +63,7 @@ public class InventairesControllers {
       //recuperation des annee pour les ventes
     @GetMapping("/points-vente/{boutiqueid}/{categorieid}")
     public ResponseEntity<List<PointVenteDto>> chargechargeStockForUpdate(@PathVariable("boutiqueid") Long  boutiqueid,@PathVariable("categorieid") Long  categorieid) {
+     boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
      List<PointVenteDto> allStockPv=inventairesService.chargeStockeForUpdate(boutiqueid, categorieid);
         return ResponseEntity.ok(allStockPv);
     }

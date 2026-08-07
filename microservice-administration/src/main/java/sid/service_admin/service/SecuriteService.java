@@ -60,6 +60,8 @@ public class SecuriteService implements ISecurite {
     private UsermenuRepository usermenuRepository;
     @Autowired
     MapperDtoImpl mapper;
+    @Autowired
+    private ProfilPermissionMatrixService profilPermissionMatrixService;
 
     /**
      * Vérification si l'utilisateur qui est en train de se connecter existe
@@ -85,10 +87,21 @@ public class SecuriteService implements ISecurite {
     }
 
     /**
-     * Récupération des modules d'un user
+     * Récupération des modules d'un user. Un utilisateur avec un Profil (voir
+     * ProfilPermissionMatrixService) voit les modules deduits de sa matrice
+     * Profil x Menu x Action ; sans profil (ex: admin compagnie provisionne
+     * directement via Usermodule a la creation), on garde l'ancien mecanisme
+     * par utilisateur pour ne pas casser les comptes existants.
      */
     @Override
     public Collection<Modulesecurite> getModuleByUser(Personne u) {
+        if (u.getProfilid() != null) {
+            return profilPermissionMatrixService.getMenusVisibles(u.getProfilid().getId()).stream()
+                    .map(Menu::getModuleid)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+        }
         return modulesecuriteRepository.listModulesByUserId(u.getId());
     }
 
@@ -146,6 +159,11 @@ public class SecuriteService implements ISecurite {
     public Collection<Menu> getMenusbyModuleForUser(Personne u, Modulesecurite m) {
         if (u == null || m == null) {
             return new ArrayList<>();
+        }
+        if (u.getProfilid() != null) {
+            return profilPermissionMatrixService.getMenusVisibles(u.getProfilid().getId()).stream()
+                    .filter(menu -> menu.getModuleid() != null && menu.getModuleid().getId().equals(m.getId()))
+                    .collect(Collectors.toList());
         }
         return menuRepository.findMenusByModuleAndUserWithAuthorization(m.getId(), u.getId());
     }

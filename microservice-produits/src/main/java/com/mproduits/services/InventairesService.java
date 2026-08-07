@@ -19,6 +19,7 @@ import com.mproduits.repositories.EntrepriseRepositories;
 import com.mproduits.repositories.PointVenteRepositories;
 import com.mproduits.repositories.PrixAchatRepositories;
 import com.mproduits.repositories.PrixArticlesRepositories;
+import com.mproduits.security.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.util.Date;
@@ -39,27 +40,31 @@ public class InventairesService {
     EntrepriseRepositories entrepriseRepositories;
     PrixArticlesRepositories prixArticlesRepositories;
     PointVenteRepositories pointVenteRepositories;
-    
+    EntrepriseService entrepriseService;
+    TenantContext tenantContext;
+
       @Autowired
       MapperDtoImpl mapperDto;
-    
+
     @Autowired
-    public InventairesService(BoutiqueRepositories boutiqueRepositories, CategorieRepositories categorieRepositories, EntrepriseRepositories entrepriseRepositories,  PrixArticlesRepositories prixArticlesRepositories, PointVenteRepositories pointVenteRepositories) {
+    public InventairesService(BoutiqueRepositories boutiqueRepositories, CategorieRepositories categorieRepositories, EntrepriseRepositories entrepriseRepositories,  PrixArticlesRepositories prixArticlesRepositories, PointVenteRepositories pointVenteRepositories, EntrepriseService entrepriseService, TenantContext tenantContext) {
         this.boutiqueRepositories = boutiqueRepositories;
         this.categorieRepositories = categorieRepositories;
         this.entrepriseRepositories = entrepriseRepositories;
         this.prixArticlesRepositories=prixArticlesRepositories;
         this .pointVenteRepositories=pointVenteRepositories;
+        this.entrepriseService = entrepriseService;
+        this.tenantContext = tenantContext;
     }
 
     
     public List<PointVenteDto> chargeStockeForUpdate(Long boutiqueid,Long categorieid){
-        Boutique boutique =boutiqueRepositories.findById(boutiqueid)
+        Boutique boutique =boutiqueRepositories.findByIdAndCompagnie_Id(boutiqueid, tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new EntityNotFoundException("Boutique non trouvée avec l'ID: " + boutiqueid));
-        
-        Categories cat= categorieRepositories.findById(categorieid)
+
+        Categories cat= categorieRepositories.findByIdAndCompagnie_Id(categorieid, tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new EntityNotFoundException("Categorie non trouvée avec l'ID: " + categorieid));
-        Entreprise e= entrepriseRepositories.findByActif(Boolean.TRUE);
+        Entreprise e= entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
         
         
         List<PointVenteDto> allStockByPointVente= prixArticlesRepositories.chargeStockPointVente(e.getAnnee().getId(), Boolean.TRUE, boutiqueid, categorieid).stream()
@@ -74,12 +79,12 @@ public class InventairesService {
     }
 
  public List<InventaireDto> chargeInventaire(Long boutiqueid,Long categorieid){
-        Boutique boutique =boutiqueRepositories.findById(boutiqueid)
+        Boutique boutique =boutiqueRepositories.findByIdAndCompagnie_Id(boutiqueid, tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new EntityNotFoundException("Boutique non trouvée avec l'ID: " + boutiqueid));
-        
-        Categories cat= categorieRepositories.findById(categorieid)
+
+        Categories cat= categorieRepositories.findByIdAndCompagnie_Id(categorieid, tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new EntityNotFoundException("Categorie non trouvée avec l'ID: " + categorieid));
-        Entreprise e= entrepriseRepositories.findByActif(Boolean.TRUE);
+        Entreprise e= entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
         
         
         List<InventaireDto> allStockByPointVente= prixArticlesRepositories.chargeStockPointVente(e.getAnnee().getId(), Boolean.TRUE, boutiqueid, categorieid).stream()
@@ -102,9 +107,9 @@ public class InventairesService {
     }
     
     private PointVenteDto saveStock(PointVenteDto pointVenteDto ,BigDecimal quantite){
-            Entreprise e= entrepriseRepositories.findByActif(Boolean.TRUE);
+            Entreprise e= entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
             Long  boutiqueid=pointVenteDto.getBoutique().getId();
-            Optional<Boutique> boutique=boutiqueRepositories.findById(boutiqueid);
+            Optional<Boutique> boutique=boutiqueRepositories.findByIdAndCompagnie_Id(boutiqueid, tenantContext.currentCompagnieId());
             Produit produit=mapperDto.mapperProduit(pointVenteDto.getProduit());
         Optional<PrixArticles> paNew=prixArticlesRepositories.findLastActiveByEntrepriseAndProduit(e,produit ,boutique.get().getId());
         if (paNew.isEmpty()) {

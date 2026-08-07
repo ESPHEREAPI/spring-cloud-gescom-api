@@ -34,10 +34,6 @@ public class ExecutionReconductionRequest {
     @Positive(message = "L'année cible doit être positive")
     private Integer anneeCibleId;
 
-    @NotNull(message = "L'employeur est obligatoire")
-    @Positive(message = "L'employeur doit être positif")
-    private Long employeurId;
-
     @NotNull(message = "Les options sont obligatoires")
     private OptionsReconduction options;
 

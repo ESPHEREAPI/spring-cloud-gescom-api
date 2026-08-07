@@ -17,7 +17,9 @@ import com.mproduits.model.Entreprise;
 import com.mproduits.model.Vente;
 import com.mproduits.repositories.EntrepriseRepositories;
 import com.mproduits.repositories.VenteRepositories;
+import com.mproduits.security.TenantContext;
 import com.mproduits.services.BarcodeService;
+import com.mproduits.services.EntrepriseService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -42,6 +44,8 @@ public class OrdersServicesImpl implements OrdersServices {
     private final BarcodeService barcodeServiceImpl;
     private final VenteRepositories venteRepositories;
     private final EntrepriseRepositories entrepriseRepositories;
+    private final EntrepriseService entrepriseService;
+    private final TenantContext tenantContext;
     @Autowired
     MapperDtoImpl mapperImpl;
     
@@ -92,7 +96,7 @@ public class OrdersServicesImpl implements OrdersServices {
     
     @Override
     public List<OrdersDTO> listesOrdersByUsers(String user) {
-        Entreprise e=entrepriseRepositories.findByActif(Boolean.TRUE);
+        Entreprise e=entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
         List<OrdersDTO> listesOrdersByUsers = this.venteRepositories.allVentesByUsernameEcom(user,e.getAnnee().getId()).stream()
                 .map(od -> this.mapperImpl.mapperOrdersDtoVenteDto(od))
                 .collect(Collectors.toList());

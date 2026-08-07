@@ -3,6 +3,7 @@ package com.mproduits.web.controller;
 
 import com.entreprise.recette.dto.PhotocopieSummaryDTO;
 import com.mproduits.dto.PhotocopieDTO;
+import com.mproduits.security.BoutiqueAccessGuard;
 import com.mproduits.services.PhotocopieService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,6 +43,7 @@ import java.time.LocalDate;
 public class PhotocopieController {
 
     private final PhotocopieService photocopieService;
+    private final BoutiqueAccessGuard boutiqueAccessGuard;
 
     /**
      * Crée une nouvelle photocopie.
@@ -65,6 +67,7 @@ public class PhotocopieController {
     })
     public ResponseEntity<PhotocopieDTO> create(
             @Valid @RequestBody PhotocopieDTO dto) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(dto.getBoutiqueid());
         log.info("Requête de création d'une photocopie : {}", dto.getLibelle());
         
         PhotocopieDTO created = photocopieService.create(dto);
@@ -153,8 +156,9 @@ public class PhotocopieController {
             @RequestParam int anneeid, @RequestParam Long boutiqueid,@RequestParam String userName,
             @PageableDefault(size = 15, sort = "dateReception", direction = Sort.Direction.DESC)
             Pageable pageable) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         log.debug("Requête de liste des photocopies du mois ID: {}", anneeid);
-        
+
         Page<PhotocopieDTO> photocopies = photocopieService.findByMois(anneeid,boutiqueid,userName, pageable);
         
         return ResponseEntity.ok(photocopies);
@@ -193,8 +197,9 @@ public class PhotocopieController {
             @RequestParam(required = false) String libelle,
             @PageableDefault(size = 15, sort = "dateReception", direction = Sort.Direction.DESC)
             Pageable pageable) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         log.debug("Requête de recherche - Mois: {}, Libellé: {}", anneeid, libelle);
-        
+
         Page<PhotocopieDTO> photocopies = photocopieService.findWithFilters(
                 anneeid,boutiqueid, userName, dateDebut, dateFin, libelle, pageable);
         
@@ -277,6 +282,7 @@ public class PhotocopieController {
     public ResponseEntity<PhotocopieSummaryDTO> getSummary(
             @Parameter(description = "ID du mois", required = true)
             @RequestParam int anneeid, @RequestParam Long boutiqueid,@RequestParam String userName  ) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         log.debug("Requête de résumé pour le anneeid ID: {}", anneeid);
         
         PhotocopieSummaryDTO summary = photocopieService.getSummary(anneeid,boutiqueid,userName);

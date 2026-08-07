@@ -25,7 +25,20 @@ import org.springframework.data.jpa.repository.Query;
  */
 public interface VenteRepositories extends JpaRepository<Vente, Long>, JpaSpecificationExecutor<Vente> {
 
+    // ===== Vue plateforme (dashboard SUPER_ADMIN/SYSTEM_ADMIN) =====
+    // Chiffres agreges uniquement (jamais le detail d'une vente) - voir
+    // PlatformDashboardController.
+    @Query("SELECT v.boutique.compagnie.id, v.boutique.compagnie.nom, COALESCE(SUM(v.totalNet), 0), COUNT(v) " +
+           "FROM Vente v WHERE v.boutique.compagnie IS NOT NULL AND v.dateVente BETWEEN :debut AND :fin " +
+           "GROUP BY v.boutique.compagnie.id, v.boutique.compagnie.nom")
+    List<Object[]> aggregerVentesParCompagnie(@Param("debut") Date debut, @Param("fin") Date fin);
+
     Optional<Vente> findByEntrepriseAndNumeroTicketAndBoutiqueId(Entreprise entreprise, String numeroTicket,Long id);
+
+    // Lookup par id scope compagnie - a utiliser a la place de findById() partout
+    // ou l'id vient d'une requete client (evite qu'un utilisateur d'une
+    // compagnie A manipule une vente appartenant a une compagnie B).
+    Optional<Vente> findByIdAndBoutique_Compagnie_Id(Long id, Long compagnieId);
 
     long countByEntreprise(Entreprise entreprise);
 

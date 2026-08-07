@@ -81,7 +81,7 @@ public class Vente implements Serializable {
     private String cheminPatheTicket;
     @JoinColumns({
         @JoinColumn(name = "Anneeid", referencedColumnName = "Anneeid"),
-        @JoinColumn(name = "Employeurid", referencedColumnName = "Employeurid")})
+        @JoinColumn(name = "Employeurid", referencedColumnName = "compagnie_id")})
     @ManyToOne(optional = false)
     @JsonIgnore
     private Entreprise entreprise;

@@ -9,6 +9,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 import sid.service_admin.dto.AccountCreationResult;
 import sid.service_admin.model.Roles;
+import sid.service_admin.repository.CompagnieRepository;
 import sid.service_admin.repository.PersonneRepository;
 import sid.service_admin.repository.RoleRepository;
 import sid.service_admin.security.RoleNames;
@@ -25,8 +26,10 @@ public class SuperAdminBootstrap implements ApplicationRunner {
     private static final Logger logger = LoggerFactory.getLogger(SuperAdminBootstrap.class);
 
     private final RoleRepository roleRepository;
+    private final CompagnieRepository compagnieRepository;
     private final PersonneRepository personneRepository;
     private final AdminAccountService adminAccountService;
+    private final UserService userService;
 
     @Value("${app.superadmin.username:superadmin}")
     private String superAdminUsername;
@@ -35,16 +38,19 @@ public class SuperAdminBootstrap implements ApplicationRunner {
     @Value("${app.superadmin.password:}")
     private String configuredSuperAdminPassword;
 
-    public SuperAdminBootstrap(RoleRepository roleRepository, PersonneRepository personneRepository,
-            AdminAccountService adminAccountService) {
+    public SuperAdminBootstrap(RoleRepository roleRepository, CompagnieRepository compagnieRepository,
+            PersonneRepository personneRepository, AdminAccountService adminAccountService, UserService userService) {
         this.roleRepository = roleRepository;
+        this.compagnieRepository = compagnieRepository;
         this.personneRepository = personneRepository;
         this.adminAccountService = adminAccountService;
+        this.userService = userService;
     }
 
     @Override
     public void run(ApplicationArguments args) {
         seedHierarchyRoles();
+        seedProfilsPourCompagniesExistantes();
 
         if (personneRepository.findByUserName(superAdminUsername).isPresent()) {
             return;
@@ -67,8 +73,20 @@ public class SuperAdminBootstrap implements ApplicationRunner {
     }
 
     private void seedHierarchyRoles() {
-        Stream.of(RoleNames.SUPER_ADMIN, RoleNames.SYSTEM_ADMIN, RoleNames.COMPANY_ADMIN)
+        Stream.of(RoleNames.SUPER_ADMIN, RoleNames.SYSTEM_ADMIN, RoleNames.COMPANY_ADMIN, RoleNames.EMPLOYE)
                 .filter(name -> roleRepository.findByName(name).isEmpty())
                 .forEach(name -> roleRepository.save(new Roles(name)));
+    }
+
+    /**
+     * Rattrapage pour les compagnies deja existantes qui n'ont encore aucun
+     * profil (creees avant le rattachement compagnie sur Profil, ou dont le
+     * semis initial a echoue) - les compagnies creees a partir de maintenant
+     * sont semees directement a la creation, voir CompagnieService. Chaque
+     * compagnie garde ses propres profils, jamais partages avec une autre
+     * (voir UserService.seedProfilsParDefautPourCompagnie).
+     */
+    private void seedProfilsPourCompagniesExistantes() {
+        compagnieRepository.findAll().forEach(userService::seedProfilsParDefautPourCompagnie);
     }
 }

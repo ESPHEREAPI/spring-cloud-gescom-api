@@ -177,8 +177,6 @@ public class Personne implements Serializable {
     private Date updatedAt;
     @Column(name = "user_delete")
     private String userDelete;
-    @OneToOne(cascade = CascadeType.ALL, mappedBy = "personne")
-    private Employeur employeur;
     @JoinColumn(name = "Pays_id", referencedColumnName = "Id")
     @ManyToOne
     private Pays paysid;
@@ -487,14 +485,6 @@ public class Personne implements Serializable {
 
     public void setUsermenuList(byte[] usermenuList) {
         this.usermenuList = usermenuList;
-    }
-
-    public Employeur getEmployeur() {
-        return employeur;
-    }
-
-    public void setEmployeur(Employeur employeur) {
-        this.employeur = employeur;
     }
 
     public Pays getPaysid() {

@@ -5,6 +5,7 @@
 package com.mproduits.web.controller;
 
 import com.mproduits.dto.VenteDto;
+import com.mproduits.security.BoutiqueAccessGuard;
 import com.mproduits.services.VenteService;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -31,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class VenteController {
 
     private final VenteService venteService;
+    private final BoutiqueAccessGuard boutiqueAccessGuard;
 
     @GetMapping
     public Page<VenteDto> getVentes(
@@ -44,11 +46,13 @@ public class VenteController {
 
          @RequestParam(required = false) String search, @RequestParam(required = true) Long boutiqueid
     ) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         return venteService.getVentes(page, size, statut, dateDebut, dateFin,search,boutiqueid);
     }
 
     @PatchMapping("/{venteId}/{username}/statut/{boutiqueid}")
     public VenteDto updateStatut(@PathVariable Long venteId,@PathVariable String username,@PathVariable Long boutiqueid, @RequestBody Map<String, String> body) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         return venteService.updateStatut(venteId,username, body.get("statut"),boutiqueid);
     }
 
@@ -56,14 +60,16 @@ public class VenteController {
     public VenteDto getVente(@PathVariable Long id) {
         return venteService.getVente(id);
     }
-  
+
     @GetMapping("/vente/{numeTicket}/{boutiqueid}")
     public ResponseEntity<VenteDto> getVente(@PathVariable String numeTicket,@PathVariable Long boutiqueid){
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         VenteDto venteDto=  venteService.getVente(numeTicket,boutiqueid);
         return venteDto==null ? ResponseEntity.ok(new VenteDto()):ResponseEntity.ok(venteDto);
     }
      @GetMapping("/vente/e-com/{numeTicket}/{boutiqueid}")
     public ResponseEntity<VenteDto> getVentes(@PathVariable long numeTicket,@PathVariable Long boutiqueid){
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         VenteDto venteDto=  venteService.getVenteForECom(numeTicket,boutiqueid);
         return venteDto==null ? ResponseEntity.ok(new VenteDto()):ResponseEntity.ok(venteDto);
     }

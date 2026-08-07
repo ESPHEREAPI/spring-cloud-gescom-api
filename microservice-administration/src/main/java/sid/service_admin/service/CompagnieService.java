@@ -35,15 +35,17 @@ public class CompagnieService {
     private final AdminAccountService adminAccountService;
     private final AuditLogService auditLogService;
     private final SecuriteService securiteService;
+    private final UserService userService;
 
     public CompagnieService(CompagnieRepository compagnieRepository, PersonneRepository personneRepository,
             AdminAccountService adminAccountService, AuditLogService auditLogService,
-            SecuriteService securiteService) {
+            SecuriteService securiteService, UserService userService) {
         this.compagnieRepository = compagnieRepository;
         this.personneRepository = personneRepository;
         this.adminAccountService = adminAccountService;
         this.auditLogService = auditLogService;
         this.securiteService = securiteService;
+        this.userService = userService;
     }
 
     @Transactional
@@ -61,6 +63,11 @@ public class CompagnieService {
         compagnie.setEmail(dto.getEmail());
         compagnie.setCreatedBy(createdBy);
         Compagnie saved = compagnieRepository.save(compagnie);
+
+        // Profils par defaut (ADMIN/CAISSIER/COMMERCIAL/COMPTABLE/USER) propres a
+        // cette compagnie, pour que son admin puisse assigner des droits des sa
+        // premiere connexion sans devoir d'abord creer un profil de toutes pieces.
+        userService.seedProfilsParDefautPourCompagnie(saved);
 
         // Cree l'admin compagnie dans la meme transaction : si ca echoue, la
         // compagnie ne doit pas rester orpheline sans administrateur.

@@ -5,18 +5,22 @@ import com.mproduits.dto.ControleVenteDTO;
 import com.mproduits.dto.ControleVente;
 import com.mproduits.dto.ControleVenteSummaryDTO;
 import com.mproduits.enums.StatutVente;
+import com.mproduits.exceptions.BadRequestException;
 import com.mproduits.exceptions.ResourceNotFoundException;
 import com.mproduits.model.Entreprise;
 import com.mproduits.model.Mois;
 import com.mproduits.model.Photocopie;
+import com.mproduits.model.Ressource;
 import com.mproduits.model.Vente;
 import com.mproduits.model.VersementClient;
 import com.mproduits.repositories.EntrepriseRepository;
 import com.mproduits.repositories.LigneVenteRepositories;
 import com.mproduits.repositories.MoisRepositories;
 import com.mproduits.repositories.PhotocopieRepository;
+import com.mproduits.repositories.RessourceRepositories;
 import com.mproduits.repositories.VenteRepositories;
 import com.mproduits.repositories.VersementClientRepository;
+import com.mproduits.security.TenantContext;
 import com.mproduits.utiles.IdleDate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,17 +55,44 @@ public class ControleVenteService {
 
     private final MoisRepositories moisRepository;
     private final EntrepriseRepository entrepriseRepository;
-    private List<Vente> caissesDates;
-    private List<VersementClient> versementDates;
-    private List<Photocopie> photocopies;
-    private Set<LocalDate> allDates;
+    private final RessourceRepositories ressourceRepository;
+    private final TenantContext tenantContext;
+
+    /**
+     * Toutes les opérations d'un mois donné, consolidées en mémoire pour un
+     * seul appel. Passée en paramètre/valeur de retour plutôt qu'en champ
+     * d'instance : ce service est un singleton Spring, des champs d'instance
+     * seraient partagés et écrasés entre des requêtes concurrentes de
+     * compagnies différentes.
+     */
+    private record ControleVenteData(
+            List<Vente> caissesDates,
+            List<VersementClient> versementDates,
+            List<Photocopie> photocopies,
+            List<Ressource> ressources,
+            Set<LocalDate> allDates) {
+    }
+
+    /**
+     * Exercice de l'annee demandee pour la compagnie courante - jamais
+     * partage entre compagnies (voir EntrepriseRepository#findByEntreprisePK_AnneeIdAndEntreprisePK_CompagnieId).
+     */
+    private Entreprise entrepriseDeLAnnee(int anneeid) {
+        Long compagnieId = tenantContext.currentCompagnieId();
+        if (compagnieId == null) {
+            throw new BadRequestException("Aucune compagnie associee a ce compte");
+        }
+        return entrepriseRepository.findByEntreprisePK_AnneeIdAndEntreprisePK_CompagnieId(anneeid, compagnieId)
+                .orElseThrow(() -> new ResourceNotFoundException("Entreprise non trouvée avec l'ID : " + anneeid));
+    }
 
     /**
      * Génère le contrôle des ventes pour un mois donné. Consolide toutes les
      * opérations par jour.
      *
      * @param moisId L'identifiant du mois
-     * @param entrepriseId L'identifiant de l'entreprise
+     * @param anneeid L'année de l'exercice
+     * @param boutiqueid La boutique concernée
      * @return Liste des contrôles de vente par jour
      * @throws ResourceNotFoundException Si le mois ou l'entreprise n'existe pas
      */
@@ -72,16 +103,15 @@ public class ControleVenteService {
         Mois mois = moisRepository.findOneByAnneeAndNumero(anneeid,moisId.intValue())
                 .orElseThrow(() -> new ResourceNotFoundException("Mois non trouvé avec l'ID : " + moisId));
 
-        // Récupération et validation de l'entreprise
-        Entreprise entreprise = entrepriseRepository.findByAnneeId(anneeid)
-                .orElseThrow(() -> new ResourceNotFoundException("Entreprise non trouvée avec l'ID : " + anneeid));
+        // Récupération et validation de l'entreprise (scopée à la compagnie courante)
+        Entreprise entreprise = entrepriseDeLAnnee(anneeid);
 
-        // Récupération de toutes les dates distinctes ayant des opérations
-        Set<LocalDate> allDates = collectAllDatesWithOperations(mois, entreprise, boutiqueid);
+        // Récupération de toutes les opérations pour ce mois/cette boutique
+        ControleVenteData data = collectAllDatesWithOperations(mois, entreprise, boutiqueid);
 
         // Génération des contrôles de vente pour chaque date
-        List<ControleVente> controles = allDates.stream()
-                .map(date -> generateControleVenteForDate(date, mois, entreprise))
+        List<ControleVente> controles = data.allDates().stream()
+                .map(date -> generateControleVenteForDate(date, mois, entreprise, data))
                 .filter(ControleVente::hasData)
                 .sorted(Comparator.comparing(ControleVente::getDate))
                 .collect(Collectors.toList());
@@ -99,29 +129,31 @@ public class ControleVenteService {
      * @param date La date du contrôle
      * @param mois Le mois comptable
      * @param entreprise L'entreprise
+     * @param data Les opérations du mois déjà chargées
      * @return Le contrôle de vente pour cette date
      */
-    private ControleVente generateControleVenteForDate(LocalDate date, Mois mois, Entreprise entreprise) {
+    private ControleVente generateControleVenteForDate(LocalDate date, Mois mois, Entreprise entreprise, ControleVenteData data) {
         log.debug("Génération du contrôle pour la date : {}", date);
 
-        // Calcul des montants pour chaque type d'opération
-        // BigDecimal caisse = this.caissesDates.stream().filter(v-> date.equals(getLocalDateForDate(v.getDateVente()))==Boolean.TRUE && v.getTotalRemise()==BigDecimal.ZERO).mapToDouble(vt -> vt.getTotalNet()).
-        BigDecimal caisse = this.caissesDates.stream()
+        BigDecimal caisse = data.caissesDates().stream()
                 .filter(v -> date.compareTo(getLocalDateForDate(v.getDateVente())) == 0)
                 .filter(v -> v.getStatut().equals(StatutVente.TERMINEE)==Boolean.TRUE)
                 .map(v -> v.getTotalBrut())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal client = this.versementDates.stream()
+        BigDecimal client = data.versementDates().stream()
                 .filter(v -> date.compareTo(getLocalDateForDate(v.getDateVersement())) == 0)
                 .map(v -> v.getMontant())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal photocopies = this.photocopies.stream()
+        BigDecimal photocopies = data.photocopies().stream()
                 .filter(v -> date.compareTo(v.getDateReception()) == 0)
                 .map(v -> v.getMontant())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal resources = BigDecimal.ZERO;
-        BigDecimal remise = this.caissesDates.stream()
+        BigDecimal resources = data.ressources().stream()
+                .filter(r -> date.compareTo(r.getDateRessource()) == 0)
+                .map(Ressource::getMontant)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal remise = data.caissesDates().stream()
                 .filter(v -> date.compareTo(getLocalDateForDate(v.getDateVente())) == 0)
                 .filter(v -> v.getStatut().equals(StatutVente.TERMINEE)==Boolean.TRUE)
                 .filter(v -> v.getTotalRemise().compareTo(BigDecimal.ZERO) > 0)
@@ -149,45 +181,38 @@ public class ControleVenteService {
     }
 
     /**
-     * Collecte toutes les dates ayant des opérations pour un mois donné.
-     * Combine les dates de toutes les sources (caisse, versements, photocopies,
-     * ressources).
+     * Collecte toutes les opérations d'un mois donné. Combine toutes les
+     * sources (caisse, versements, photocopies, ressources).
      *
      * @param mois Le mois comptable
      * @param entreprise L'entreprise
-     * @return Ensemble de toutes les dates avec opérations
+     * @return Toutes les opérations et l'ensemble des dates avec opérations
      */
-    private Set<LocalDate> collectAllDatesWithOperations(Mois mois, Entreprise entreprise, Long boutiqueid) {
-        allDates = new HashSet<>();
+    private ControleVenteData collectAllDatesWithOperations(Mois mois, Entreprise entreprise, Long boutiqueid) {
+        Set<LocalDate> allDates = new HashSet<>();
 
         // Dates des opérations de caisse
-        caissesDates = venteRepository.listeAllVenteByBoutique(entreprise.getAnnee().getId(), boutiqueid,mois.getNumero());
+        List<Vente> caissesDates = venteRepository.listeAllVenteByBoutique(entreprise.getAnnee().getId(), boutiqueid,mois.getNumero());
         allDates.addAll(caissesDates.stream().map(vt -> getLocalDateForDate(vt.getDateVente())).toList());
 
         // Dates des versements (via requête groupée)
-        versementDates = versementRepository.listeClientVersementByDateVersement(boutiqueid, entreprise.getAnnee().getId(),mois.getNumero());
+        List<VersementClient> versementDates = versementRepository.listeClientVersementByDateVersement(boutiqueid, entreprise.getAnnee().getId(),mois.getNumero());
         allDates.addAll(versementDates.stream()
                 .map(vcl -> getLocalDateForDate(vcl.getDateVersement())).toList());
 
         // Dates des photocopies
-        photocopies = photocopieRepository.listePhotocopieByBoutiqueByAnnee(entreprise.getAnnee().getId(), boutiqueid,mois.getNumero());
+        List<Photocopie> photocopies = photocopieRepository.listePhotocopieByBoutiqueByAnnee(entreprise.getAnnee().getId(), boutiqueid,mois.getNumero());
         photocopies.forEach(p -> allDates.add(p.getDateReception()));
-//photocopies.forEach(p -> {
-//    if (p.getDateReception() != null) {
-//        LocalDate date = extractDate(p.getDateReception());
-//        if (date != null) {
-//            allDates.add(date);
-//        }
-//    }
-//});
 
-//        // Dates des ressources
-//        List<Object[]> resourceDates = resourceRepository.getTotalsByDateForMois(mois, entreprise);
-//        resourceDates.forEach(result -> allDates.add((LocalDate) result[0]));
-        // Dates des remises
+        // Dates des ressources (revenus hors-vente)
+        LocalDate debutMois = LocalDate.of(entreprise.getAnnee().getId(), mois.getNumero(), 1);
+        LocalDate finMois = debutMois.withDayOfMonth(debutMois.lengthOfMonth());
+        List<Ressource> ressources = ressourceRepository.findByBoutiqueAndPeriode(boutiqueid, debutMois, finMois);
+        ressources.forEach(r -> allDates.add(r.getDateRessource()));
+
         log.debug("Collecte de {} dates distinctes avec opérations", allDates.size());
 
-        return allDates;
+        return new ControleVenteData(caissesDates, versementDates, photocopies, ressources, allDates);
     }
 
     private LocalDate extractDate(LocalDateTime dateTime) {
@@ -206,37 +231,35 @@ public class ControleVenteService {
      * recettes.
      *
      * @param moisId L'identifiant du mois
-     * @param entrepriseId L'identifiant de l'entreprise
+     * @param boutiqueid La boutique concernée
+     * @param anneeid L'année de l'exercice
      * @return Le résumé du mois
      * @throws ResourceNotFoundException Si le mois ou l'entreprise n'existe pas
      */
-    public ControleVenteSummaryDTO getSummary(Long moisId, int anneeid) {
+    public ControleVenteSummaryDTO getSummary(Long moisId, Long boutiqueid, int anneeid) {
         log.info("Génération du résumé - Mois: {}, Entreprise: {}", moisId, anneeid);
 
-//        Mois mois = moisRepository.findById(moisId)
-//                .orElseThrow(() -> new ResourceNotFoundException("Mois non trouvé avec l'ID : " + moisId));
+        Mois mois = moisRepository.findOneByAnneeAndNumero(anneeid, moisId.intValue())
+                .orElseThrow(() -> new ResourceNotFoundException("Mois non trouvé avec l'ID : " + moisId));
+        Entreprise entreprise = entrepriseDeLAnnee(anneeid);
 
-//        Entreprise entreprise = entrepriseRepository.findByAnneeId(anneeid)
-//                .orElseThrow(() -> new ResourceNotFoundException("Entreprise non trouvée avec l'ID : " + anneeid));
+        ControleVenteData data = collectAllDatesWithOperations(mois, entreprise, boutiqueid);
 
         // Calcul des totaux mensuels
-        BigDecimal totalCaisse = this.caissesDates.stream()
-                // .filter(v -> date.equals(getLocalDateForDate(v.getDateVente())))
-               // .filter(v -> v.getTotalRemise().equals(BigDecimal.ZERO) == BigDecimal.)
+        BigDecimal totalCaisse = data.caissesDates().stream()
                 .map(v -> v.getTotalBrut())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal totalClient = this.versementDates.stream()
-                //.filter(v -> date.equals(getLocalDateForDate(v.getDateVersement())))
+        BigDecimal totalClient = data.versementDates().stream()
                 .map(v -> v.getMontant())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalPhotocopies = this.photocopies.stream()
-                //.filter(v -> date.equals(v.getDateReception()))
+        BigDecimal totalPhotocopies = data.photocopies().stream()
                 .map(v -> v.getMontant())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalResources = BigDecimal.ZERO;
-        BigDecimal totalRemises = this.caissesDates.stream()
-                //.filter(v -> date.equals(getLocalDateForDate(v.getDateVente())))
+        BigDecimal totalResources = data.ressources().stream()
+                .map(Ressource::getMontant)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalRemises = data.caissesDates().stream()
                 .filter(v -> v.getTotalRemise().compareTo(BigDecimal.ZERO) > 0)
                 .map(v -> v.getTotalNet())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -249,22 +272,18 @@ public class ControleVenteService {
 
         BigDecimal totalNet = totalGeneral.subtract(totalRemises);
 
-        // Calcul du nombre de jours avec des opérations
-        // Set<LocalDate> datesWithOperations = collectAllDatesWithOperations(mois, entreprise);
-        int nombreJours = this.allDates.size();
+        int nombreJours = data.allDates().size();
 
         // Calcul de la moyenne journalière
         BigDecimal moyenneJournaliere = nombreJours > 0
                 ? totalNet.divide(BigDecimal.valueOf(nombreJours), 2, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
 
-        // Date minimale
-        LocalDate dateMin = allDates.stream()
+        LocalDate dateMin = data.allDates().stream()
                 .min(LocalDate::compareTo)
                 .orElse(null);
 
-// Date maximale
-        LocalDate dateMax = allDates.stream()
+        LocalDate dateMax = data.allDates().stream()
                 .max(LocalDate::compareTo)
                 .orElse(null);
 
@@ -280,8 +299,6 @@ public class ControleVenteService {
                 .moyenneJournaliere(moyenneJournaliere)
                 .periodeDebut(dateMin)
                 .periodeFin(dateMax)
-              //  .moisId(mois.getId())
-               // .moisLibelle(mois.getCode())
                 .build();
     }
 
@@ -293,7 +310,8 @@ public class ControleVenteService {
      * Génère le contrôle des ventes entre deux dates.
      *
      * @param moisId L'identifiant du mois
-     * @param entrepriseId L'identifiant de l'entreprise
+     * @param boutiqueid La boutique concernée
+     * @param anneeid L'année de l'exercice
      * @param dateDebut Date de début (optionnel)
      * @param dateFin Date de fin (optionnel)
      * @return Liste des contrôles de vente filtrés

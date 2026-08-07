@@ -13,6 +13,7 @@ import com.mproduits.dto.ProduitDto;
 
 import com.mproduits.enums.StatutFacture;
 
+import com.mproduits.security.BoutiqueAccessGuard;
 import com.mproduits.services.FactureService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -65,6 +66,7 @@ import org.springframework.http.MediaType;
 public class FactureController {
 
     private final FactureService factureService;
+    private final BoutiqueAccessGuard boutiqueAccessGuard;
 
     /**
      * Crée une nouvelle facture (création directe)
@@ -77,6 +79,7 @@ public class FactureController {
     @Operation(summary = "Créer une facture", 
                description = "Crée une nouvelle facture directement (sans passer par un devis)")
     public ResponseEntity<FactureResponse> creerFacture(@Valid @RequestBody FactureCreateRequest request) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(request.getBoutiqueid());
         log.info("Création d'une nouvelle facture pour le client ID: {}", request.getClientId());
         FactureResponse response = factureService.creerFacture(request,request.getUsername());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -205,6 +208,7 @@ public class FactureController {
                description = "Liste les factures avec filtres et pagination")
     public ResponseEntity<Page<FactureSummary>> listerFactures(
             @Parameter(hidden = true) FactureSearchCriteria criteria) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(criteria.getBoutiqueid());
         log.info("Liste des factures avec critères: {}", criteria);
         Page<FactureSummary> response = factureService.listerFactures(criteria);
         return ResponseEntity.ok(response);
@@ -221,6 +225,7 @@ public class FactureController {
     @Operation(summary = "Factures d'un client",
                description = "Récupère toutes les factures d'un client")
     public ResponseEntity<List<FactureSummary>> getFacturesClient(@PathVariable Long clientId,@PathVariable Long boutiqueid) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         log.info("Récupération des factures du client ID: {}", clientId);
         List<FactureSummary> response = factureService.getFacturesClient(clientId,boutiqueid);
         return ResponseEntity.ok(response);
@@ -328,6 +333,7 @@ public ResponseEntity<List<ProduitDto>> getProduitsHaveStock(
         @PathVariable Integer anneeId,
         @PathVariable Long boutiqueId
 ) {
+    boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueId);
     return ResponseEntity.ok(factureService.listStockHaveQuantiteForBoutiqueAndAnneei(anneeId, boutiqueId));
 }
 }

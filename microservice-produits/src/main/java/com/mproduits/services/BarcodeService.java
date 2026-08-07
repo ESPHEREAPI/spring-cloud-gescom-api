@@ -11,6 +11,7 @@ import com.mproduits.exceptions.ResourceNotFoundException;
 import com.mproduits.mappers.MapperDtoImpl;
 import com.mproduits.model.*;
 import com.mproduits.repositories.*;
+import com.mproduits.security.TenantContext;
 import com.mproduits.utiles.GlobalFonctions;
 import com.mproduits.utiles.IdleDate;
 import jakarta.persistence.EntityNotFoundException;
@@ -59,6 +60,8 @@ public class BarcodeService {
     private final MoisRepositories moisRepositories;
     private final ProfilRepositories profilRepositories;
     private final BoutiqueRepositories boutiqueRepositories;
+    private final TenantContext tenantContext;
+    private final EntrepriseService entrepriseService;
 
     /**
      * Charge un produit par son code-barres
@@ -66,7 +69,9 @@ public class BarcodeService {
     @Transactional(readOnly = true)
     public ProduitDto chargeProduitByBarcode(String codeBar) {
         var barcode = GlobalFonctions.getCodeBare(codeBar);
-        var barcodeProduit = barcodeproduitRepositories.findByCodeBard(barcode);
+        var barcodeProduit = barcodeproduitRepositories
+                .findByCodeBardAndCompagnieId(barcode, tenantContext.currentCompagnieId())
+                .orElse(null);
 
         if (barcodeProduit == null || barcodeProduit.getId() == null) {
             return new ProduitDto();
@@ -232,7 +237,7 @@ public class BarcodeService {
      */
     @Transactional(readOnly = true)
     public Vente getVenteById(Long venteId) {
-        return venteRepositories.findById(venteId)
+        return venteRepositories.findByIdAndBoutique_Compagnie_Id(venteId, tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new ResourceNotFoundException("Vente non trouvée: id=" + venteId));
     }
 
@@ -279,7 +284,7 @@ public class BarcodeService {
      */
     @Transactional(readOnly = true)
     public List<ClientDto> allClient() {
-        return clientRepositories.findAll().stream()
+        return clientRepositories.findByCompagnie_Id(tenantContext.currentCompagnieId()).stream()
                 .map(mapper::mapperClientByClientDto)
                 .toList();
     }
@@ -289,12 +294,14 @@ public class BarcodeService {
      */
     @Transactional
     public Client createClientCaisse(ClientDto clientDto) {
-        return clientRepositories.findByNom(clientDto.getNom())
+        Long compagnieId = tenantContext.currentCompagnieId();
+        return clientRepositories.findByNomAndCompagnie_Id(clientDto.getNom(), compagnieId)
                 .orElseGet(() -> {
                     var client = new Client();
                     client.setNom(clientDto.getNom());
                     client.setTelephone(clientDto.getTelephone());
                     client.setEmail(clientDto.getEmail());
+                    client.setCompagnie(new Compagnie(compagnieId));
                     return clientRepositories.save(client);
                 });
     }
@@ -395,6 +402,7 @@ public class BarcodeService {
         vente.setNumeroTicket(numeroTicket);
         vente.setNumerocommande(Long.parseLong(numeroTicket));
         vente.setVendeur(vendeur);
+        vente.setBoutique(vendeur.getBoutique());
         vente.setUserecom(dto.getClient().getUsernane());
 
         if (client != null) {
@@ -527,13 +535,15 @@ public class BarcodeService {
             return null;
         }
 
-        return clientRepositories.findByNom(dto.getNom())
+        Long compagnieId = tenantContext.currentCompagnieId();
+        return clientRepositories.findByNomAndCompagnie_Id(dto.getNom(), compagnieId)
                 .orElseGet(() -> {
                     var client = new Client();
                     client.setEmail(dto.getEmail());
                     client.setNom(dto.getNom());
                     client.setTelephone(dto.getTelephone());
                     client.setFidelite(true);
+                    client.setCompagnie(new Compagnie(compagnieId));
                     return clientRepositories.save(client);
                 });
     }
@@ -546,13 +556,15 @@ public class BarcodeService {
             return null;
         }
 
-        return clientRepositories.findByNom(dto.getName())
+        Long compagnieId = tenantContext.currentCompagnieId();
+        return clientRepositories.findByNomAndCompagnie_Id(dto.getName(), compagnieId)
                 .orElseGet(() -> {
                     var client = new Client();
                     client.setEmail(dto.getEmail());
                     client.setNom(dto.getName());
                     client.setTelephone(dto.getPhoneNumber());
                     client.setFidelite(true);
+                    client.setCompagnie(new Compagnie(compagnieId));
                     return clientRepositories.save(client);
                 });
     }
@@ -672,7 +684,7 @@ public class BarcodeService {
      * Trouve l'entreprise active
      */
     private Entreprise findActiveEntreprise() {
-        return Optional.ofNullable(entrepriseRepositories.findByActif(Boolean.TRUE))
+        return Optional.ofNullable(entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId()))
                 .orElseThrow(() -> new MetierException("Aucune entreprise active"));
     }
 
@@ -680,7 +692,7 @@ public class BarcodeService {
      * Trouve un produit ou lève une exception
      */
     private Produit findProduitOrThrow(Long produitId) {
-        return produitRepositories.findById(produitId)
+        return produitRepositories.findByIdAndCompagnie_Id(produitId, tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new MetierException("Produit non trouvé: id=" + produitId));
     }
 
@@ -688,7 +700,7 @@ public class BarcodeService {
      * Trouve une personne par username
      */
     private Personne findPersonneByUsername(String username) {
-        return personneRepositories.findByUserName(username)
+        return personneRepositories.findByUserNameAndBoutique_Compagnie_Id(username, tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé: " + username));
     }
 
@@ -704,7 +716,7 @@ public class BarcodeService {
     }
     private int  anneeEnCours(){
         try {
-             Entreprise e=entrepriseRepositories.findByActif(Boolean.TRUE);
+             Entreprise e=entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
              return e.getAnnee().getId();
         } catch (Exception e) {
         }

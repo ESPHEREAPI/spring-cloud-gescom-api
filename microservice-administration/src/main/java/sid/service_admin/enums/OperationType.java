@@ -9,5 +9,5 @@ package sid.service_admin.enums;
  * @author USER01
  */
 public enum OperationType {
-      READ, WRITE, UPDATE, DELETE
+      READ, WRITE, UPDATE, DELETE, PRINT
 }

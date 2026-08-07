@@ -5,12 +5,30 @@
 package com.mproduits.repositories;
 
 import com.mproduits.model.Fournisseur;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  *
  * @author USER01
  */
 public interface FournisseurRepositories extends JpaRepository<Fournisseur, Long>{
-    
+
+    @Query("SELECT f FROM Fournisseur f WHERE f.compagnie.id = :compagnieId AND (" +
+           "LOWER(f.nom) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(f.code) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(f.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(f.tel) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Fournisseur> findBySearchAndCompagnieId(@Param("search") String search, @Param("compagnieId") Long compagnieId, Pageable pageable);
+
+    Page<Fournisseur> findByCompagnie_Id(Long compagnieId, Pageable pageable);
+
+    List<Fournisseur> findByCompagnie_Id(Long compagnieId);
+
+    Optional<Fournisseur> findByIdAndCompagnie_Id(Long id, Long compagnieId);
 }

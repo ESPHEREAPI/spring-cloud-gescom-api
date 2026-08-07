@@ -14,7 +14,9 @@ import com.mproduits.repositories.CategorieRepositories;
 import com.mproduits.repositories.ProduitRepositories;
 import com.mproduits.exceptions.GlobalException;
 import com.mproduits.model.Boutique;
+import com.mproduits.model.Compagnie;
 import com.mproduits.repositories.BoutiqueRepositories;
+import com.mproduits.security.TenantContext;
 import java.math.BigDecimal;
 import java.util.Date;
 
@@ -56,6 +58,8 @@ public class ProduitService {
     private static final int MAX_SEARCH_LIMIT = 500;
       @Autowired
       BoutiqueRepositories boutiqueRepository;
+      @Autowired
+      TenantContext tenantContext;
 
     /**
      * Recherche optimisée pour l'autocomplétion Cache les résultats fréquents
@@ -66,7 +70,7 @@ public class ProduitService {
      * @return
      */
     @Cacheable(value = "articleAutocomplete",
-            key = "#searchTerm + '_' + #limit",
+            key = "#searchTerm + '_' + #limit + '_' + @tenantContext.currentCompagnieId()",
             unless = "#searchTerm.length() < 2")
     public List<ProduitDto> searchForAutocomplete(String searchTerm, Integer limit,Long boutiqueid) {
         if (!StringUtils.hasText(searchTerm) || searchTerm.trim().length() < 2) {
@@ -78,8 +82,8 @@ public class ProduitService {
                 : DEFAULT_AUTOCOMPLETE_LIMIT;
 
         Pageable pageable = PageRequest.of(0, searchLimit);
-        List<Produit> articles = articleRepository.findForAutocomplete(
-                searchTerm.trim(), pageable);
+        List<Produit> articles = articleRepository.findForAutocompleteByCompagnie(
+                searchTerm.trim(), tenantContext.currentCompagnieId(), pageable);
         Optional<Boutique>boutique=boutiqueRepository.findById(boutiqueid);
 
         return (List<ProduitDto>) articles.stream()
@@ -94,7 +98,7 @@ public class ProduitService {
         if (!StringUtils.hasText(reference)) {
             return false;
         }
-        return articleRepository.findByReference(reference.trim()).isPresent();
+        return articleRepository.existsByReferenceAndDeletesFalseAndCompagnie_Id(reference.trim(), tenantContext.currentCompagnieId());
     }
 
     /**
@@ -109,15 +113,16 @@ public class ProduitService {
         Pageable pageable = PageRequest.of(pageNumber, pageSize);
         Page<Produit> articlePage;
 
+        Long compagnieId = tenantContext.currentCompagnieId();
         if (StringUtils.hasText(searchTerm) && StringUtils.hasText(category)) {
-            articlePage = articleRepository.findByCategoryAndSearch(
-                    category, searchTerm.trim(), pageable);
+            articlePage = articleRepository.findByCategoryAndSearchAndCompagnie(
+                    category, searchTerm.trim(), compagnieId, pageable);
         } else if (StringUtils.hasText(searchTerm)) {
-            articlePage = articleRepository.searchArticles(searchTerm.trim(), pageable);
+            articlePage = articleRepository.searchArticlesByCompagnie(searchTerm.trim(), compagnieId, pageable);
         } else if (StringUtils.hasText(category)) {
-            articlePage = articleRepository.findByCategory(category, pageable);
+            articlePage = articleRepository.findByCategoryAndCompagnie(category, compagnieId, pageable);
         } else {
-            articlePage = articleRepository.findByDeletesFalse(pageable);
+            articlePage = articleRepository.findByDeletesFalseAndCompagnie_Id(compagnieId, pageable);
         }
  //Optional<Boutique>boutique=boutiqueRepository.findById(boutiqueid);
         List<ProduitDto> articles = articlePage.getContent().stream()
@@ -139,9 +144,11 @@ public class ProduitService {
      * Récupère les articles les plus populaires pour l'affichage initial Cache
      * pendant 10 minutes
      */
-    @Cacheable(value = "topArticles", unless = "#result.isEmpty()")
+    @Cacheable(value = "topArticles",
+            key = "#boutiqueid + '_' + @tenantContext.currentCompagnieId()",
+            unless = "#result.isEmpty()")
     public List<ProduitDto> getTopArticles(Long boutiqueid) {
-        List<Produit> articles = articleRepository.findTop10000ByDeletesFalseOrderByLibelleAsc();
+        List<Produit> articles = articleRepository.findTop10000ByDeletesFalseAndCompagnie_IdOrderByLibelleAsc(tenantContext.currentCompagnieId());
         Optional<Boutique>boutique=boutiqueRepository.findById(boutiqueid);
         
         return articles.stream()
@@ -165,8 +172,8 @@ public class ProduitService {
             return null;
         }
 
-        Produit article = articleRepository.findByCodeAndActiveTrue(reference.trim());
-        Optional<Boutique> boutique =boutiqueRepository.findById(boutiqueid);
+        Produit article = articleRepository.findByReferenceAndCompagnie_Id(reference.trim(), tenantContext.currentCompagnieId()).orElse(null);
+        Optional<Boutique> boutique =boutiqueRepository.findByIdAndCompagnie_Id(boutiqueid, tenantContext.currentCompagnieId());
         return article != null ? mapperdto.mapperProduitDto(article,boutique.isPresent() ? boutique.get(): new Boutique()) : null;
     }
 
@@ -192,10 +199,10 @@ public class ProduitService {
                 ? Math.min(limit, DEFAULT_AUTOCOMPLETE_LIMIT)
                 : DEFAULT_AUTOCOMPLETE_LIMIT;
 
+        Long compagnieId = tenantContext.currentCompagnieId();
         try {
-            List<Produit> articles = articleRepository.fullTextSearch(
-                    searchTerm.trim(), searchLimit);
-            //Optional<Boutique>boutique=boutiqueRepository.findById(boutiqueid);
+            List<Produit> articles = articleRepository.fullTextSearchByCompagnie(
+                    searchTerm.trim(), compagnieId, searchLimit);
             return articles.stream()
                     .map(p -> mapperdto.mapperProduitDto(p))
                     .collect(Collectors.toList());
@@ -203,7 +210,8 @@ public class ProduitService {
             // Fallback vers recherche LIKE si full-text non supporté
            // return searchForAutocomplete(searchTerm, limit//);
         }
-        return  this.articleRepository.findAll().subList(0, 50).stream().map(p-> mapperdto.mapperProduitDto(p)).toList();
+        List<Produit> fallback = this.articleRepository.findTop10000ByDeletesFalseAndCompagnie_IdOrderByLibelleAsc(compagnieId);
+        return fallback.subList(0, Math.min(50, fallback.size())).stream().map(p -> mapperdto.mapperProduitDto(p)).toList();
     }
 
     /**
@@ -222,21 +230,23 @@ public class ProduitService {
     @Transactional
     public ApiResponse<ProduitDto> createArticles(ProduitDto produitDto) {
         log.info("Création du produit avec référence: {}", produitDto.getReference());
-        
-        // ✅ Vérifier si la référence existe (seulement produits actifs)
-        if (articleRepository.existsByReferenceAndDeletesFalse(produitDto.getReference())) {
+
+        Long compagnieId = tenantContext.currentCompagnieId();
+        // ✅ Vérifier si la référence existe (seulement produits actifs, dans cette compagnie)
+        if (articleRepository.existsByReferenceAndDeletesFalseAndCompagnie_Id(produitDto.getReference(), compagnieId)) {
             log.error("La référence {} existe déjà", produitDto.getReference());
-            throw new GlobalException("Erreur de création", 
+            throw new GlobalException("Erreur de création",
                 "Un produit avec la référence '" + produitDto.getReference() + "' existe déjà");
         }
-        
+
         // ✅ Vérifier la catégorie
         Categories categorie = categorieRepositories.findById(produitDto.getCategories().getId())
             .orElseThrow(() -> new GlobalException("Erreur sur la catégorie", "Catégorie non existante"));
-        
+
         // ✅ Créer et configurer le produit
         Produit produit = buildProduitFromDto(produitDto, categorie);
-        
+        produit.setCompagnie(new Compagnie(compagnieId));
+
         // ✅ Sauvegarder
         Produit produitSave = articleRepository.save(produit);
         log.info("✅ Produit créé avec succès - ID: {}, Référence: {}", 
@@ -273,7 +283,7 @@ public class ProduitService {
 
     @Transactional(readOnly = false)
     public ProduitDto updateProduit(Long id, ProduitDto produitDto) {
-        Optional<Produit> p = articleRepository.findById(id);
+        Optional<Produit> p = articleRepository.findByIdAndCompagnie_Id(id, tenantContext.currentCompagnieId());
         if (p.isEmpty()) {
             throw new GlobalException("Erreur ..... ", "Articles non existant  ");
         }
@@ -310,7 +320,7 @@ public class ProduitService {
 
     @Transactional(readOnly = false)
     public void delesteArticles(Long id) {
-        Optional<Produit> p = articleRepository.findById(id);
+        Optional<Produit> p = articleRepository.findByIdAndCompagnie_Id(id, tenantContext.currentCompagnieId());
         if (p.isEmpty()) {
             throw new GlobalException("Erreur ..... ", "Articles non existant  ");
         }
@@ -323,10 +333,10 @@ public class ProduitService {
     }
     
     String term = searchTerm.trim().toLowerCase();
-    
-    return articleRepository.findAll().stream()
+
+    return articleRepository.findAllByCompagnie_Id(tenantContext.currentCompagnieId()).stream()
         .filter(p -> !p.getDeletes())
-        .filter(p -> 
+        .filter(p ->
             p.getLibelle().toLowerCase().contains(term) ||
             (p.getReference() != null && p.getReference().toLowerCase().contains(term))
         )

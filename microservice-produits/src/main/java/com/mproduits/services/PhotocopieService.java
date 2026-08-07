@@ -18,6 +18,7 @@ import com.mproduits.repositories.EntrepriseRepositories;
 import com.mproduits.repositories.MoisRepositories;
 import com.mproduits.repositories.PersonneRepositories;
 import com.mproduits.repositories.PhotocopieRepository;
+import com.mproduits.security.TenantContext;
 import com.mproduits.utiles.IdleDate;
 
 import lombok.RequiredArgsConstructor;
@@ -56,6 +57,8 @@ public class PhotocopieService {
      private final PersonneRepositories personneRepositories;
     private final PhotocopieMapper photocopieMapper;//findByEntrepriseAndNumero
      private final MoisRepositories moisRepositories;
+     private final EntrepriseService entrepriseService;
+     private final TenantContext tenantContext;
 
     /**
      * Crée une nouvelle photocopie.
@@ -70,12 +73,12 @@ public class PhotocopieService {
         log.info("Création d'une nouvelle photocopie : {}", dto.getLibelle());
 
         // Récupération et validation de l'entreprise
-        Entreprise entreprise = entrepriseRepository.findByActif(Boolean.TRUE);
-         
-               Boutique boutique=boutiqueRepositories.findById(dto.getBoutiqueid())
+        Entreprise entreprise = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
+
+               Boutique boutique=boutiqueRepositories.findByIdAndCompagnie_Id(dto.getBoutiqueid(), tenantContext.currentCompagnieId())
                        .orElseThrow(() -> new ResourceNotFoundException(
                         "Boutique non trouvée avec l'ID : " + dto.getBoutiqueid()));
-               Personne personne=personneRepositories.findByUserName(dto.getUsername())
+               Personne personne=personneRepositories.findByUserNameAndBoutique_Compagnie_Id(dto.getUsername(), tenantContext.currentCompagnieId())
                        .orElseThrow(() -> new ResourceNotFoundException(
                         "username non trouvée avec l'ID : " + dto.getUsername()));
 

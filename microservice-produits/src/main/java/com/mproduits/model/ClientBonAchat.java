@@ -4,10 +4,13 @@
  */
 package com.mproduits.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.io.Serializable;
 import lombok.Data;
@@ -30,5 +33,17 @@ public class ClientBonAchat implements Serializable {
     private String email;
     private boolean fidelite;
 
-   
+    // Isolation multi-tenant : un client bon d'achat est propre a chaque compagnie.
+    @JsonIgnore
+    @JoinColumn(name = "compagnie_id")
+    @ManyToOne
+    private Compagnie compagnie;
+
+    public Long getCompagnieId() {
+        return compagnie != null ? compagnie.getId() : null;
+    }
+
+    public void setCompagnieId(Long compagnieId) {
+        this.compagnie = compagnieId != null ? new Compagnie(compagnieId) : null;
+    }
 }

@@ -104,6 +104,12 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorDetails, HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(com.mproduits.security.TenantScopeException.class)
+    public ResponseEntity<ErrorDetails> handleTenantScopeException(com.mproduits.security.TenantScopeException ex) {
+        ErrorDetails errorDetails = new ErrorDetails(LocalDateTime.now(), ex.getMessage(), "", HttpStatus.FORBIDDEN.value());
+        return new ResponseEntity<>(errorDetails, HttpStatus.FORBIDDEN);
+    }
+
     /**
      * Gestion générique des autres exceptions
      */

@@ -65,7 +65,7 @@ public class Verrouillage implements Serializable {
     private Boolean verrouManuel;
     @JoinColumns({
         @JoinColumn(name = "AnneeId", referencedColumnName = "AnneeId"),
-        @JoinColumn(name = "EmployeurId", referencedColumnName = "EmployeurId")})
+        @JoinColumn(name = "EmployeurId", referencedColumnName = "compagnie_id")})
     @ManyToOne(optional = false)
     private Entreprise entreprise;
 

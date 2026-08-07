@@ -26,74 +26,59 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * Contrôleur REST pour la gestion des entreprises
- * 
+ * Contrôleur REST pour la gestion des entreprises (exercices) de la
+ * compagnie de l'appelant. La compagnie n'est jamais un parametre de
+ * l'API - toujours derivee du token JWT (voir EntrepriseService).
+ *
  * Endpoints:
- * - GET    /api/entreprises                  : Liste toutes les entreprises
- * - GET    /api/entreprises/{anneeId}/{employeurId} : Récupère une entreprise
- * - POST   /api/entreprises                  : Crée une entreprise
- * - PUT    /api/entreprises/{anneeId}/{employeurId} : Met à jour une entreprise
- * - DELETE /api/entreprises/{anneeId}/{employeurId} : Supprime une entreprise
- * - GET    /api/entreprises/active          : Liste les entreprises actives
- * - GET    /api/entreprises/annee/{anneeId} : Liste par année
- * - POST   /api/entreprises/{anneeId}/{employeurId}/activer : Active par défaut
- * - GET    /api/entreprises/search          : Recherche avec filtres
- * 
+ * - GET    /entreprises                  : Liste les exercices de ma compagnie
+ * - GET    /entreprises/{anneeId}        : Recupere l'exercice d'une annee
+ * - POST   /entreprises                  : Cree un exercice
+ * - PUT    /entreprises/{anneeId}        : Met a jour un exercice
+ * - DELETE /entreprises/{anneeId}        : Supprime un exercice
+ * - GET    /entreprises/active           : Exercice(s) actif(s) de ma compagnie
+ * - GET    /entreprises/annee/{anneeId}  : Exercice de ma compagnie pour une annee
+ * - POST   /entreprises/{anneeId}/activer : Active un exercice par defaut
+ * - GET    /entreprises/search           : Recherche avec filtres
+ *
  * @author Système de Gestion
  */
 @Slf4j
 @RestController
 @RequestMapping("/microservice-produits/entreprises")
-/**
- *
- * @author USER01
- */
 public class EntrepriseController {
      @Autowired
     private EntrepriseService entrepriseService;
 
     /**
-     * Liste toutes les entreprises
-     * 
-     * GET /api/entreprises
-     * 
-     * @return Liste de toutes les entreprises
+     * Liste tous les exercices de la compagnie courante.
      */
     @GetMapping
     public ResponseEntity<List<EntrepriseResponse>> findAll() {
-        log.info("📋 GET /api/entreprises - Liste toutes les entreprises");
-        
+        log.info("📋 GET /entreprises - Liste les exercices de la compagnie");
+
         List<EntrepriseResponse> entreprises = entrepriseService.findAll();
-        
+
         log.info("✅ {} entreprise(s) trouvée(s)", entreprises.size());
         return ResponseEntity.ok(entreprises);
     }
 
     /**
-     * Récupère une entreprise par sa clé composite
-     * 
-     * GET /api/entreprises/{anneeId}/{employeurId}
-     * 
-     * @param anneeId ID de l'année
-     * @param employeurId ID de l'employeur
-     * @return L'entreprise trouvée ou 404
+     * Récupère l'exercice d'une année pour la compagnie courante.
      */
-    @GetMapping("/{anneeId}/{employeurId}")
-public ResponseEntity<Object> findById(
-        @PathVariable("anneeId") Integer anneeId,
-        @PathVariable("employeurId") Long employeurId) {
+    @GetMapping("/{anneeId}")
+public ResponseEntity<Object> findById(@PathVariable("anneeId") Integer anneeId) {
 
-    log.info("📋 GET /api/entreprises/{}/{}", anneeId, employeurId);
+    log.info("📋 GET /entreprises/{}", anneeId);
 
-    return entrepriseService.findById(anneeId, employeurId)
+    return entrepriseService.findById(anneeId)
             .<ResponseEntity<Object>>map(ResponseEntity::ok)
             .orElseGet(() -> {
-                log.warn("⚠️ Entreprise non trouvée pour anneeId={} et employeurId={}", anneeId, employeurId);
+                log.warn("⚠️ Entreprise non trouvée pour anneeId={}", anneeId);
 
                 Map<String, Object> error = new HashMap<>();
                 error.put("message", "Entreprise non trouvée");
                 error.put("anneeId", anneeId);
-                error.put("employeurId", employeurId);
                 error.put("status", HttpStatus.NOT_FOUND.value());
 
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
@@ -102,34 +87,28 @@ public ResponseEntity<Object> findById(
 
 
     /**
-     * Crée une nouvelle entreprise
-     * 
-     * POST /api/entreprises
-     * 
+     * Crée un nouvel exercice pour la compagnie courante.
+     *
+     * POST /entreprises
+     *
      * Body:
      * {
      *   "anneeId": 1,
-     *   "employeurId": 1,
      *   "directeur": "Jean Dupont",
      *   "activite": "Commerce",
      *   "conventionCollective": "Convention 2025",
      *   "actif": true,
      *   "dateCreation": "2025-01-01"
      * }
-     * 
-     * @param request Données de création
-     * @param result Résultats de validation
-     * @return L'entreprise créée ou erreurs de validation
      */
     @PostMapping
     public ResponseEntity<?> create(
             @Validated @RequestBody EntrepriseCreateRequest request,
             BindingResult result) {
-        
-        log.info("📝 POST /api/entreprises - Création entreprise");
+
+        log.info("📝 POST /entreprises - Création entreprise");
         log.debug("Request: {}", request);
 
-        // Validation des erreurs
         if (result.hasErrors()) {
             Map<String, String> errors = new HashMap<>();
             result.getFieldErrors().forEach(error ->
@@ -143,13 +122,13 @@ public ResponseEntity<Object> findById(
             EntrepriseResponse response = entrepriseService.create(request);
             log.info("✅ Entreprise créée avec succès");
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
-            
+
         } catch (IllegalArgumentException e) {
             log.error("❌ Erreur métier: {}", e.getMessage());
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(error);
-            
+
         } catch (Exception e) {
             log.error("❌ Erreur inattendue lors de la création", e);
             Map<String, String> error = new HashMap<>();
@@ -159,26 +138,16 @@ public ResponseEntity<Object> findById(
     }
 
     /**
-     * Met à jour une entreprise existante
-     * 
-     * PUT /api/entreprises/{anneeId}/{employeurId}
-     * 
-     * @param anneeId ID de l'année
-     * @param employeurId ID de l'employeur
-     * @param request Nouvelles données
-     * @param result Résultats de validation
-     * @return L'entreprise mise à jour ou erreurs
+     * Met à jour l'exercice d'une année pour la compagnie courante.
      */
-    @PutMapping("/{anneeId}/{employeurId}")
+    @PutMapping("/{anneeId}")
     public ResponseEntity<?> update(
             @PathVariable Integer anneeId,
-            @PathVariable Long employeurId,
             @Valid @RequestBody EntrepriseCreateRequest request,
             BindingResult result) {
-        
-        log.info("📝 PUT /api/entreprises/{}/{} - Mise à jour", anneeId, employeurId);
 
-        // Validation
+        log.info("📝 PUT /entreprises/{} - Mise à jour", anneeId);
+
         if (result.hasErrors()) {
             Map<String, String> errors = new HashMap<>();
             result.getFieldErrors().forEach(error ->
@@ -189,16 +158,16 @@ public ResponseEntity<Object> findById(
         }
 
         try {
-            EntrepriseResponse response = entrepriseService.update(anneeId, employeurId, request);
+            EntrepriseResponse response = entrepriseService.update(anneeId, request);
             log.info("✅ Entreprise mise à jour avec succès");
             return ResponseEntity.ok(response);
-            
+
         } catch (IllegalArgumentException e) {
             log.error("❌ Erreur métier: {}", e.getMessage());
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(error);
-            
+
         } catch (Exception e) {
             log.error("❌ Erreur inattendue lors de la mise à jour", e);
             Map<String, String> error = new HashMap<>();
@@ -208,32 +177,24 @@ public ResponseEntity<Object> findById(
     }
 
     /**
-     * Supprime une entreprise
-     * 
-     * DELETE /api/entreprises/{anneeId}/{employeurId}
-     * 
-     * @param anneeId ID de l'année
-     * @param employeurId ID de l'employeur
-     * @return 204 No Content ou erreur
+     * Supprime l'exercice d'une année pour la compagnie courante.
      */
-    @DeleteMapping("/{anneeId}/{employeurId}")
-    public ResponseEntity<?> delete(
-            @PathVariable Integer anneeId,
-            @PathVariable Long employeurId) {
-        
-        log.info("🗑️ DELETE /api/entreprises/{}/{}", anneeId, employeurId);
+    @DeleteMapping("/{anneeId}")
+    public ResponseEntity<?> delete(@PathVariable Integer anneeId) {
+
+        log.info("🗑️ DELETE /entreprises/{}", anneeId);
 
         try {
-            entrepriseService.delete(anneeId, employeurId);
+            entrepriseService.delete(anneeId);
             log.info("✅ Entreprise supprimée avec succès");
             return ResponseEntity.noContent().build();
-            
+
         } catch (IllegalArgumentException e) {
             log.error("❌ Erreur: {}", e.getMessage());
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(error);
-            
+
         } catch (Exception e) {
             log.error("❌ Erreur inattendue lors de la suppression", e);
             Map<String, String> error = new HashMap<>();
@@ -243,71 +204,54 @@ public ResponseEntity<Object> findById(
     }
 
     /**
-     * Liste les entreprises actives
-     * 
-     * GET /api/entreprises/active
-     * 
-     * @return Liste des entreprises actives
+     * Liste les exercices actifs de la compagnie courante.
      */
     @GetMapping("/active")
     public ResponseEntity<List<EntrepriseResponse>> findAllActive() {
-        log.info("📋 GET /api/entreprises/active");
-        
+        log.info("📋 GET /entreprises/active");
+
         List<EntrepriseResponse> entreprises = entrepriseService.findAllActive();
-        
+
         log.info("✅ {} entreprise(s) active(s) trouvée(s)", entreprises.size());
         return ResponseEntity.ok(entreprises);
     }
 
     /**
-     * Liste les entreprises par année
-     * 
-     * GET /api/entreprises/annee/{anneeId}
-     * 
-     * @param anneeId ID de l'année
-     * @return Liste des entreprises de l'année
+     * Exercice de la compagnie courante pour une année (au plus un résultat).
      */
     @GetMapping("/annee/{anneeId}")
     public ResponseEntity<List<EntrepriseResponse>> findByAnnee(@PathVariable Integer anneeId) {
-        log.info("📋 GET /api/entreprises/annee/{}", anneeId);
-        
+        log.info("📋 GET /entreprises/annee/{}", anneeId);
+
         List<EntrepriseResponse> entreprises = entrepriseService.findByAnnee(anneeId);
-        
+
         log.info("✅ {} entreprise(s) trouvée(s) pour l'année {}", entreprises.size(), anneeId);
         return ResponseEntity.ok(entreprises);
     }
 
     /**
-     * Active une entreprise par défaut (désactive les autres)
-     * 
-     * POST /api/entreprises/{anneeId}/{employeurId}/activer
-     * 
-     * @param anneeId ID de l'année
-     * @param employeurId ID de l'employeur
-     * @return Message de succès ou erreur
+     * Active un exercice par défaut pour la compagnie courante (désactive les autres).
      */
-    @PostMapping("/{anneeId}/{employeurId}/activer")
-    public ResponseEntity<?> activerParDefaut(
-            @PathVariable Integer anneeId,
-            @PathVariable Long employeurId) {
-        
-        log.info("🔄 POST /api/entreprises/{}/{}/activer", anneeId, employeurId);
+    @PostMapping("/{anneeId}/activer")
+    public ResponseEntity<?> activerParDefaut(@PathVariable Integer anneeId) {
+
+        log.info("🔄 POST /entreprises/{}/activer", anneeId);
 
         try {
-            entrepriseService.activerParDefaut(anneeId, employeurId);
-            
+            entrepriseService.activerParDefaut(anneeId);
+
             Map<String, String> response = new HashMap<>();
             response.put("message", "Entreprise activée par défaut avec succès");
-            
+
             log.info("✅ Entreprise activée par défaut");
             return ResponseEntity.ok(response);
-            
+
         } catch (IllegalArgumentException e) {
             log.error("❌ Erreur: {}", e.getMessage());
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(error);
-            
+
         } catch (Exception e) {
             log.error("❌ Erreur inattendue lors de l'activation", e);
             Map<String, String> error = new HashMap<>();
@@ -317,33 +261,24 @@ public ResponseEntity<Object> findById(
     }
 
     /**
-     * Recherche d'entreprises avec filtres
-     * 
-     * GET /api/entreprises/search?anneeId=1&actif=true&searchTerm=dupont
-     * 
-     * @param anneeId Filtre par année (optionnel)
-     * @param employeurId Filtre par employeur (optionnel)
-     * @param actif Filtre par statut actif (optionnel)
-     * @param searchTerm Terme de recherche (optionnel)
-     * @return Liste des entreprises correspondant aux critères
+     * Recherche d'exercices avec filtres, restreinte a la compagnie courante.
+     *
+     * GET /entreprises/search?anneeId=1&actif=true&searchTerm=dupont
      */
     @GetMapping("/search")
     public ResponseEntity<List<EntrepriseResponse>> search(
             @RequestParam(required = false) Integer anneeId,
-            @RequestParam(required = false) Long employeurId,
             @RequestParam(required = false) Boolean actif,
             @RequestParam(required = false) String searchTerm) {
-        
-        log.info("🔍 GET /api/entreprises/search - Filtres: anneeId={}, employeurId={}, actif={}, term={}", 
-                 anneeId, employeurId, actif, searchTerm);
-        
-        List<EntrepriseResponse> entreprises = entrepriseService.search(
-            anneeId, employeurId, actif, searchTerm
-        );
-        
+
+        log.info("🔍 GET /entreprises/search - Filtres: anneeId={}, actif={}, term={}",
+                 anneeId, actif, searchTerm);
+
+        List<EntrepriseResponse> entreprises = entrepriseService.search(anneeId, actif, searchTerm);
+
         log.info("✅ {} entreprise(s) trouvée(s)", entreprises.size());
         return ResponseEntity.ok(entreprises);
     }
-    
-    
+
+
 }

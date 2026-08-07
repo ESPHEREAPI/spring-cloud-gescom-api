@@ -38,6 +38,17 @@ public interface VersementClientRepository extends JpaRepository<VersementClient
     Optional<VersementClient> findByNumeroVersement(String numeroVersement);
     @Query("SELECT vc FROM VersementClient vc WHERE vc.client.id = :clientId ORDER BY vc.dateVersement DESC")
    List<VersementClient> findByClientIdOrderByDateVersementDesc(@Param("clientId") Long clientId);
+
+    // Lookup scope compagnie - a utiliser a la place de findById()/findByFactureId()
+    // partout ou l'id vient d'une requete client (evite qu'un utilisateur d'une
+    // compagnie A consulte les versements/recus d'une compagnie B).
+    Optional<VersementClient> findByIdAndClient_Compagnie_Id(Long id, Long compagnieId);
+
+    @Query("SELECT vc FROM VersementClient vc WHERE vc.numeroVersement = :numero AND vc.client.compagnie.id = :compagnieId")
+    Optional<VersementClient> findByNumeroVersementAndCompagnieId(@Param("numero") String numeroVersement, @Param("compagnieId") Long compagnieId);
+
+    @Query("SELECT vc FROM VersementClient vc WHERE vc.facture.id = :factureId AND vc.client.compagnie.id = :compagnieId ORDER BY vc.dateVersement DESC")
+    List<VersementClient> findByFactureIdAndCompagnieId(@Param("factureId") Long factureId, @Param("compagnieId") Long compagnieId);
     
   // ========================================================================
     // RECHERCHES PAR FACTURE
@@ -341,6 +352,9 @@ List<VersementClient> findByClientIdAndDateVersementBetweenOrderByDateVersementD
 //lister les clients qui ont deja effectuer un versement  
 @Query("SELECT DISTINCT v.client FROM VersementClient v")
 List<Client> listeClientVersement();
+
+@Query("SELECT DISTINCT v.client FROM VersementClient v WHERE v.client.compagnie.id = :compagnieId")
+List<Client> listeClientVersementByCompagnieId(@Param("compagnieId") Long compagnieId);
 
 @Query("SELECT vcl FROM VersementClient vcl WHERE vcl.facture.boutique.id= :boutiqueid and YEAR(vcl.dateVersement)= :anneeid and MONTH(vcl.dateVersement) = :mois")
 List<VersementClient> listeClientVersementByDateVersement(@Param("boutiqueid")Long boutiqueid,@Param("anneeid") int anneeid,@Param("mois") int mois);

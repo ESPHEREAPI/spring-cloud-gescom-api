@@ -20,6 +20,10 @@ public interface FactureRepository extends JpaRepository<Facture, Long>, JpaSpec
     
     @Query("SELECT f FROM Facture f WHERE f.client.id = :clientId")
     List<Facture> findByClientId(Long clientId);
+
+    // Lookup scope compagnie - a utiliser a la place de findById() partout ou
+    // l'id vient d'une requete client.
+    Optional<Facture> findByIdAndClient_Compagnie_Id(Long id, Long compagnieId);
     
     @Query("SELECT f FROM Facture f WHERE f.statut = :statut")
     Page<Facture> findByStatut(@Param("statut") String statut, Pageable pageable);

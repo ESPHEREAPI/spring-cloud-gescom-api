@@ -10,6 +10,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
 import jakarta.persistence.OneToMany;
@@ -78,6 +80,9 @@ public class Profil implements Serializable {
     private String userdelete;
     @OneToMany(mappedBy = "profilid")
     private List<Personne> personneList;
+    @JoinColumn(name = "compagnie_id")
+    @ManyToOne
+    private Compagnie compagnie;
 
     public Profil() {
     }
@@ -190,6 +195,14 @@ public class Profil implements Serializable {
 
     public void setPersonneList(List<Personne> personneList) {
         this.personneList = personneList;
+    }
+
+    public Compagnie getCompagnie() {
+        return compagnie;
+    }
+
+    public void setCompagnie(Compagnie compagnie) {
+        this.compagnie = compagnie;
     }
 
     @Override

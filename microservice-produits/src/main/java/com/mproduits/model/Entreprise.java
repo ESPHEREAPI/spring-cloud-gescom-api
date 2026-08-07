@@ -31,7 +31,7 @@ import java.util.Date;
 @NamedQueries({
     @NamedQuery(name = "Entreprise.findAll", query = "SELECT e FROM Entreprise e"),
     @NamedQuery(name = "Entreprise.findByAnneeId", query = "SELECT e FROM Entreprise e WHERE e.entreprisePK.anneeId = :anneeId"),
-    @NamedQuery(name = "Entreprise.findByEmployeurId", query = "SELECT e FROM Entreprise e WHERE e.entreprisePK.employeurId = :employeurId"),
+    @NamedQuery(name = "Entreprise.findByCompagnieId", query = "SELECT e FROM Entreprise e WHERE e.entreprisePK.compagnieId = :compagnieId"),
     @NamedQuery(name = "Entreprise.findByActif", query = "SELECT e FROM Entreprise e WHERE e.actif = :actif"),
     @NamedQuery(name = "Entreprise.findByActivite", query = "SELECT e FROM Entreprise e WHERE e.activite = :activite"),
     @NamedQuery(name = "Entreprise.findByConventionCollective", query = "SELECT e FROM Entreprise e WHERE e.conventionCollective = :conventionCollective"),
@@ -89,9 +89,9 @@ public class Entreprise implements Serializable {
     @JoinColumn(name = "Anneeid", referencedColumnName = "Id", insertable = false, updatable = false)
     @ManyToOne(optional = false)
     private Annee annee;
-    @JoinColumn(name = "Employeurid", referencedColumnName = "Id", insertable = false, updatable = false)
+    @JoinColumn(name = "compagnie_id", referencedColumnName = "id", insertable = false, updatable = false)
     @ManyToOne(optional = false)
-    private Employeur employeur;
+    private Compagnie compagnie;
     @OneToMany( mappedBy = "entreprise")
     @JsonIgnore
     private Collection<Verrouillage> verrouillageCollection;
@@ -208,12 +208,12 @@ public class Entreprise implements Serializable {
         this.annee = annee;
     }
 
-    public Employeur getEmployeur() {
-        return employeur;
+    public Compagnie getCompagnie() {
+        return compagnie;
     }
 
-    public void setEmployeur(Employeur employeur) {
-        this.employeur = employeur;
+    public void setCompagnie(Compagnie compagnie) {
+        this.compagnie = compagnie;
     }
 
     public Collection<Verrouillage> getVerrouillageCollection() {

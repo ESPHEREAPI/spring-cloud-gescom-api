@@ -20,6 +20,7 @@ import com.mproduits.repositories.PrixAchatRepositories;
 import com.mproduits.repositories.PrixArticlesRepositories;
 import com.mproduits.repositories.PrixVenteRepositories;
 import com.mproduits.repositories.ProduitRepositories;
+import com.mproduits.security.TenantContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -47,6 +48,8 @@ public class StockTransfertService {
     
     @Autowired
     private ProduitRepositories produitRepository;
+    @Autowired
+    private TenantContext tenantContext;
     
     @Autowired
     private PrixArticlesRepositories prixArticlesRepository;
@@ -60,6 +63,8 @@ public class StockTransfertService {
     private PrixAchatRepositories prixAchatRepositories;
     @Autowired
     private PrixVenteRepositories prixVenteRepositories;
+    @Autowired
+    private EntrepriseService entrepriseService;
 
     /**
      * Vérifie si un magasin est un magasin de stock (boutique == null)
@@ -91,14 +96,14 @@ public class StockTransfertService {
             Optional<Commande> commande = commandeRepository
                     .findLatestCommandeByMagasinAndProduit(magasinId, produitId);
             if (commande.isEmpty()) {
-                Optional<Produit> produit = produitRepository.findById(produitId);
+                Optional<Produit> produit = produitRepository.findByIdAndCompagnie_Id(produitId, tenantContext.currentCompagnieId());
                 
                 Commande cde = new Commande();
                 cde.setPrixAchat(prixAchatRepositories.findLastPrixAchatByProduit(produit.get()).get().getPrix());
                 cde.setPrixVente(prixVenteRepositories.findLastPrixventeByProduit(produit.get()).get().getPrix());
                 cde.setQuantite(BigDecimal.ZERO);
                 cde.setUsercreate("transfert mouvement");
-                cde.setEntreprise(entrepriseRepositories.findByActif(Boolean.TRUE));
+                cde.setEntreprise(entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId()));
                 cde.setProduit(produit.get());
                 
                 cde.setMagasinid(magasinRepositories.findById(magasinId).get());
@@ -213,7 +218,7 @@ public class StockTransfertService {
      * @throws IllegalArgumentException si le produit n'existe pas
      */
     public Produit getProduit(Long produitId) {
-        return produitRepository.findById(produitId)
+        return produitRepository.findByIdAndCompagnie_Id(produitId, tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new IllegalArgumentException("Produit non trouvé: " + produitId));
     }
 
@@ -225,7 +230,7 @@ public class StockTransfertService {
      * @throws IllegalArgumentException si le magasin n'existe pas
      */
     public Magasin getMagasin(Long magasinId) {
-        return magasinRepository.findById(magasinId)
+        return magasinRepository.findByIdAndCompagnie_Id(magasinId, tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new IllegalArgumentException("Magasin non trouvé: " + magasinId));
     }
 

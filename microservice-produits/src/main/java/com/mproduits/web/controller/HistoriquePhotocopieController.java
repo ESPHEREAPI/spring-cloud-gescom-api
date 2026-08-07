@@ -6,6 +6,7 @@ import com.mproduits.dto.UserDTO;
 import com.mproduits.model.Annee;
 import com.mproduits.model.Mois;
 import com.mproduits.model.Personne;
+import com.mproduits.security.BoutiqueAccessGuard;
 import com.mproduits.services.HistoriqueCaisseService;
 import com.mproduits.services.HistoriquePhotocopieService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -48,8 +49,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class HistoriquePhotocopieController {
 
     private final HistoriquePhotocopieService historiqueService;
-     
+
   private final  HistoriqueCaisseService historiqueCaisseService;
+  private final BoutiqueAccessGuard boutiqueAccessGuard;
 
     /**
      * Récupère les dates disponibles pour un mois donné.
@@ -76,8 +78,9 @@ public class HistoriquePhotocopieController {
             
             @Parameter(description = "ID du mois", required = true)
             @RequestParam Long moisId, @RequestParam Long boutiqueid) {
-        
-        log.info("Requête GET /api/historique-photocopie/dates - Entreprise: {}, Mois: {}", 
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+
+        log.info("Requête GET /api/historique-photocopie/dates - Entreprise: {}, Mois: {}",
                 anneeid, moisId);
 
         List<LocalDate> dates = historiqueService.getAvailableDates(anneeid, moisId,boutiqueid);
@@ -139,8 +142,9 @@ public class HistoriquePhotocopieController {
             
             @Parameter(description = "Direction du tri")
             @RequestParam(defaultValue = "DESC") Sort.Direction direction) {
-        
-        log.info("Requête GET /api/historique-photocopie - Entreprise: {}, Mois: {}, Date: {}, MultiCaisse: {}", 
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+
+        log.info("Requête GET /api/historique-photocopie - Entreprise: {}, Mois: {}, Date: {}, MultiCaisse: {}",
                 anneeid, moisId, date, multiCaisse);
 
         // Construction de la pagination avec tri
@@ -192,8 +196,9 @@ public class HistoriquePhotocopieController {
             
             @Parameter(description = "Mode multi-caisse activé")
             @RequestParam(defaultValue = "false") Boolean multiCaisse) {
-        
-        log.info("Requête GET /api/historique-photocopie/total - Entreprise: {}, Mois: {}, Date: {}", 
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+
+        log.info("Requête GET /api/historique-photocopie/total - Entreprise: {}, Mois: {}, Date: {}",
                 anneeid, moisId, date);
 
         BigDecimal total = historiqueService.calculateTotal(
@@ -240,8 +245,9 @@ public class HistoriquePhotocopieController {
             
             @Parameter(description = "Mode multi-caisse activé")
             @RequestParam(defaultValue = "false") Boolean multiCaisse) {
-        
-        log.info("Requête GET /api/historique-photocopie/summary - Entreprise: {}, Mois: {}, Date: {}", 
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+
+        log.info("Requête GET /api/historique-photocopie/summary - Entreprise: {}, Mois: {}, Date: {}",
                 anneeid, moisId, date);
 
         HistoriquePhotocopieSummaryDTO summary = historiqueService.getSummary(
@@ -276,7 +282,8 @@ public class HistoriquePhotocopieController {
             @RequestParam String searchTerm,
             
             Pageable pageable) {
-        
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+
         log.info("Requête GET /api/historique-photocopie/search - Terme: {}", searchTerm);
 
         Page<HistoriquePhotocopieDTO> results = historiqueService.searchByLibelle(
@@ -354,11 +361,13 @@ public class HistoriquePhotocopieController {
      @GetMapping("/allcaissier/{boutiqueid}")
     
     public ResponseEntity<List<UserDTO>> allCaissier(@PathVariable Long boutiqueid ) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         return ResponseEntity.ok(historiqueService.getAllCaisssierByBoutique(boutiqueid));
     }
     
      @GetMapping("/annees/{boutiqueid}")
     public ResponseEntity<List<Annee>> listAnnee(@PathVariable Long boutiqueid) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         List<Annee> allAnnees = historiqueCaisseService.listeAnneeByVente(boutiqueid);
         return ResponseEntity.ok(allAnnees);
     }

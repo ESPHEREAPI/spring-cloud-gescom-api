@@ -13,10 +13,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import sid.service_admin.dto.ActivationDTO;
 import sid.service_admin.dto.CompagnieDTO;
+import sid.service_admin.dto.CompagnieParametresDTO;
 import sid.service_admin.dto.CreateCompagnieDTO;
 import sid.service_admin.dto.CreateCompagnieResultDTO;
 import sid.service_admin.dto.ResetPasswordResultDTO;
 import sid.service_admin.dto.UpdateCompagnieDTO;
+import sid.service_admin.service.CompagnieParametresService;
 import sid.service_admin.service.CompagnieService;
 
 /**
@@ -28,9 +30,11 @@ import sid.service_admin.service.CompagnieService;
 public class CompagnieController {
 
     private final CompagnieService compagnieService;
+    private final CompagnieParametresService compagnieParametresService;
 
-    public CompagnieController(CompagnieService compagnieService) {
+    public CompagnieController(CompagnieService compagnieService, CompagnieParametresService compagnieParametresService) {
         this.compagnieService = compagnieService;
+        this.compagnieParametresService = compagnieParametresService;
     }
 
     @PostMapping
@@ -62,6 +66,19 @@ public class CompagnieController {
     @PreAuthorize("hasRole('COMPANY_ADMIN')")
     public ResponseEntity<CompagnieDTO> updateOwn(@RequestBody UpdateCompagnieDTO dto, Authentication authentication) {
         return ResponseEntity.ok(compagnieService.updateOwn(authentication.getName(), dto));
+    }
+
+    /** "Option Entreprise" : securite/connexion, fiscalite par defaut, format ticket/facture - voir CompagnieParametres. */
+    @GetMapping("/me/parametres")
+    @PreAuthorize("hasRole('COMPANY_ADMIN')")
+    public ResponseEntity<CompagnieParametresDTO> getOwnParametres(Authentication authentication) {
+        return ResponseEntity.ok(compagnieParametresService.getOwn(authentication.getName()));
+    }
+
+    @PutMapping("/me/parametres")
+    @PreAuthorize("hasRole('COMPANY_ADMIN')")
+    public ResponseEntity<CompagnieParametresDTO> updateOwnParametres(@RequestBody CompagnieParametresDTO dto, Authentication authentication) {
+        return ResponseEntity.ok(compagnieParametresService.updateOwn(authentication.getName(), dto));
     }
 
     @PutMapping("/{id}")

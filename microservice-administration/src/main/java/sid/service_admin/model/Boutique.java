@@ -66,11 +66,13 @@ public class Boutique implements Serializable {
     @ManyToOne
     private Ville ville;
 
-    // Rattachement compagnie pour le quota de licence (max boutiques) - doit
-    // correspondre exactement a la colonne ajoutee dans la copie de cette
+    // Rattachement compagnie (isolation multi-tenant + quota de licence) - doit
+    // correspondre exactement a la colonne mappee dans la copie de cette
     // entite cote microservice-produits (meme table physique partagee).
-    @Column(name = "compagnie_id")
-    private Long compagnieId;
+    @JsonIgnore
+    @JoinColumn(name = "compagnie_id")
+    @ManyToOne
+    private Compagnie compagnie;
 
 
     public Boutique() {
@@ -146,12 +148,20 @@ public class Boutique implements Serializable {
         this.ville = villeid;
     }
 
+    public Compagnie getCompagnie() {
+        return compagnie;
+    }
+
+    public void setCompagnie(Compagnie compagnie) {
+        this.compagnie = compagnie;
+    }
+
     public Long getCompagnieId() {
-        return compagnieId;
+        return compagnie != null ? compagnie.getId() : null;
     }
 
     public void setCompagnieId(Long compagnieId) {
-        this.compagnieId = compagnieId;
+        this.compagnie = compagnieId != null ? new Compagnie(compagnieId) : null;
     }
 
 

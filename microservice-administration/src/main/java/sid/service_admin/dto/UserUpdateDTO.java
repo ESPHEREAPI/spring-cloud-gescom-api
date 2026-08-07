@@ -25,7 +25,6 @@ public class UserUpdateDTO {
 
     //private String createdBy;
     private String profileImageUrl;
-    private Long roleid;
     private Long profilid;
     private String profession;
     private String remarques;

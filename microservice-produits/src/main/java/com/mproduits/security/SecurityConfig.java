@@ -27,6 +27,9 @@ public class SecurityConfig {
     private LicenceCheckFilter licenceCheckFilter;
 
     @Autowired
+    private TenantScopeFilter tenantScopeFilter;
+
+    @Autowired
     private JwtAuthenticationEntryPoint authenticationEntryPoint;
 
     @Bean
@@ -39,7 +42,8 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(licenceCheckFilter, JwtAuthFilter.class);
+                .addFilterAfter(licenceCheckFilter, JwtAuthFilter.class)
+                .addFilterAfter(tenantScopeFilter, LicenceCheckFilter.class);
 
         return http.build();
     }

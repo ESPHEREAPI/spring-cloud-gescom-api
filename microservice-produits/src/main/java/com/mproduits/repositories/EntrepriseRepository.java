@@ -28,70 +28,81 @@ import java.util.Optional;
 public interface EntrepriseRepository extends JpaRepository<Entreprise, EntreprisePK> {
 
     /**
-     * Trouve toutes les entreprises d'une année donnée
+     * Trouve l'entreprise (exercice) d'une année donnée, toutes compagnies confondues -
+     * a n'utiliser que dans des contextes deja scopes (jamais directement depuis un
+     * endpoint metier, voir EntrepriseService#compagnieCourante).
      */
     @Query("SELECT e FROM Entreprise e " +
            "WHERE e.entreprisePK.anneeId = :anneeId " +
-           "ORDER BY e.employeur.societe ASC")
+           "ORDER BY e.compagnie.nom ASC")
   Optional<Entreprise> findByAnneeId(@Param("anneeId") Integer anneeId);
 
     /**
-     * Trouve toutes les entreprises d'un employeur
+     * Variante scopee par compagnie de findByAnneeId - a utiliser des qu'un
+     * appelant metier a besoin de l'exercice d'une annee donnee pour SA
+     * compagnie (evite de recuperer l'exercice d'une autre compagnie qui
+     * partagerait la meme annee).
      */
-    @Query("SELECT e FROM Entreprise e " +
-           "WHERE e.entreprisePK.employeurId = :employeurId " +
-           "ORDER BY e.annee.code DESC")
-    List<Entreprise> findByEmployeurId(@Param("employeurId") Long employeurId);
+    Optional<Entreprise> findByEntreprisePK_AnneeIdAndEntreprisePK_CompagnieId(Integer anneeId, Long compagnieId);
 
     /**
-     * Trouve l'entreprise active d'un employeur pour une année
+     * Trouve tous les exercices d'une compagnie
+     */
+    @Query("SELECT e FROM Entreprise e " +
+           "WHERE e.entreprisePK.compagnieId = :compagnieId " +
+           "ORDER BY e.annee.code DESC")
+    List<Entreprise> findByCompagnieId(@Param("compagnieId") Long compagnieId);
+
+    /**
+     * Trouve l'exercice actif d'une compagnie pour une année
      */
     @Query("SELECT e FROM Entreprise e " +
            "WHERE e.entreprisePK.anneeId = :anneeId " +
-           "AND e.entreprisePK.employeurId = :employeurId " +
+           "AND e.entreprisePK.compagnieId = :compagnieId " +
            "AND e.actif = true")
     Optional<Entreprise> findActiveEntreprise(
         @Param("anneeId") Integer anneeId,
-        @Param("employeurId") Long employeurId
+        @Param("compagnieId") Long compagnieId
     );
 
     /**
-     * Trouve toutes les entreprises actives
+     * Trouve toutes les entreprises actives, toutes compagnies confondues - a filtrer
+     * par compagnie cote appelant (voir EntrepriseService#findAllActive).
      */
     @Query("SELECT e FROM Entreprise e " +
            "WHERE e.actif = true " +
-           "ORDER BY e.employeur.societe ASC")
+           "ORDER BY e.compagnie.nom ASC")
     List<Entreprise> findAllActive();
 
     /**
-     * Trouve toutes les entreprises actives d'une année
+     * Trouve toutes les entreprises actives d'une année, toutes compagnies confondues.
      */
     @Query("SELECT e FROM Entreprise e " +
            "WHERE e.entreprisePK.anneeId = :anneeId " +
            "AND e.actif = true " +
-           "ORDER BY e.employeur.societe ASC")
+           "ORDER BY e.compagnie.nom ASC")
     List<Entreprise> findActiveByAnneeId(@Param("anneeId") Integer anneeId);
 
     /**
-     * Vérifie si une entreprise existe pour une année et un employeur
+     * Vérifie si une entreprise existe pour une année et une compagnie
      */
     @Query("SELECT COUNT(e) > 0 FROM Entreprise e " +
            "WHERE e.entreprisePK.anneeId = :anneeId " +
-           "AND e.entreprisePK.employeurId = :employeurId")
-    boolean existsByAnneeAndEmployeur(
+           "AND e.entreprisePK.compagnieId = :compagnieId")
+    boolean existsByAnneeAndCompagnie(
         @Param("anneeId") Integer anneeId,
-        @Param("employeurId") Long employeurId
+        @Param("compagnieId") Long compagnieId
     );
 
     /**
-     * Désactive toutes les entreprises d'un employeur pour une année
+     * Désactive toutes les entreprises d'une compagnie pour une année
      */
     @Query("UPDATE Entreprise e SET e.actif = false " +
            "WHERE e.entreprisePK.anneeId = :anneeId " +
-           "AND e.entreprisePK.employeurId = :employeurId")
-    void deactivateAllForEmployeur(
+           "AND e.entreprisePK.compagnieId = :compagnieId")
+    void deactivateAllForCompagnie(
         @Param("anneeId") Integer anneeId,
-        @Param("employeurId") Long employeurId
+        @Param("compagnieId") Long compagnieId
     );
 
     /**
@@ -101,30 +112,34 @@ public interface EntrepriseRepository extends JpaRepository<Entreprise, Entrepri
     long countActive();
 
     /**
-     * Recherche d'entreprises avec filtres
+     * Recherche d'exercices avec filtres, toujours restreinte a une compagnie
+     * (voir EntrepriseService#search - compagnieId n'est jamais fourni par le client).
      */
     @Query("SELECT e FROM Entreprise e " +
            "WHERE (:anneeId IS NULL OR e.entreprisePK.anneeId = :anneeId) " +
-           "AND (:employeurId IS NULL OR e.entreprisePK.employeurId = :employeurId) " +
+           "AND e.entreprisePK.compagnieId = :compagnieId " +
            "AND (:actif IS NULL OR e.actif = :actif) " +
            "AND (:searchTerm IS NULL OR " +
-           "     LOWER(e.employeur.societe) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-           "     LOWER(e.employeur.personne.userName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "     LOWER(e.compagnie.nom) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
            "     LOWER(e.directeur) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) " +
-           "ORDER BY e.employeur.societe ASC")
+           "ORDER BY e.compagnie.nom ASC")
     List<Entreprise> search(
         @Param("anneeId") Integer anneeId,
-        @Param("employeurId") Long employeurId,
+        @Param("compagnieId") Long compagnieId,
         @Param("actif") Boolean actif,
         @Param("searchTerm") String searchTerm
     );
-    
+
      boolean existsById(EntreprisePK pk);
 
-    @Query("SELECT e FROM Entreprise e WHERE e.employeur.id = :employeurId AND e.actif = true")
-    List<Entreprise> findActiveByEmployeurId(@Param("employeurId") Long employeurId);
+    /**
+     * @deprecated recherche globale non scopee par compagnie - conservee uniquement
+     * pour compatibilite avec les appelants existants non encore migres vers
+     * findActiveEntreprise(anneeId, compagnieId). Ne pas utiliser dans du code neuf.
+     */
+    @Deprecated
+    Entreprise findByActif(Boolean actif);
 
-    @Query("SELECT e FROM Entreprise e WHERE e.employeur.id = :employeurId ORDER BY e.annee.code DESC")
-    List<Entreprise> findAllByEmployeurId(@Param("employeurId") Long employeurId);
-     Entreprise findByActif(Boolean actif);
+    /** Exercice actif d'une compagnie, quelle que soit l'annee. */
+    Optional<Entreprise> findFirstByEntreprisePK_CompagnieIdAndActifTrue(Long compagnieId);
 }

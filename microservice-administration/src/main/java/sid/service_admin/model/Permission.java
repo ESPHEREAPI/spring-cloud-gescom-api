@@ -11,8 +11,11 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
@@ -26,7 +29,7 @@ import sid.service_admin.enums.OperationType;
  * @author USER01
  */
 @Entity
-@Table(name = "permission")
+@Table(name = "permission", uniqueConstraints = @UniqueConstraint(columnNames = {"menu_id", "operationType"}))
 @Data
 
 @AllArgsConstructor
@@ -38,7 +41,7 @@ public class Permission implements Serializable {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String name;
 
     @Column
@@ -47,10 +50,24 @@ public class Permission implements Serializable {
     @Enumerated(EnumType.STRING)
     private OperationType operationType;
 
+    // Permission sur un menu precis (matrice Role x Menu x Action) - null pour
+    // les 4 permissions globales historiques (READ/WRITE/UPDATE/DELETE sans
+    // menu), conservees pour compatibilite avec RolePermissions existant.
+    @JoinColumn(name = "menu_id")
+    @ManyToOne
+    private Menu menu;
+
     public Permission(OperationType operationType) {
         this.operationType = operationType;
         this.description = operationType.name();
         name = operationType.name();
+    }
+
+    public Permission(Menu menu, OperationType operationType) {
+        this.menu = menu;
+        this.operationType = operationType;
+        this.name = menu.getCode() + ":" + operationType.name();
+        this.description = operationType.name() + " sur " + menu.getDescription();
     }
      @OneToMany(mappedBy = "permission")
     private Set<RolePermissions> rolePermissionses = new HashSet<>();

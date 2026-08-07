@@ -10,6 +10,17 @@ import java.util.List;
 
 public class VersementSpecifications {
 
+    /**
+     * A utiliser partout dans VersementService a la place de withCriteria() -
+     * ajoute toujours le filtre compagnie, quels que soient les autres
+     * criteres fournis par l'appelant (empeche de lister les versements
+     * d'une autre compagnie en omettant simplement le filtre boutique).
+     */
+    public static Specification<VersementClient> withCriteriaAndCompagnie(VersementSearchCriteria criteria, Long compagnieId) {
+        return withCriteria(criteria).and((root, query, cb) ->
+                cb.equal(root.get("client").get("compagnie").get("id"), compagnieId));
+    }
+
     public static Specification<VersementClient> withCriteria(VersementSearchCriteria criteria) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();

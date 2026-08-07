@@ -195,15 +195,15 @@ public class TicketCaisseService {
             bw.newLine();
 
             // String societe = (String) parameters.getOrDefault("societe", "");
-            bw.write(center("" + " " + vente.getEntreprise().getEmployeur().getSociete(), width));
+            bw.write(center("" + " " + vente.getEntreprise().getCompagnie().getNom(), width));
             bw.newLine();
-            bw.write(center(vente.getEntreprise().getEmployeur().getPersonne().getQuartier() + " " + vente.getEntreprise().getEmployeur().getPersonne().getVille(), width));
+            bw.write(center(vente.getEntreprise().getCompagnie().getQuartier() + " " + vente.getEntreprise().getCompagnie().getVille(), width));
             bw.newLine();
-            bw.write(center("BP: " + vente.getEntreprise().getEmployeur().getPersonne().getBp(), width));
+            bw.write(center("BP: " + vente.getEntreprise().getCompagnie().getBp(), width));
             bw.newLine();
-            bw.write(center("Tel: " + vente.getEntreprise().getEmployeur().getPersonne().getTel(), width));
+            bw.write(center("Tel: " + vente.getEntreprise().getCompagnie().getTel(), width));
             bw.newLine();
-             bw.write(center("NUM: " + vente.getEntreprise().getEmployeur().getNumeroContribuable(), width));
+             bw.write(center("NUM: " + vente.getEntreprise().getCompagnie().getNumeroContribuable(), width));
             bw.newLine();
             bw.write("--------------------------------");
             bw.newLine();
@@ -324,19 +324,19 @@ public class TicketCaisseService {
 //        content.append("╔════════════════════════════════════════╗\n");
 //        content.append("║                                        ║\n");
         // Nom de la société centré
-        String societeComplet = entreprise.getEmployeur().getSociete();
+        String societeComplet = entreprise.getCompagnie().getNom();
         content.append("").append(centerText(societeComplet.toUpperCase(), 40)).append("\n");
 
         // Adresse centrée
-        String adresse = entreprise.getEmployeur().getPersonne().getQuartier()
-                + " " + entreprise.getEmployeur().getPersonne().getVille();
+        String adresse = entreprise.getCompagnie().getQuartier()
+                + " " + entreprise.getCompagnie().getVille();
         content.append("").append(centerText(adresse, 40)).append("\n");
 
         // BP et téléphone
-        String bp = "BP: " + entreprise.getEmployeur().getPersonne().getBp();
+        String bp = "BP: " + entreprise.getCompagnie().getBp();
         content.append("").append(centerText(bp, 40)).append("\n");
 
-        String tel = "Tél: " + entreprise.getEmployeur().getPersonne().getTel();
+        String tel = "Tél: " + entreprise.getCompagnie().getTel();
         content.append("").append(centerText(tel, 40)).append("\n");
 
         // Client si présent

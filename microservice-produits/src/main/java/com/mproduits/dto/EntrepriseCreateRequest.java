@@ -24,9 +24,6 @@ public class EntrepriseCreateRequest {
     @NotNull(message = "L'année est obligatoire")
     private Integer anneeId;
 
-    @NotNull(message = "L'employeur est obligatoire")
-    private Long employeurId;
-
     @Size(max = 50, message = "Le nom du directeur ne doit pas dépasser 50 caractères")
     private String directeur;
 

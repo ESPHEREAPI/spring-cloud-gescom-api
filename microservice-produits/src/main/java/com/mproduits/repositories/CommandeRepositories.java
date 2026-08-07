@@ -297,6 +297,9 @@ public interface CommandeRepositories extends JpaRepository<Commande, Long>{
 
     boolean existsByNumeroRepartition(String numeroRepartition);
 
+    @Query("SELECT c FROM Commande c WHERE c.entreprise.entreprisePK.compagnieId = :compagnieId ORDER BY c.dateReception DESC")
+    List<Commande> findByCompagnieId(@Param("compagnieId") Long compagnieId);
+
     @Query("SELECT c FROM Commande c WHERE c.numeroRepartition = :code")
     Commande findByCode(@Param("code") String code);
     

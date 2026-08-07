@@ -3,6 +3,7 @@ package com.mproduits.web.controller;
 import com.mproduits.dto.DevisDTO;
 import com.mproduits.mappers.DevisMapper;
 import com.mproduits.model.Devis;
+import com.mproduits.security.BoutiqueAccessGuard;
 import com.mproduits.services.DevisService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -79,6 +80,7 @@ public class DevisController {
 
     private final DevisService devisService;
     private final DevisMapper mapper;
+    private final BoutiqueAccessGuard boutiqueAccessGuard;
 
     // ================================================================
     // SECTION 1: CRÉATION ET MODIFICATION
@@ -128,6 +130,7 @@ public class DevisController {
         log.info("└─────────────────────────────────────");
 
         try {
+            boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(dto.getBoutiqueid());
             Devis devis = devisService.creerDevis(dto, username,dto.getBoutiqueid(),dto.getAnneeid());
 
             Map<String, Object> response = new HashMap<>();
@@ -307,6 +310,7 @@ public class DevisController {
     )
     @ApiResponse(responseCode = "200", description = "Liste des devis")
     public ResponseEntity<Map<String, Object>> listDevis(@PathVariable Long boutiqueid) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         log.info("GET /api/v1/devis");
 
         List<DevisDTO> devis = devisService.findAll(boutiqueid).stream()
@@ -381,6 +385,7 @@ public class DevisController {
     )
     public ResponseEntity<Map<String, Object>> listDevisByClient(
             @PathVariable Long clientId,@PathVariable Long boutiqueid) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
 
         log.info("GET /api/v1/devis/client/{}", clientId);
 
@@ -409,6 +414,7 @@ public class DevisController {
     )
     public ResponseEntity<Map<String, Object>> listDevisByStatut(
             @PathVariable String statut,@PathVariable Long boutiqueid) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
 
         log.info("GET /api/v1/devis/statut/{}", statut);
 
@@ -472,6 +478,7 @@ public class DevisController {
             @RequestParam(required = false) Long clientId,
             @RequestParam(required = false) String statut,
             @RequestParam(required = true) Long boutiqueid) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
 
         log.info("GET /api/v1/devis/recherche?clientId={}&statut={}", clientId, statut);
 

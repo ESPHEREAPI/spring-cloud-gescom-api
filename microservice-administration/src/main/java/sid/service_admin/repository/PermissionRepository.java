@@ -19,4 +19,8 @@ import sid.service_admin.model.Permission;
 public interface PermissionRepository extends JpaRepository<Permission, Long> {
     Optional<Permission> findByName(String name);
     List<Permission> findByOperationType(OperationType operationType);
+
+    // Matrice Role x Menu x Action
+    Optional<Permission> findByMenu_IdAndOperationType(Long menuId, OperationType operationType);
+    List<Permission> findByMenu_Id(Long menuId);
 }

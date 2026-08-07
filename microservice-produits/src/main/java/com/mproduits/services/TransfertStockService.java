@@ -20,6 +20,7 @@ import com.mproduits.repositories.PointVenteRepositories;
 import com.mproduits.repositories.PrixArticlesRepositories;
 import com.mproduits.repositories.PrixVenteRepositories;
 import com.mproduits.repositories.TransfertStockRepository;
+import com.mproduits.security.TenantContext;
 import java.awt.PointerInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +48,10 @@ public class TransfertStockService {
     private PointVenteRepositories pointVenteRepository;
     @Autowired
     private EntrepriseRepositories entrepriseRepositories;
+    @Autowired
+    private EntrepriseService entrepriseService;
+    @Autowired
+    private TenantContext tenantContext;
 
     @Autowired
     PrixVenteRepositories prixVenteRepositories;
@@ -71,7 +76,7 @@ public class TransfertStockService {
                 requete.getMagasinSourceId(), requete.getMagasinDestinationId());
 
         //recuperation la companie
-        Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
+        Entreprise e = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
 
         // ÉTAPE 1: Validations
         validationTransfert(requete);
@@ -270,8 +275,8 @@ public class TransfertStockService {
                 log.debug("PointVente destination mise à jour: ID={}, nouvelle entrée={}, nouveau stock={}",
                         pointVente.getId(), pointVente.getEntreeProduit(), pointVente.getStockFinalTheorie());
             } else {
-                //on crer le pointe de vente 
-                Entreprise entreprise = entrepriseRepositories.findByActif(Boolean.TRUE);
+                //on crer le pointe de vente
+                Entreprise entreprise = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
                 PointVente pv = new PointVente();
                 pv.setEntreeProduit(quantite);
                 pv.setStockFinalTheorie(quantite);

@@ -5,15 +5,17 @@
 package com.mproduits.repositories;
 
 import com.mproduits.model.ClientBonAchat;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
 
 /**
  *
  * @author USER01
  */
-@Repository
 public interface ClientBonAchatRepositories extends JpaRepository<ClientBonAchat, Long>{
-    Optional<ClientBonAchat>findByNom(String nom);
+
+    List<ClientBonAchat> findByCompagnie_Id(Long compagnieId);
+
+    Optional<ClientBonAchat> findByIdAndCompagnie_Id(Long id, Long compagnieId);
 }

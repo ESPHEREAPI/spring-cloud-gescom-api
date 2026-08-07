@@ -1,11 +1,13 @@
 package com.mproduits.services;
 
 
+import com.mproduits.exceptions.BadRequestException;
 import com.mproduits.exceptions.ConflictException;
 import com.mproduits.model.Boutique;
 import com.mproduits.repositories.BoutiqueRepositories;
 import com.mproduits.security.LicenceCheckResult;
 import com.mproduits.security.LicenceStatusService;
+import com.mproduits.security.TenantContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +24,16 @@ public class BoutiqueService {
 
     private final BoutiqueRepositories boutiqueRepository;
     private final LicenceStatusService licenceStatusService;
+    private final TenantContext tenantContext;
+
+    /** La compagnie n'est jamais fournie par le client - toujours derivee du token JWT de l'appelant. */
+    private Long compagnieCourante() {
+        Long compagnieId = tenantContext.currentCompagnieId();
+        if (compagnieId == null) {
+            throw new BadRequestException("Aucune compagnie associee a ce compte");
+        }
+        return compagnieId;
+    }
 
     /**
      * compagnieId vient de l'attribut de requete pose par JwtAuthFilter (claim
@@ -40,33 +52,38 @@ public class BoutiqueService {
         return boutiqueRepository.save(boutique);
     }
 
+    @Transactional(readOnly = true)
     public Page<Boutique> findAll(Pageable pageable, String search) {
+        Long compagnieId = compagnieCourante();
         if (search != null && !search.isEmpty()) {
-            return boutiqueRepository.findBySearch(search, pageable);
+            return boutiqueRepository.findBySearchAndCompagnieId(search, compagnieId, pageable);
         }
-        return boutiqueRepository.findAll(pageable);
+        return boutiqueRepository.findByCompagnie_Id(compagnieId, pageable);
     }
-    
+
+    @Transactional(readOnly = true)
     public List<Boutique> findAll() {
-        return boutiqueRepository.findAll();
+        return boutiqueRepository.findByCompagnie_Id(compagnieCourante());
     }
-    
+
+    @Transactional(readOnly = true)
     public Optional<Boutique> findById(Long id) {
-        return boutiqueRepository.findById(id);
+        return boutiqueRepository.findByIdAndCompagnie_Id(id, compagnieCourante());
     }
-    
+
     public Boutique update(Long id, Boutique boutique) {
-        if (!boutiqueRepository.existsById(id)) {
-            throw new RuntimeException("Boutique not found with id: " + id);
-        }
+        Boutique existante = boutiqueRepository.findByIdAndCompagnie_Id(id, compagnieCourante())
+                .orElseThrow(() -> new RuntimeException("Boutique not found with id: " + id));
         boutique.setId(id);
+        // La compagnie n'est jamais modifiable via cet endpoint - on garde celle de la boutique existante,
+        // quoi que le client ait envoye dans le corps de la requete.
+        boutique.setCompagnie(existante.getCompagnie());
         return boutiqueRepository.save(boutique);
     }
-    
+
     public void deleteById(Long id) {
-        if (!boutiqueRepository.existsById(id)) {
-            throw new RuntimeException("Boutique not found with id: " + id);
-        }
-        boutiqueRepository.deleteById(id);
+        Boutique existante = boutiqueRepository.findByIdAndCompagnie_Id(id, compagnieCourante())
+                .orElseThrow(() -> new RuntimeException("Boutique not found with id: " + id));
+        boutiqueRepository.deleteById(existante.getId());
     }
 }

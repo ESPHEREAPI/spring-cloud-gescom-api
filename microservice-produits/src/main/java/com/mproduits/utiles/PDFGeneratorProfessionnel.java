@@ -7,6 +7,8 @@ import com.mproduits.model.Entreprise;
 import com.mproduits.model.Facture;
 import com.mproduits.model.FactureItem;
 import com.mproduits.repositories.EntrepriseRepositories;
+import com.mproduits.security.TenantContext;
+import com.mproduits.services.EntrepriseService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +35,8 @@ import java.time.format.DateTimeFormatter;
 public class PDFGeneratorProfessionnel {
 
     private final EntrepriseRepositories entrepriseRepositories;
+    private final EntrepriseService entrepriseService;
+    private final TenantContext tenantContext;
     private final ResourceLoader resourceLoader;
     private Entreprise entreprise;
 
@@ -59,7 +63,7 @@ public class PDFGeneratorProfessionnel {
      * @return Le contenu du PDF en bytes
      */
     private Entreprise getEntrepriseConfig() {
-        return entrepriseRepositories.findByActif(Boolean.TRUE);
+        return entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
     }
 
     public byte[] genererFacturePDF(Facture facture) {
@@ -145,7 +149,7 @@ public class PDFGeneratorProfessionnel {
         }
 
         // Nom de l'entreprise
-        Paragraph companyName = new Paragraph(entreprise.getEmployeur().getAbreviation(), FONT_COMPANY);
+        Paragraph companyName = new Paragraph(entreprise.getCompagnie().getNom(), FONT_COMPANY);
         companyName.setSpacingAfter(5);
         entrepriseCell.addElement(companyName);
 
@@ -157,26 +161,26 @@ public class PDFGeneratorProfessionnel {
         entrepriseCell.addElement(juridique);
 
         // Adresse
-        entrepriseCell.addElement(new Paragraph(""+entreprise.getEmployeur().getPersonne().getTel(), FONT_NORMAL));
+        entrepriseCell.addElement(new Paragraph(""+entreprise.getCompagnie().getTel(), FONT_NORMAL));
         entrepriseCell.addElement(new Paragraph("", FONT_NORMAL));
         entrepriseCell.addElement(new Paragraph(" ", FONT_SMALL));
 
         // Contact
-        entrepriseCell.addElement(new Paragraph("Tél: " + entreprise.getEmployeur().getPersonne().getTel(), FONT_NORMAL));
+        entrepriseCell.addElement(new Paragraph("Tél: " + entreprise.getCompagnie().getTel(), FONT_NORMAL));
 //        if (entrepriseConfig.getTelephoneSecondaire() != null) {
 //            entrepriseCell.addElement(new Paragraph("     " + entrepriseConfig.getTelephoneSecondaire(), FONT_NORMAL));
 //        }
-        entrepriseCell.addElement(new Paragraph("Email: " + entreprise.getEmployeur().getPersonne().getEmail(), FONT_NORMAL));
+        entrepriseCell.addElement(new Paragraph("Email: " + entreprise.getCompagnie().getEmail(), FONT_NORMAL));
         if (entreprise.getSiteWeb() != null) {
             entrepriseCell.addElement(new Paragraph("Web: " + entreprise.getSiteWeb(), FONT_NORMAL));
         }
         entrepriseCell.addElement(new Paragraph(" ", FONT_SMALL));
 
         // Identifiants
-        entrepriseCell.addElement(new Paragraph("RCCM: " + entreprise.getEmployeur().getNumeroCaisseCotissation(), FONT_SMALL));
-        entrepriseCell.addElement(new Paragraph("NIU: " + entreprise.getEmployeur().getNui(), FONT_SMALL));
-        if (entreprise.getEmployeur().getNumeroContribuable() != null) {
-            entrepriseCell.addElement(new Paragraph("N° Contribuable: " +  entreprise.getEmployeur().getNumeroContribuable(), FONT_SMALL));
+        entrepriseCell.addElement(new Paragraph("RCCM: " + entreprise.getCompagnie().getRccm(), FONT_SMALL));
+        entrepriseCell.addElement(new Paragraph("NIU: " + entreprise.getCompagnie().getNui(), FONT_SMALL));
+        if (entreprise.getCompagnie().getNumeroContribuable() != null) {
+            entrepriseCell.addElement(new Paragraph("N° Contribuable: " +  entreprise.getCompagnie().getNumeroContribuable(), FONT_SMALL));
         }
 
         mainTable.addCell(entrepriseCell);
@@ -561,7 +565,7 @@ public class PDFGeneratorProfessionnel {
                 footer.setLockedWidth(true);
 
                 // Gauche : Entreprise
-                PdfPCell left = new PdfPCell(new Phrase(config.getEmployeur().getAbreviation(), FONT_SMALL));
+                PdfPCell left = new PdfPCell(new Phrase(config.getCompagnie().getNom(), FONT_SMALL));
                 left.setBorder(Rectangle.NO_BORDER);
                 left.setHorizontalAlignment(Element.ALIGN_LEFT);
                 footer.addCell(left);

@@ -9,6 +9,7 @@ import com.mproduits.mappers.DevisMapper;
 import com.mproduits.model.*;
 
 import com.mproduits.repositories.*;
+import com.mproduits.security.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -62,6 +63,7 @@ public class DevisService {
   
     private final  DevisSequenceRepository sequenceRepo;
     private final DevisMapper mapper;
+    private final TenantContext tenantContext;
 
     // Constantes métier
     private static final int VALIDITE_DEFAUT_JOURS = 30;
@@ -141,7 +143,7 @@ public class DevisService {
             // 6. CRÉER LES ARTICLES
             int ordre = 1;
             for (DevisItemDTO itemDto : dto.getItems()) {
-                Produit produit = produitRepo.findById(itemDto.getProduitId())
+                Produit produit = produitRepo.findByIdAndCompagnie_Id(itemDto.getProduitId(), tenantContext.currentCompagnieId())
                         .orElseThrow(() -> new DevisException(
                         "Produit non trouvé: " + itemDto.getProduitId()));
 
@@ -880,7 +882,7 @@ public class DevisService {
         List<String> erreurs = new ArrayList<>();
 
         for (DevisItemDTO item : items) {
-            Produit produit = produitRepo.findById(item.getProduitId()).orElse(null);
+            Produit produit = produitRepo.findByIdAndCompagnie_Id(item.getProduitId(), tenantContext.currentCompagnieId()).orElse(null);
             if (produit == null) {
                 erreurs.add("Produit introuvable: " + item.getProduitId());
                 continue;

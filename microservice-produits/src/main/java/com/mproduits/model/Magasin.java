@@ -62,6 +62,14 @@ public class Magasin implements Serializable {
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "depotId")
     private Collection<PointVente> pointventeCollection;
 
+    // Rattachement compagnie direct (isolation multi-tenant) - necessaire car un
+    // Magasin peut exister sans Boutique (depot de stock central), donc ne peut
+    // pas toujours deriver sa compagnie via boutique.compagnie.
+    @JsonIgnore
+    @JoinColumn(name = "compagnie_id")
+    @ManyToOne
+    private Compagnie compagnie;
+
     public Magasin() {
     }
 
@@ -131,6 +139,22 @@ public class Magasin implements Serializable {
 
     public void setPointventeCollection(Collection<PointVente> pointventeCollection) {
         this.pointventeCollection = pointventeCollection;
+    }
+
+    public Compagnie getCompagnie() {
+        return compagnie;
+    }
+
+    public void setCompagnie(Compagnie compagnie) {
+        this.compagnie = compagnie;
+    }
+
+    public Long getCompagnieId() {
+        return compagnie != null ? compagnie.getId() : null;
+    }
+
+    public void setCompagnieId(Long compagnieId) {
+        this.compagnie = compagnieId != null ? new Compagnie(compagnieId) : null;
     }
 
     @Override

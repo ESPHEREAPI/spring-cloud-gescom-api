@@ -3,6 +3,7 @@ package com.mproduits.services;
 import com.mproduits.dto.MargeVenteDto;
 import com.mproduits.dto.VenteDto;
 import com.mproduits.enums.StatutVente;
+import com.mproduits.exceptions.BadRequestException;
 import com.mproduits.mappers.MapperDtoImpl;
 import com.mproduits.model.Annee;
 import com.mproduits.model.PrixAchat;
@@ -10,7 +11,10 @@ import com.mproduits.model.Produit;
 import com.mproduits.repositories.BoutiqueRepositories;
 import com.mproduits.repositories.LigneVenteRepositories;
 import com.mproduits.repositories.PrixAchatRepositories;
+import com.mproduits.repositories.ProduitRepositories;
 import com.mproduits.repositories.VenteRepositories;
+import com.mproduits.security.TenantContext;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -33,17 +37,22 @@ public class HistoriqueCaisseService {
     private final PrixAchatRepositories prixAchatRepositories;
     private final BoutiqueRepositories boutiqueRepositories;
     private final MapperDtoImpl mapperDtoImpl;
+    private final ProduitRepositories produitRepositories;
+    private final TenantContext tenantContext;
 
     public HistoriqueCaisseService(
             VenteRepositories venteRepositories,
             LigneVenteRepositories ligneVenteRepositories,
             PrixAchatRepositories prixAchatRepositories,
-            MapperDtoImpl mapperDtoImpl,BoutiqueRepositories boutiqueRepositories) {
+            MapperDtoImpl mapperDtoImpl,BoutiqueRepositories boutiqueRepositories,
+            ProduitRepositories produitRepositories, TenantContext tenantContext) {
         this.venteRepositories = venteRepositories;
         this.ligneVenteRepositories = ligneVenteRepositories;
         this.prixAchatRepositories = prixAchatRepositories;
         this.mapperDtoImpl = mapperDtoImpl;
         this.boutiqueRepositories=boutiqueRepositories;
+        this.produitRepositories = produitRepositories;
+        this.tenantContext = tenantContext;
     }
 
     /**
@@ -118,7 +127,17 @@ public class HistoriqueCaisseService {
      * Valide et met à jour le prix d'achat si nécessaire
      */
     public MargeVenteDto validerPrixAchat(MargeVenteDto margeVenteDto, Date datevente) {
-        var produit = mapperDtoImpl.mapperProduit(margeVenteDto.getP());
+        if (margeVenteDto.getP() == null || margeVenteDto.getP().getId() == null) {
+            throw new BadRequestException("Produit manquant");
+        }
+        // Le produit ne doit jamais etre construit directement depuis le DTO
+        // client (mapperProduit ne fait qu'un copy-properties, sans verifier
+        // que l'id fourni appartient a la compagnie courante) - on re-charge
+        // l'entite reelle, scopee par compagnie, avant tout usage.
+        Produit produit = produitRepositories
+                .findByIdAndCompagnie_Id(margeVenteDto.getP().getId(), tenantContext.currentCompagnieId())
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Produit non trouve avec l'ID: " + margeVenteDto.getP().getId()));
         var dateFinJournee = convertirEnFinDeJournee(datevente);
         
         var prixAchatOptional = prixAchatRepositories

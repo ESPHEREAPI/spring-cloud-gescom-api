@@ -52,7 +52,7 @@ public class Prixclient implements Serializable {
     private Client clientid;
     @JoinColumns({
         @JoinColumn(name = "AnneeId", referencedColumnName = "AnneeId"),
-        @JoinColumn(name = "EmployeurId", referencedColumnName = "EmployeurId")})
+        @JoinColumn(name = "EmployeurId", referencedColumnName = "compagnie_id")})
     @ManyToOne(optional = false)
     private Entreprise entreprise;
     @JoinColumn(name = "Produitid", referencedColumnName = "id")

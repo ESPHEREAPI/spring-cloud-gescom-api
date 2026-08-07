@@ -8,6 +8,7 @@ import com.mproduits.dto.ArticleSearchResponse;
 import com.mproduits.dto.ProduitDto;
 import com.mproduits.model.Specifique;
 import com.mproduits.repositories.SpecifiqueRepositories;
+import com.mproduits.security.BoutiqueAccessGuard;
 import com.mproduits.services.ProduitService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
@@ -58,14 +59,16 @@ public class ArticleController {
     private final ProduitService articleService;
     private final SpecifiqueRepositories specifiqueRepositories;
     private final StockService stockService;
+    private final BoutiqueAccessGuard boutiqueAccessGuard;
     @Autowired
     MapperDtoImpl mapperdto;
 
     @Autowired
-    public ArticleController(ProduitService articleService, SpecifiqueRepositories specifiqueRepositories, StockService stockService) {
+    public ArticleController(ProduitService articleService, SpecifiqueRepositories specifiqueRepositories, StockService stockService, BoutiqueAccessGuard boutiqueAccessGuard) {
         this.articleService = articleService;
         this.specifiqueRepositories = specifiqueRepositories;
         this.stockService = stockService;
+        this.boutiqueAccessGuard = boutiqueAccessGuard;
     }
 
     /**
@@ -86,6 +89,7 @@ public class ArticleController {
             @RequestParam(value = "limit", defaultValue = "1000")
             @Min(value = 1, message = "La limite doit être au moins 1")
             @Max(value = 10000, message = "La limite ne peut pas dépasser 10000") Integer limit, @PathVariable Long boutiqueid) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
 
         List<ProduitDto> articles = articleService.searchForAutocomplete(query, limit, boutiqueid);
 
@@ -152,6 +156,7 @@ public class ArticleController {
             description = "Retourne les 50 articles les plus populaires pour l'affichage initial")
     // @ApiResponse(responseCode = "200", description = "Liste des articles populaires")
     public ResponseEntity<List<ProduitDto>> getTopArticles(@PathVariable Long boutiqueid) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         List<ProduitDto> articles = articleService.getTopArticles(boutiqueid);
 
         // Cache plus long pour les articles populaires
@@ -257,17 +262,6 @@ public class ArticleController {
 
     /**
      *
-     * @return
-     */
-    @GetMapping("/specifiques")
-    public ResponseEntity<List<Specifique>> produits() {
-
-        List<Specifique> allSpecifique = specifiqueRepositories.findAll();
-        return ResponseEntity.ok(allSpecifique);
-    }
-
-    /**
-     *
      * @param produitDto
      * @return
      */
@@ -312,6 +306,7 @@ public class ArticleController {
     public ResponseEntity<Integer> decrementStock(
             @PathVariable Long articleId, @PathVariable Long boutiqueid,
             @RequestBody DecrementStockRequest request) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
 
         try {
             // Validation
@@ -346,6 +341,7 @@ public class ArticleController {
     @PostMapping("/produits/batch/{boutiqueid}")
     public ResponseEntity<List<ProduitDto>> getProductsBatch(@PathVariable Long boutiqueid,
             @RequestBody List<Long> articleIds) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
 
         try {
             // Validation
@@ -376,6 +372,7 @@ public class ArticleController {
     public ResponseEntity<?> decrementStocksBatch(
             @RequestBody List<StockDecrementItem> items,
             @PathVariable Long boutiqueid) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
 
         try {
             List<BatchValeur> listbatchValeur=new ArrayList<>();
@@ -409,6 +406,7 @@ public class ArticleController {
     public ResponseEntity<?> decrementStocksAndPrixBatch(
             @RequestBody List<StockDecrementItem> items,
             @PathVariable Long boutiqueid) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
 
         try {
             List<BatchValeur> listbatchValeur=new ArrayList<>();
@@ -450,6 +448,7 @@ public class ArticleController {
     public ResponseEntity<Map<String, Integer>> getStocksBatch(
             @PathVariable Long boutiqueid,
             @RequestBody List<Long> articleIds) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
 
         try {
             log.info("📦 Récupération stocks pour {} articles", articleIds.size());
@@ -478,6 +477,7 @@ public class ArticleController {
             @PathVariable Long boutiqueid,
             @RequestParam String search
     ) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         List<ProduitDto> results = articleService.searchProduitsByBoutique(boutiqueid, search);
         return ResponseEntity.ok(results);
     }
@@ -487,6 +487,7 @@ public class ArticleController {
     public ResponseEntity<Integer> currentPrix(
             @PathVariable Long boutiqueid, @PathVariable Long articleId
     ) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         return ResponseEntity.ok(stockService.getCurrentPrix(articleId, boutiqueid));
 
     }
@@ -496,10 +497,11 @@ public ResponseEntity<Map<String, Integer>> currentPrixBatch(
         @PathVariable Long boutiqueid,
         @RequestBody List<Long> articleIds
 ) {
+    boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
     if (articleIds == null || articleIds.isEmpty()) {
         return ResponseEntity.ok(Collections.emptyMap());
     }
- 
+
     Map<String, Integer> prixMap = stockService.getCurrentPrixBatch(articleIds, boutiqueid);
     return ResponseEntity.ok(prixMap);
 }

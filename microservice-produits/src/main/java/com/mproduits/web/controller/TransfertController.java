@@ -12,6 +12,7 @@ import com.mproduits.repositories.MagasinRepositories;
 import com.mproduits.repositories.PointVenteRepositories;
 import com.mproduits.repositories.TransfertStockRepository;
 import com.mproduits.services.TransfertStockService;
+import com.mproduits.security.TenantContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
@@ -41,7 +42,9 @@ public class TransfertController {
 
     @Autowired
     private TransfertStockRepository transfertStockRepository;
-    
+    @Autowired
+    private TenantContext tenantContext;
+
 
     /**
      * Effectue un transfert de stock
@@ -108,7 +111,7 @@ public class TransfertController {
     public ResponseEntity<?> obtenirTransfert(@PathVariable Long id) {
         log.debug("Requête pour récupérer le transfert: {}", id);
 
-        Optional<TransfertStock> transfert = transfertStockRepository.findById(id);
+        Optional<TransfertStock> transfert = transfertStockRepository.findByIdAndEntreprise_EntreprisePK_CompagnieId(id, tenantContext.currentCompagnieId());
         if (transfert.isEmpty()) {
             log.warn("Transfert non trouvé: {}", id);
             return ResponseEntity.notFound().build();
@@ -127,7 +130,7 @@ public class TransfertController {
     @GetMapping
     public ResponseEntity<?> listerTransferts() {
         log.debug("Requête pour lister tous les transferts");
-        List<TransfertStock> transferts = transfertStockRepository.findAll();
+        List<TransfertStock> transferts = transfertStockRepository.findAllByCompagnieId(tenantContext.currentCompagnieId());
         return ResponseEntity.ok(transferts);
     }
 
@@ -142,7 +145,7 @@ public class TransfertController {
     @GetMapping("/source/{magasinId}")
     public ResponseEntity<?> obtenirTransfertsSource(@PathVariable Long magasinId) {
         log.debug("Requête pour les transferts sortants du magasin: {}", magasinId);
-        List<TransfertStock> transferts = transfertStockRepository.findBySourceId(magasinId);
+        List<TransfertStock> transferts = transfertStockRepository.findBySourceIdAndCompagnieId(magasinId, tenantContext.currentCompagnieId());
         return ResponseEntity.ok(transferts);
     }
 
@@ -157,7 +160,7 @@ public class TransfertController {
     @GetMapping("/destination/{magasinId}")
     public ResponseEntity<?> obtenirTransfertsDestination(@PathVariable Long magasinId) {
         log.debug("Requête pour les transferts entrants du magasin: {}", magasinId);
-        List<TransfertStock> transferts = transfertStockRepository.findByDestinationId(magasinId);
+        List<TransfertStock> transferts = transfertStockRepository.findByDestinationIdAndCompagnieId(magasinId, tenantContext.currentCompagnieId());
         return ResponseEntity.ok(transferts);
     }
 
@@ -172,7 +175,7 @@ public class TransfertController {
     @GetMapping("/produit/{produitId}")
     public ResponseEntity<?> obtenirTransfertsProduit(@PathVariable Long produitId) {
         log.debug("Requête pour les transferts du produit: {}", produitId);
-        List<TransfertStock> transferts = transfertStockRepository.findByProduitId(produitId);
+        List<TransfertStock> transferts = transfertStockRepository.findByProduitIdAndCompagnieId(produitId, tenantContext.currentCompagnieId());
         return ResponseEntity.ok(transferts);
     }
 
@@ -205,9 +208,9 @@ public class TransfertController {
         Pageable pageable = PageRequest.of(page, size, Sort.by("dateTransfert").descending());
 
         // TODO: Implémenter les filtres avec magasinId et produitId
-        // Pour l'instant, retourner tous les transferts avec pagination
+        // Pour l'instant, retourner tous les transferts de la compagnie avec pagination
 
-        List<TransfertStock> transferts = transfertStockRepository.findAll();
+        List<TransfertStock> transferts = transfertStockRepository.findAllByCompagnieId(tenantContext.currentCompagnieId());
         int total = transferts.size();
         int start = page * size;
         int end = Math.min(start + size, total);

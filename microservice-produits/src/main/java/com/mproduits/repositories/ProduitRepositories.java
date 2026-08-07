@@ -77,11 +77,61 @@ public interface ProduitRepositories extends JpaRepository<Produit, Long>{
                    "LIMIT :limit", 
            nativeQuery = true)
     List<Produit> fullTextSearch(@Param("searchTerm") String searchTerm, @Param("limit") int limit);
+
+    @Query(value = "SELECT * FROM Produit a WHERE a.deletes = false AND a.compagnie_id = :compagnieId AND " +
+                   "MATCH(a.libelle, a.description) AGAINST(:searchTerm IN NATURAL LANGUAGE MODE) " +
+                   "ORDER BY MATCH(a.libelle, a.description) AGAINST(:searchTerm IN NATURAL LANGUAGE MODE) DESC " +
+                   "LIMIT :limit",
+           nativeQuery = true)
+    List<Produit> fullTextSearchByCompagnie(@Param("searchTerm") String searchTerm, @Param("compagnieId") Long compagnieId, @Param("limit") int limit);
     
     // Méthodes de base optimisées
     Page<Produit> findByDeletesFalse(Pageable pageable);
 
     List<Produit> findTop10000ByDeletesFalseOrderByLibelleAsc();
+
+    // ===== Isolation multi-tenant : variantes scopees par compagnie =====
+    // Utilisees par ProduitService a la place des methodes ci-dessus des que
+    // l'appelant est un utilisateur de compagnie (voir TenantContext).
+    @Query("SELECT a FROM Produit a WHERE a.deletes = false AND a.compagnie.id = :compagnieId AND " +
+           "(LOWER(a.libelle) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(a.reference) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(a.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+    Page<Produit> searchArticlesByCompagnie(@Param("searchTerm") String searchTerm, @Param("compagnieId") Long compagnieId, Pageable pageable);
+
+    @Query("SELECT a FROM Produit a WHERE a.deletes = false AND a.compagnie.id = :compagnieId AND " +
+           "(:category IS NULL OR a.categories.libelle = :category)")
+    Page<Produit> findByCategoryAndCompagnie(@Param("category") String category, @Param("compagnieId") Long compagnieId, Pageable pageable);
+
+    @Query("SELECT a FROM Produit a WHERE a.deletes = false AND a.compagnie.id = :compagnieId AND " +
+           "(:category IS NULL OR a.categories.libelle = :category) AND " +
+           "(:searchTerm IS NULL OR " +
+           "LOWER(a.libelle) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(a.reference) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+    Page<Produit> findByCategoryAndSearchAndCompagnie(@Param("category") String category,
+                                        @Param("searchTerm") String searchTerm,
+                                        @Param("compagnieId") Long compagnieId,
+                                        Pageable pageable);
+
+    Page<Produit> findByDeletesFalseAndCompagnie_Id(Long compagnieId, Pageable pageable);
+
+    List<Produit> findTop10000ByDeletesFalseAndCompagnie_IdOrderByLibelleAsc(Long compagnieId);
+
+    boolean existsByReferenceAndDeletesFalseAndCompagnie_Id(String reference, Long compagnieId);
+
+    // Lookup par id scope compagnie - a utiliser a la place de findById() partout
+    // ou l'id vient d'une requete client (evite qu'un utilisateur d'une
+    // compagnie A manipule un id de produit appartenant a une compagnie B).
+    Optional<Produit> findByIdAndCompagnie_Id(Long id, Long compagnieId);
+    Optional<Produit> findByReferenceAndCompagnie_Id(String reference, Long compagnieId);
+    Optional<Produit> findByLibelleAndCompagnie_Id(String libelle, Long compagnieId);
+    Page<Produit> findAllByCompagnie_Id(Long compagnieId, Pageable pageable);
+    List<Produit> findAllByCompagnie_Id(Long compagnieId);
+
+    @Query("SELECT a FROM Produit a WHERE a.deletes = false AND a.compagnie.id = :compagnieId AND " +
+           "(LOWER(a.libelle) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(a.reference) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+    List<Produit> findForAutocompleteByCompagnie(@Param("searchTerm") String searchTerm, @Param("compagnieId") Long compagnieId, Pageable pageable);
     
     @Query("SELECT DISTINCT a.categories.libelle FROM Produit a WHERE a.deletes = false AND a.categories.libelle IS NOT NULL ORDER BY a.categories.libelle")
     List<String> findAllCategories();

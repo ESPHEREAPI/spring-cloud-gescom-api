@@ -94,7 +94,7 @@ services:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_CLOUD_CONFIG_URI: http://config-server:9101
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://77.68.94.193}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?Definissez CORS_ALLOWED_ORIGINS dans .env}
     networks:
       - easycom-network
     depends_on:
@@ -215,7 +215,7 @@ services:
   # ==========================================
   frontend:
     build:
-      context: E:/projectAngular/easycompro-gescom/AdminLTE-3_2_0-angular/adminlte-angular-app
+      context: ./web/easycompro-gescom/AdminLTE-3_2_0-angular/adminlte-angular-app
       dockerfile: Dockerfile
     container_name: easycom-frontend
     restart: unless-stopped

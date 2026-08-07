@@ -9,6 +9,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -32,10 +33,12 @@ import sid.service_admin.dto.ChangePasswordDTO;
 import sid.service_admin.enums.ModuleLicence;
 import sid.service_admin.enums.ModulesParTypeCommerce;
 import sid.service_admin.exceptions.BadRequestException;
+import sid.service_admin.exceptions.ConflictException;
 import sid.service_admin.exceptions.ResourceNotFoundException;
 import sid.service_admin.mapper.MapperDtoImpl;
 import sid.service_admin.model.Boutique;
 import sid.service_admin.model.Compagnie;
+import sid.service_admin.model.CompagnieParametres;
 import sid.service_admin.model.Indicatifpays;
 import sid.service_admin.model.Menu;
 import sid.service_admin.model.Modulesecurite;
@@ -58,6 +61,7 @@ import sid.service_admin.utils.Crypto;
 import sid.service_admin.repository.ModulesecuriteRepository;
 import sid.service_admin.repository.UsermenuRepository;
 import sid.service_admin.repository.UsermoduleRepository;
+import sid.service_admin.security.TenantContext;
 
 /**
  *
@@ -81,7 +85,11 @@ public class UserService implements Serializable {
     private UsermoduleRepository usermoduleRepository;
     private UsermenuRepository usermenuRepository;
     private CompagnieRepository compagnieRepository;
+    private sid.service_admin.repository.CompagnieParametresRepository compagnieParametresRepository;
+    private LoginGeneratorService loginGeneratorService;
+    private ProfilPermissionMatrixService profilPermissionMatrixService;
     private LicenceService licenceService;
+    private TenantContext tenantContext;
 
     private ISecurite securiteService;
 
@@ -89,9 +97,17 @@ public class UserService implements Serializable {
     //@Autowired
     MapperDtoImpl mapToDTO;
 
+    /**
+     * SUPER_ADMIN/SYSTEM_ADMIN (sans compagnie) voient tous les comptes ; un
+     * COMPANY_ADMIN ne voit que les utilisateurs de sa propre compagnie.
+     */
     @Transactional(readOnly = true)
     public List<UserDTO> getAllUsers() {
-        return personneRepository.findAll().stream()
+        Long compagnieId = tenantContext.currentCompagnieId();
+        List<Personne> personnes = compagnieId != null
+                ? personneRepository.findByCompagnie_Id(compagnieId)
+                : personneRepository.findAll();
+        return personnes.stream()
                 .map(u -> this.mapToDTO.mapToDTO(u))
                 .collect(Collectors.toList());
     }
@@ -114,7 +130,10 @@ public class UserService implements Serializable {
 
     @Transactional(readOnly = true)
     public UserDTO getUserById(Long id) {
-        Personne user = personneRepository.findById(id)
+        Long compagnieId = tenantContext.currentCompagnieId();
+        Personne user = (compagnieId != null
+                ? personneRepository.findByIdAndCompagnie_Id(id, compagnieId)
+                : personneRepository.findById(id))
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
         return this.mapToDTO.mapToDTO(user);
     }
@@ -122,19 +141,46 @@ public class UserService implements Serializable {
     @Transactional
     public UserDTO createUser(UserCreateDTO userCreateDTO, String actorUsername) {
 
-        Personne user = null;
-        if (personneRepository.existsByEmail(userCreateDTO.getEmail()) == Boolean.FALSE && personneRepository.findByUserName(userCreateDTO.getUserName()).isEmpty()) {
+        // Rattachement compagnie : explicite (SUPER_ADMIN/SYSTEM_ADMIN ciblant une
+        // compagnie precise) sinon herite de la compagnie de l'acteur (cas
+        // COMPANY_ADMIN creant un employe). null = compte systeme, pas de quota.
+        // Un COMPANY_ADMIN (tenantContext.currentCompagnieId() renseigne) ne peut
+        // jamais cibler une AUTRE compagnie que la sienne, meme si le corps de la
+        // requete en indique une - seul un compte sans compagnie (SUPER_ADMIN/
+        // SYSTEM_ADMIN) peut choisir explicitement la compagnie ciblee.
+        Long actorCompagnieId = tenantContext.currentCompagnieId();
+        Long compagnieId = actorCompagnieId != null ? actorCompagnieId : userCreateDTO.getCompagnieId();
+        if (compagnieId == null && actorUsername != null) {
+            compagnieId = personneRepository.findByUserName(actorUsername)
+                    .map(Personne::getCompagnie)
+                    .map(Compagnie::getId)
+                    .orElse(null);
+        }
+        Long finalCompagnieId = compagnieId;
+        Compagnie compagnie = finalCompagnieId != null
+                ? compagnieRepository.findById(finalCompagnieId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Compagnie non trouvee : " + finalCompagnieId))
+                : null;
 
-            // Rattachement compagnie : explicite (SUPER_ADMIN/SYSTEM_ADMIN ciblant une
-            // compagnie precise) sinon herite de la compagnie de l'acteur (cas
-            // COMPANY_ADMIN creant un employe). null = compte systeme, pas de quota.
-            Long compagnieId = userCreateDTO.getCompagnieId();
-            if (compagnieId == null && actorUsername != null) {
-                compagnieId = personneRepository.findByUserName(actorUsername)
-                        .map(Personne::getCompagnie)
-                        .map(Compagnie::getId)
-                        .orElse(null);
-            }
+        // Login : saisi manuellement s'il est fourni, sinon genere automatiquement
+        // selon le format choisi par la compagnie (CompagnieParametres#loginFormat,
+        // voir "Option Entreprise") - couvre tous les types de commerce geres par
+        // la plateforme (voir LoginGeneratorService).
+        String userName = userCreateDTO.getUserName();
+        if (userName == null || userName.isBlank()) {
+            sid.service_admin.enums.LoginFormat format = compagnieId != null
+                    ? compagnieParametresRepository.findByCompagnie_Id(compagnieId)
+                            .map(CompagnieParametres::getLoginFormat)
+                            .orElse(sid.service_admin.enums.LoginFormat.INITIALE_NOM)
+                    : sid.service_admin.enums.LoginFormat.INITIALE_NOM;
+            userName = loginGeneratorService.genererLogin(format, compagnie != null ? compagnie.getTypeCommerce() : null,
+                    userCreateDTO.getFirstName(), userCreateDTO.getLastname(), compagnieId);
+            userCreateDTO.setUserName(userName);
+        }
+
+        Personne user = null;
+        if (personneRepository.existsByEmail(userCreateDTO.getEmail()) == Boolean.FALSE && personneRepository.findByUserName(userName).isEmpty()) {
+
             if (compagnieId != null) {
                 licenceService.verifierQuotaUtilisateurs(compagnieId);
             }
@@ -144,19 +190,23 @@ public class UserService implements Serializable {
 
             user.setCreatedBy(actorUsername == null ? "Systeme" : actorUsername);
             user.setCreatedAt(new java.util.Date());
-            Optional<Roles> role = roleRepository.findById(userCreateDTO.getRoleid());
-            if (role.isPresent()) {
-                user.setRoleid(role.get());
-            }
-            Optional<Profil> profil = profilRepository.findById(userCreateDTO.getProfilid());
-            if (role.isPresent()) {
-                user.setProfilid(profil.get());
 
+            // Role fixe, jamais choisi par le client : les droits reels viennent
+            // exclusivement du Profil (voir ProfilPermissionMatrixService). Un
+            // client ne doit jamais pouvoir s'auto-assigner (ou assigner a un
+            // employe) un role de hierarchie comme COMPANY_ADMIN/SUPER_ADMIN.
+            Roles roleEmploye = roleRepository.findByName(sid.service_admin.security.RoleNames.EMPLOYE)
+                    .orElseThrow(() -> new IllegalStateException(
+                            "Role " + sid.service_admin.security.RoleNames.EMPLOYE + " introuvable - le bootstrap de demarrage ne s'est pas execute correctement"));
+            user.setRoleid(roleEmploye);
+
+            if (userCreateDTO.getProfilid() != null) {
+                Profil profil = profilRepository.findById(userCreateDTO.getProfilid())
+                        .orElseThrow(() -> new ResourceNotFoundException("Profil non trouve : " + userCreateDTO.getProfilid()));
+                user.setProfilid(profil);
             }
-            if (compagnieId != null) {
-                Long finalCompagnieId = compagnieId;
-                user.setCompagnie(compagnieRepository.findById(finalCompagnieId)
-                        .orElseThrow(() -> new ResourceNotFoundException("Compagnie non trouvee : " + finalCompagnieId)));
+            if (compagnie != null) {
+                user.setCompagnie(compagnie);
             }
 
 //            user.setBp(userCreateDTO.getAdresse().getBp());
@@ -203,15 +253,12 @@ public class UserService implements Serializable {
         user.setLastModifiedBy(currentUsername == null ? "Systeme" : currentUsername);
         user.setLastModifiedDate(new java.util.Date());
 
-        // mise a jour du role et profile
-        if (user.getRoleid() == null || user.getRoleid().getId().equals(userUpdateDTO.getRoleid()) == Boolean.FALSE) {
-            Roles role = roleRepository.findById(userUpdateDTO.getRoleid())
-                    .orElseThrow(() -> new ResourceNotFoundException("Role not found with id: " + userUpdateDTO.getRoleid()));
-            user.setRoleid(role);
-        }
-        if (user.getProfilid() == null || user.getProfilid().getId().equals(userUpdateDTO.getProfilid()) == Boolean.FALSE) {
+        // Le role n'est plus modifiable via ce formulaire (voir UserService#createUser) -
+        // seul le Profil determine les droits reels de l'utilisateur.
+        if (userUpdateDTO.getProfilid() != null
+                && (user.getProfilid() == null || user.getProfilid().getId().equals(userUpdateDTO.getProfilid()) == Boolean.FALSE)) {
             Profil profil = profilRepository.findById(userUpdateDTO.getProfilid())
-                    .orElseThrow(() -> new ResourceNotFoundException("Profil not found with id: " + userUpdateDTO.getRoleid()));
+                    .orElseThrow(() -> new ResourceNotFoundException("Profil not found with id: " + userUpdateDTO.getProfilid()));
             user.setProfilid(profil);
         }
 
@@ -242,13 +289,8 @@ public class UserService implements Serializable {
         user.setLastModifiedDate(new java.util.Date());
         user.setPassword(pwd);
 
-        // mise a jour du role et profile (profil optionnel pour les comptes de la hierarchie admin)
-        if (userUpdateDTO.getRoleid() != null
-                && (user.getRoleid() == null || user.getRoleid().getId().equals(userUpdateDTO.getRoleid()) == Boolean.FALSE)) {
-            Roles role = roleRepository.findById(userUpdateDTO.getRoleid())
-                    .orElseThrow(() -> new ResourceNotFoundException("Role not found with id: " + userUpdateDTO.getRoleid()));
-            user.setRoleid(role);
-        }
+        // Le role n'est plus modifiable via ce formulaire (voir UserService#createUser) -
+        // seul le Profil determine les droits reels de l'utilisateur.
         if (userUpdateDTO.getProfilid() != null
                 && (user.getProfilid() == null || user.getProfilid().getId().equals(userUpdateDTO.getProfilid()) == Boolean.FALSE)) {
             Profil profil = profilRepository.findById(userUpdateDTO.getProfilid())
@@ -347,10 +389,83 @@ public class UserService implements Serializable {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Un profil est une politique de droits propre a une compagnie : un
+     * COMPANY_ADMIN ne voit et n'assigne jamais les profils d'une autre
+     * compagnie. SUPER_ADMIN/SYSTEM_ADMIN (sans compagnie) voient tous les
+     * profils, a titre de supervision uniquement (voir ProfilPermissionMatrixService
+     * pour le blocage de modification).
+     */
+    @Transactional(readOnly = true)
     public List<ProfilDTO> allProfil() {
-        return profilRepository.findAll().stream()
+        Long compagnieId = tenantContext.currentCompagnieId();
+        List<Profil> profils = compagnieId != null
+                ? profilRepository.findByCompagnie_Id(compagnieId)
+                : profilRepository.findAll();
+        return profils.stream()
                 .map(profil -> this.mapToDTO.mapToDTOProfil(profil))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Cree un nouveau profil (categorie de droits Menu x Action, voir
+     * ProfilPermissionMatrixService) - permet a un COMPANY_ADMIN de creer
+     * ses propres variantes (ex: "CAISSIER_CODEBARRE" distinct de
+     * "CAISSIER_COMPTOIR") plutot que de se limiter aux profils par defaut.
+     * Rattache automatiquement le profil a la compagnie de l'acteur - un
+     * compte sans compagnie (SUPER_ADMIN/SYSTEM_ADMIN) ne peut pas en creer,
+     * il n'a pas de compagnie a laquelle le rattacher.
+     */
+    @Transactional
+    public ProfilDTO createProfil(String code, String description) {
+        Long compagnieId = tenantContext.currentCompagnieId();
+        if (compagnieId == null) {
+            throw new BadRequestException("Seul un administrateur de compagnie peut creer un profil");
+        }
+        if (code == null || code.isBlank()) {
+            throw new BadRequestException("Le code du profil est obligatoire");
+        }
+        if (profilRepository.findByCodeAndCompagnie_Id(code, compagnieId) != null) {
+            throw new ConflictException("Un profil avec le code '" + code + "' existe deja pour votre compagnie");
+        }
+        Profil profil = new Profil(code);
+        profil.setDescription(description);
+        profil.setStatut("ACTIF");
+        profil.setAddDate(new java.util.Date());
+        profil.setCompagnie(compagnieRepository.findById(compagnieId)
+                .orElseThrow(() -> new ResourceNotFoundException("Compagnie non trouvee : " + compagnieId)));
+        Profil saved = profilRepository.save(profil);
+        return this.mapToDTO.mapToDTOProfil(saved);
+    }
+
+    /**
+     * Seme les profils metier par defaut pour une compagnie qui n'en a encore
+     * aucun, pour qu'un COMPANY_ADMIN puisse immediatement configurer sa
+     * matrice de droits (Menu x Action) sans partir de zero. Sans effet si la
+     * compagnie a deja au moins un profil (creation manuelle ou deja semee).
+     * Appele a la creation d'une compagnie (CompagnieService) et en
+     * rattrapage au demarrage pour les compagnies existantes (SuperAdminBootstrap).
+     */
+    @Transactional
+    public void seedProfilsParDefautPourCompagnie(Compagnie compagnie) {
+        if (compagnie == null || compagnie.getId() == null
+                || profilRepository.countByCompagnie_Id(compagnie.getId()) > 0) {
+            return;
+        }
+        Stream.of(
+                new String[]{"ADMIN", "Acces complet aux fonctionnalites de la compagnie"},
+                new String[]{"CAISSIER", "Vente au comptoir, encaissement"},
+                new String[]{"COMMERCIAL", "Devis, commandes, suivi clientele"},
+                new String[]{"COMPTABLE", "Facturation, comptabilite, tresorerie"},
+                new String[]{"USER", "Acces de base, sans droit particulier"})
+                .forEach(codeEtDescription -> {
+                    Profil profil = new Profil(codeEtDescription[0]);
+                    profil.setDescription(codeEtDescription[1]);
+                    profil.setStatut("ACTIF");
+                    profil.setAddDate(new java.util.Date());
+                    profil.setCompagnie(compagnie);
+                    profilRepository.save(profil);
+                });
     }
 
     /**
@@ -492,12 +607,24 @@ public class UserService implements Serializable {
                     .collect(Collectors.toList());
         }
     }
+    /**
+     * Menus visibles pour le sidebar. Un utilisateur avec un Profil (voir
+     * ProfilPermissionMatrixService) herite des menus de sa matrice Profil x
+     * Menu x Action ; sans profil (ex: admin compagnie provisionne directement
+     * via Usermenu a la creation), on garde l'ancien mecanisme par utilisateur.
+     */
     public MenuUserDTO chargeMenuUser(String userName){
-        //Long userid=moduleUserDTOs.getUserid();
         Personne p=personneRepository.findByUserName(userName).get();
-        List<MenuDto> listMenuUsers=usermenuRepository.findByPersonneAndAutorisationTrue(p).stream()
-                .map(um-> mapToDTO.mapToDTOMenu(um.getMenu()))
-                .collect(Collectors.toList());
+        List<MenuDto> listMenuUsers;
+        if (p.getProfilid() != null) {
+            listMenuUsers = profilPermissionMatrixService.getMenusVisibles(p.getProfilid().getId()).stream()
+                    .map(mapToDTO::mapToDTOMenu)
+                    .collect(Collectors.toList());
+        } else {
+            listMenuUsers = usermenuRepository.findByPersonneAndAutorisationTrue(p).stream()
+                    .map(um-> mapToDTO.mapToDTOMenu(um.getMenu()))
+                    .collect(Collectors.toList());
+        }
         MenuUserDTO menuUserDTO=new MenuUserDTO();
         menuUserDTO.setMenus(listMenuUsers);
         menuUserDTO.setUserid(p.getId());

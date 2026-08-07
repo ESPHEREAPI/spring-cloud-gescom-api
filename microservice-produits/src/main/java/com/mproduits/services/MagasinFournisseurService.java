@@ -17,6 +17,7 @@ import com.mproduits.repositories.EntrepriseRepository;
 import com.mproduits.repositories.FournisseurRepositories;
 import com.mproduits.repositories.MagasinFournisseurRepositories;
 import com.mproduits.repositories.MagasinRepositories;
+import com.mproduits.security.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -41,6 +42,8 @@ public class MagasinFournisseurService {
     private final MagasinRepositories magasinRepository;
     private final FournisseurRepositories fournisseurRepository;
     private final EntrepriseRepositories entrepriseRepository;
+    private final EntrepriseService entrepriseService;
+    private final TenantContext tenantContext;
 
     /**
      * Récupérer toutes les associations avec pagination
@@ -105,7 +108,7 @@ public class MagasinFournisseurService {
                 .orElseThrow(() -> new ResourceNotFoundException("Fournisseur non trouvé avec l'ID: " + dto.getFournisseurId()));
 
         
-        Entreprise e =entrepriseRepository.findByActif(Boolean.TRUE);
+        Entreprise e = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
         // Créer l'association
         MagasinFournisseur association = new MagasinFournisseur();
         association.setMagasinFournisseurPK(new MagasinFournisseurPK(dto.getDepotId(), dto.getFournisseurId()));
@@ -347,7 +350,7 @@ public class MagasinFournisseurService {
         // Informations entreprise
         if (entity.getEntreprise() != null) {
             dto.setAnneeId(entity.getEntreprise().getEntreprisePK().getAnneeId());
-            dto.setEmployeurId(entity.getEntreprise().getEntreprisePK().getEmployeurId());
+            dto.setEmployeurId(entity.getEntreprise().getEntreprisePK().getCompagnieId());
         }
 
         // Métadonnées

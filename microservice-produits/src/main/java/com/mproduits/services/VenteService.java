@@ -18,6 +18,8 @@ import com.mproduits.repositories.LigneVenteRepositories;
 import com.mproduits.repositories.PointVenteRepositories;
 import com.mproduits.repositories.VenteRepositories;
 import com.mproduits.repositories.VenteSpecification;
+import com.mproduits.security.TenantContext;
+import com.mproduits.exceptions.BadRequestException;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -47,8 +49,22 @@ public class VenteService {
     private final EntrepriseRepositories entrepriseRepositories;
     private final PointVenteRepositories pointVenteRepositories;
     private final BoutiqueRepositories boutiqueRepositories;
+    private final TenantContext tenantContext;
+    private final EntrepriseService entrepriseService;
     @Autowired
     MapperDtoImpl mapperDtoImpl;
+
+    /**
+     * Exercice actif de la compagnie de l'appelant - jamais partage entre
+     * compagnies (voir EntrepriseService#obtenirOuCreerExerciceActif).
+     */
+    private Entreprise entrepriseActive() {
+        Long compagnieId = tenantContext.currentCompagnieId();
+        if (compagnieId == null) {
+            throw new BadRequestException("Aucune compagnie associee a ce compte");
+        }
+        return entrepriseService.obtenirOuCreerExerciceActif(compagnieId);
+    }
 
     public Page<VenteDto> getVentes(int page, int size, String statut, LocalDateTime dateDebut, LocalDateTime dateFin, String search,Long boutiqueid) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("dateVente").descending());
@@ -95,10 +111,10 @@ public class VenteService {
     }
 
     public VenteDto updateStatut(Long id, String username, String statut, Long boutiqueid) {
-        Vente vente = venteRepository.findById(id)
+        // Scope compagnie : empeche un appelant d'agir sur une vente d'une autre
+        // compagnie meme s'il fournit un boutiqueid valide de sa propre compagnie.
+        Vente vente = venteRepository.findByIdAndBoutique_Compagnie_Id(id, tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new RuntimeException("Vente non trouvée"));
-         // ✅ Vérification de la boutique
-    
 
         vente.setStatut(StatutVente.valueOf(statut));
 
@@ -135,15 +151,14 @@ public class VenteService {
     }
 
     public VenteDto getVente(Long id) {
-        Vente v = venteRepository.findById(id)
+        Vente v = venteRepository.findByIdAndBoutique_Compagnie_Id(id, tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new RuntimeException("Vente non trouvée"));
-        // Optional<Boutique>boutique=boutiqueRepositories.findById(boutiqueid);
         return this.mapperDtoImpl.mapperVentByVenteDto(v);
     }
 
     public VenteDto getVente(String numeTicket,Long boutiqueid) {
         System.err.println("numero ticket:" + numeTicket);
-        Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
+        Entreprise e = entrepriseActive();
         Optional<Boutique>boutique=boutiqueRepositories.findById(boutiqueid);
 
         Optional<Vente> vente = venteRepository.findByEntrepriseAndNumeroTicketAndBoutiqueId(e, numeTicket,boutiqueid);
@@ -154,7 +169,7 @@ public class VenteService {
     }
 
     public VenteDto getVenteForECom(long numerocommande,Long boutiqueid) {
-        Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
+        Entreprise e = entrepriseActive();
         System.err.println("numero ticket:" + numerocommande);
         Vente vente = venteRepository.findByNumeroTicketAndStatutForCommande(numerocommande, StatutVente.EN_COURS, e.getAnnee().getId(),boutiqueid)
                 .orElseThrow(() -> new EntityNotFoundException("Vente introuvable pour le ticket " + numerocommande));

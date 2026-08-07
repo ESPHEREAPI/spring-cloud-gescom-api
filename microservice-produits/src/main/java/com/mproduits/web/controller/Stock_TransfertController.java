@@ -11,6 +11,7 @@ import com.mproduits.model.Produit;
 import com.mproduits.repositories.CommandeRepositories;
 import com.mproduits.repositories.MagasinRepositories;
 import com.mproduits.repositories.PointVenteRepositories;
+import com.mproduits.security.BoutiqueAccessGuard;
 import com.mproduits.services.StockTransfertService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -43,6 +44,8 @@ public class Stock_TransfertController {
     
     @Autowired
     private MagasinRepositories magasinRepository;
+    @Autowired
+    private BoutiqueAccessGuard boutiqueAccessGuard;
 
     /**
      * Récupère les détails du stock d'un produit dans un magasin
@@ -161,7 +164,8 @@ public class Stock_TransfertController {
             @PathVariable Long depotId,
             @RequestParam Long anneeid,
             @RequestParam Long boutiqueid) {
-        
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+
         log.info("📦 Récupération des produits disponibles pour le dépôt: {}", depotId);
         
         try {

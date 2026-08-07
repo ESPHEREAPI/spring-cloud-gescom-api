@@ -54,7 +54,7 @@ public class Taxeproduit implements Serializable {
     private BigDecimal tva;
     @JoinColumns({
         @JoinColumn(name = "Anneeid", referencedColumnName = "Anneeid"),
-        @JoinColumn(name = "Employeurid", referencedColumnName = "compagnie_id")})
+        @JoinColumn(name = "compagnie_id", referencedColumnName = "compagnie_id")})
     @ManyToOne(optional = false)
     private Entreprise entreprise;
     @JoinColumn(name = "Moisid", referencedColumnName = "id")

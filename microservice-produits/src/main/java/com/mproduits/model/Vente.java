@@ -37,7 +37,7 @@ import lombok.Data;
 @Entity
 @Data
 @Table(name = "vente-easy", uniqueConstraints = {
-    @UniqueConstraint(name = "ticket", columnNames = {"Anneeid","Employeurid", "numerotickets"})
+    @UniqueConstraint(name = "ticket", columnNames = {"Anneeid","compagnie_id", "numerotickets"})
 })
 public class Vente implements Serializable {
 
@@ -81,7 +81,7 @@ public class Vente implements Serializable {
     private String cheminPatheTicket;
     @JoinColumns({
         @JoinColumn(name = "Anneeid", referencedColumnName = "Anneeid"),
-        @JoinColumn(name = "Employeurid", referencedColumnName = "compagnie_id")})
+        @JoinColumn(name = "compagnie_id", referencedColumnName = "compagnie_id")})
     @ManyToOne(optional = false)
     @JsonIgnore
     private Entreprise entreprise;

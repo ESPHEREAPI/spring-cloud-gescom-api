@@ -14,5 +14,5 @@ import sid.service_admin.model.EntreprisePK;
  * @author USER01
  */
 public interface EntrepriseRepositories extends JpaRepository<Entreprise, EntreprisePK>{
-    Entreprise findByActif(Boolean actif);
+    Entreprise findByEntreprisePK_CompagnieIdAndActif(Long compagnieId, Boolean actif);
 }

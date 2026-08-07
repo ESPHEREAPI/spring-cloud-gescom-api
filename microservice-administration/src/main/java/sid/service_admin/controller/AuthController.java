@@ -77,10 +77,12 @@ public class AuthController {
         //date = new Date();
        
         Mois mois = moisRepositories.findOneByAnneeAndNumero(dateCurent, nombre);
-        Entreprise e = entrepriseRepositories.findByActif(Boolean.TRUE);
-        if (e != null) {
-            userSessionDTO.setAnneeid(e.getAnnee().getId());
-            session.setAttribute("entreprise", e);
+        if (user.getCompagnieId() != null) {
+            Entreprise e = entrepriseRepositories.findByEntreprisePK_CompagnieIdAndActif(user.getCompagnieId(), Boolean.TRUE);
+            if (e != null) {
+                userSessionDTO.setAnneeid(e.getAnnee().getId());
+                session.setAttribute("entreprise", e);
+            }
         }
         session.setAttribute("mois", mois);
         return ResponseEntity.ok(userSessionDTO);

@@ -119,6 +119,14 @@ public interface FactureRepository extends JpaRepository<Facture, Long>, JpaSpec
     @Query("SELECT COALESCE(SUM(f.soldeRestant), 0) FROM Facture f " +
            "WHERE f.statut NOT IN ('PAYEE', 'ANNULEE')")
     BigDecimal calculerMontantTotalImpaye();
+
+    /**
+     * Montant + nombre de factures impayees pour une compagnie (dashboard).
+     */
+    @Query("SELECT COALESCE(SUM(f.soldeRestant), 0), COUNT(f) FROM Facture f " +
+           "WHERE f.client.compagnie.id = :compagnieId AND f.soldeRestant > 0 " +
+           "AND f.statut NOT IN ('PAYEE', 'ANNULEE')")
+    Object[] calculerImpayeParCompagnie(@Param("compagnieId") Long compagnieId);
     
     /**
      * Trouve les factures d'un client avec un solde impayé

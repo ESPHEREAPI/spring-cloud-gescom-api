@@ -33,6 +33,23 @@ public interface VenteRepositories extends JpaRepository<Vente, Long>, JpaSpecif
            "GROUP BY v.boutique.compagnie.id, v.boutique.compagnie.nom")
     List<Object[]> aggregerVentesParCompagnie(@Param("debut") Date debut, @Param("fin") Date fin);
 
+    // ===== Dashboard compagnie (COMPANY_ADMIN et autres roles internes) =====
+    @Query("SELECT COALESCE(SUM(v.totalNet), 0) FROM Vente v " +
+           "WHERE v.boutique.compagnie.id = :compagnieId AND v.dateVente BETWEEN :debut AND :fin")
+    java.math.BigDecimal sumTotalNetByCompagnieAndPeriode(@Param("compagnieId") Long compagnieId,
+                                                           @Param("debut") Date debut, @Param("fin") Date fin);
+
+    @Query("SELECT COUNT(v) FROM Vente v " +
+           "WHERE v.boutique.compagnie.id = :compagnieId AND v.dateVente BETWEEN :debut AND :fin")
+    long countByCompagnieAndPeriode(@Param("compagnieId") Long compagnieId,
+                                     @Param("debut") Date debut, @Param("fin") Date fin);
+
+    @Query("SELECT v.boutique.id, v.boutique.nom, COALESCE(SUM(v.totalNet), 0) FROM Vente v " +
+           "WHERE v.boutique.compagnie.id = :compagnieId AND v.dateVente BETWEEN :debut AND :fin " +
+           "GROUP BY v.boutique.id, v.boutique.nom")
+    List<Object[]> aggregerVentesParBoutique(@Param("compagnieId") Long compagnieId,
+                                              @Param("debut") Date debut, @Param("fin") Date fin);
+
     Optional<Vente> findByEntrepriseAndNumeroTicketAndBoutiqueId(Entreprise entreprise, String numeroTicket,Long id);
 
     // Lookup par id scope compagnie - a utiliser a la place de findById() partout

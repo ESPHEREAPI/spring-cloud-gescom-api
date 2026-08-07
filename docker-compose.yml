@@ -205,11 +205,13 @@ services:
     ports:
       - "8090:80"
     environment:
+      # PMA_USER/PMA_PASSWORD delibrement absents : les definir bascule
+      # phpMyAdmin en auth_type "config" qui connecte automatiquement
+      # n'importe quel visiteur en root, sans jamais demander de mot de
+      # passe - inacceptable des lors que le port est expose publiquement.
+      # Sans eux, l'image reste en mode "cookie" (login manuel a chaque fois).
       PMA_HOST: mysql
       PMA_PORT: 3306
-      PMA_USER: root
-      PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     networks:
       - easycom-network
     depends_on:

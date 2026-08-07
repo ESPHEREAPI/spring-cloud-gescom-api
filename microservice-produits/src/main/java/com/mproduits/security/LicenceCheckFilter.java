@@ -35,7 +35,7 @@ public class LicenceCheckFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         Object compagnieIdAttr = request.getAttribute("compagnieId");
-        if (compagnieIdAttr == null) {
+        if (compagnieIdAttr == null || estExempte(request)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -55,5 +55,21 @@ public class LicenceCheckFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * Lister/creer une boutique reste accessible sans licence active : une
+     * compagnie fraichement creee doit pouvoir configurer sa premiere
+     * boutique avant meme d'avoir active une licence (sinon blocage total -
+     * impossible de creer la boutique qui permettrait de sortir du dialogue
+     * de selection affiche a la connexion).
+     */
+    private boolean estExempte(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        String methode = request.getMethod();
+        if ("GET".equals(methode) && uri.endsWith("/microservice-produits/all")) {
+            return true;
+        }
+        return "POST".equals(methode) && uri.endsWith("/microservice-produits");
     }
 }

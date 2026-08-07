@@ -171,6 +171,12 @@ services:
       APP_JWTSECRET: ${APP_JWTSECRET:?Definissez APP_JWTSECRET dans .env}
       APP_INTERNAL_SERVICE_SECRET: ${APP_INTERNAL_SERVICE_SECRET:?Definissez APP_INTERNAL_SERVICE_SECRET dans .env}
       APP_LICENCE_RSA_PRIVATE_KEY: ${APP_LICENCE_RSA_PRIVATE_KEY:?Definissez APP_LICENCE_RSA_PRIVATE_KEY dans .env}
+    volumes:
+      # La cle privee RSA de licence vit sur l'hote (jamais dans l'image ni le
+      # repo) - montee en lecture seule ici. APP_LICENCE_RSA_PRIVATE_KEY dans
+      # .env doit pointer vers le chemin CONTENEUR (/secrets/...), pas le
+      # chemin hote.
+      - ./secrets:/secrets:ro
     networks:
       - easycom-network
     depends_on:
@@ -227,7 +233,7 @@ services:
       gateway:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
       interval: 30s
       timeout: 10s
       retries: 3

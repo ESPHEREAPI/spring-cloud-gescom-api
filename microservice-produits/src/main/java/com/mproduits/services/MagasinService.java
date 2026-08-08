@@ -5,6 +5,7 @@
 package com.mproduits.services;
 
 
+import com.mproduits.enums.TypeMagasin;
 import com.mproduits.exceptions.BadRequestException;
 import com.mproduits.model.Magasin;
 import com.mproduits.repositories.MagasinRepository;
@@ -50,6 +51,7 @@ public class MagasinService {
 
     public Magasin save(Magasin magasin) {
         magasin.setCompagnieId(compagnieCourante());
+        validerCoherenceType(magasin);
         return magasinRepository.save(magasin);
     }
 
@@ -59,7 +61,22 @@ public class MagasinService {
         magasin.setId(id);
         // La compagnie n'est jamais modifiable via cet endpoint.
         magasin.setCompagnie(existant.getCompagnie());
+        validerCoherenceType(magasin);
         return magasinRepository.save(magasin);
+    }
+
+    /**
+     * Un magasin POINT_DE_VENTE doit avoir une boutique, un DEPOT_CENTRAL ne
+     * doit pas en avoir - evite l'etat incoherent que permettait l'ancienne
+     * deduction implicite (type jamais verifie, simplement suppose).
+     */
+    private void validerCoherenceType(Magasin magasin) {
+        if (magasin.getTypeMagasin() == TypeMagasin.POINT_DE_VENTE && magasin.getBoutiqueId() == null) {
+            throw new BadRequestException("Un magasin de type Point de Vente doit etre rattache a une boutique");
+        }
+        if (magasin.getTypeMagasin() == TypeMagasin.DEPOT_CENTRAL && magasin.getBoutiqueId() != null) {
+            throw new BadRequestException("Un magasin de type Depot Central ne doit pas etre rattache a une boutique");
+        }
     }
 
     public void deleteById(Long id) {

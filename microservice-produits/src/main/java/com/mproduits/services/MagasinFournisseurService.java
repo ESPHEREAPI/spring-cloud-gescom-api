@@ -202,6 +202,31 @@ public class MagasinFournisseurService {
     }
 
     /**
+     * Fournisseurs disponibles pour approvisionner un magasin donne : les
+     * fournisseurs explicitement associes a CE magasin, plus ceux marques
+     * "disponible partout" pour la compagnie courante (evite de devoir
+     * associer un fournisseur qui livre tout le reseau a chaque magasin un
+     * par un). Remplace l'ancienne logique qui deduisait la liste depuis le
+     * seul type (point de vente / depot) du magasin.
+     */
+    public List<Fournisseur> getFournisseursDisponiblesPourMagasin(Long depotId) {
+        Long compagnieId = tenantContext.currentCompagnieId();
+        magasinRepository.findByIdAndCompagnie_Id(depotId, compagnieId)
+                .orElseThrow(() -> new ResourceNotFoundException("Magasin non trouve avec l'ID: " + depotId));
+
+        List<Fournisseur> associes = magasinFournisseurRepository.findByMagasinFournisseurPK_DepotId(depotId).stream()
+                .map(MagasinFournisseur::getFournisseur)
+                .collect(Collectors.toList());
+
+        List<Fournisseur> disponiblesPartout = fournisseurRepository.findByCompagnie_IdAndDisponiblePartoutTrue(compagnieId);
+
+        Map<Long, Fournisseur> parId = new LinkedHashMap<>();
+        associes.forEach(f -> parId.put(f.getId(), f));
+        disponiblesPartout.forEach(f -> parId.put(f.getId(), f));
+        return new ArrayList<>(parId.values());
+    }
+
+    /**
      * Vérifier si une association existe
      */
     public boolean associationExists(Long depotId, Long fournisseurId) {

@@ -6,10 +6,13 @@ package com.mproduits.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.mproduits.enums.TypeMagasin;
 import jakarta.persistence.Basic;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -49,6 +52,12 @@ public class Magasin implements Serializable {
     @JoinColumn(name = "BoutiqueId", referencedColumnName = "id")
     @ManyToOne
     private Boutique boutique;
+    // Type explicite (voir TypeMagasin) - nullable pour les lignes existantes
+    // avant migration ; getTypeMagasin() retombe sur l'ancienne deduction
+    // (boutique null/non-null) si la colonne n'a pas encore ete renseignee.
+    @Column(name = "type_magasin")
+    @Enumerated(EnumType.STRING)
+    private TypeMagasin typeMagasin;
     @JoinColumn(name = "Villeid", referencedColumnName = "id")
     @ManyToOne
     private Ville ville;
@@ -107,6 +116,18 @@ public class Magasin implements Serializable {
 
     public void setBoutiqueId(Boutique boutiqueId) {
         this.boutique = boutiqueId;
+    }
+
+    public TypeMagasin getTypeMagasin() {
+        if (typeMagasin != null) {
+            return typeMagasin;
+        }
+        // Repli pour les lignes creees avant l'ajout de cette colonne.
+        return boutique != null ? TypeMagasin.POINT_DE_VENTE : TypeMagasin.DEPOT_CENTRAL;
+    }
+
+    public void setTypeMagasin(TypeMagasin typeMagasin) {
+        this.typeMagasin = typeMagasin;
     }
 
     public Ville getVilleid() {

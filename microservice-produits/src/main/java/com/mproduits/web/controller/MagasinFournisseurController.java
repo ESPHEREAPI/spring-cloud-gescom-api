@@ -186,5 +186,16 @@ public class MagasinFournisseurController {
         List<Fournisseur> fournisseur = fournisseurRepositories.findAll();
         return ResponseEntity.ok(fournisseur);
     }
+
+    /**
+     * Fournisseurs disponibles pour approvisionner un magasin donne :
+     * associations explicites + fournisseurs "disponible partout". Remplace
+     * la logique precedente basee sur le type implicite du magasin
+     * (point de vente vs depot) cote frontend.
+     */
+    @GetMapping("/disponibles/{depotId}")
+    public ResponseEntity<List<Fournisseur>> getFournisseursDisponibles(@PathVariable Long depotId) {
+        return ResponseEntity.ok(magasinFournisseurService.getFournisseursDisponiblesPourMagasin(depotId));
+    }
     
 }

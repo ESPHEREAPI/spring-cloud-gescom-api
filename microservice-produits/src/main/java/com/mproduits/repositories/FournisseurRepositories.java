@@ -31,4 +31,6 @@ public interface FournisseurRepositories extends JpaRepository<Fournisseur, Long
     List<Fournisseur> findByCompagnie_Id(Long compagnieId);
 
     Optional<Fournisseur> findByIdAndCompagnie_Id(Long id, Long compagnieId);
+
+    List<Fournisseur> findByCompagnie_IdAndDisponiblePartoutTrue(Long compagnieId);
 }

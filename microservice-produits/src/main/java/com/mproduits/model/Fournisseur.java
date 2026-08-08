@@ -73,7 +73,13 @@ public class Fournisseur implements Serializable {
     private String codeSociete;
     @Column(name = "nom")
     private String nom;
-   
+    // Si vrai, ce fournisseur apparait dans la liste d'approvisionnement de
+    // TOUS les magasins de la compagnie, sans avoir besoin d'une association
+    // MagasinFournisseur explicite pour chacun (utile pour un fournisseur qui
+    // livre l'ensemble du reseau plutot qu'un depot dedie).
+    @Column(name = "disponible_partout")
+    private Boolean disponiblePartout = Boolean.FALSE;
+
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "fournisseur")
     private Collection<MagasinFournisseur> magasinFournisseurCollection;
 
@@ -185,6 +191,14 @@ public class Fournisseur implements Serializable {
 
     public void setNom(String nom) {
         this.nom = nom;
+    }
+
+    public Boolean getDisponiblePartout() {
+        return disponiblePartout;
+    }
+
+    public void setDisponiblePartout(Boolean disponiblePartout) {
+        this.disponiblePartout = disponiblePartout;
     }
 
 

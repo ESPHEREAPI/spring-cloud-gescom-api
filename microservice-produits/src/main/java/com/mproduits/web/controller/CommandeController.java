@@ -17,6 +17,7 @@ import com.mproduits.model.Boutique;
 import com.mproduits.model.Categories;
 import com.mproduits.model.Commande;
 import com.mproduits.model.Entreprise;
+import com.mproduits.model.Fournisseur;
 import com.mproduits.model.Magasin;
 import com.mproduits.model.MagasinFournisseur;
 import com.mproduits.model.MagasinFournisseurPK;
@@ -34,6 +35,7 @@ import com.mproduits.repositories.BarcodeproduitRepositories;
 import com.mproduits.repositories.BoutiqueRepositories;
 import com.mproduits.repositories.CategorieRepositories;
 import com.mproduits.repositories.EntrepriseRepositories;
+import com.mproduits.repositories.FournisseurRepositories;
 import com.mproduits.repositories.MagasinFournisseurRepositories;
 import com.mproduits.repositories.MagasinRepositories;
 import com.mproduits.repositories.MagasinRepository;
@@ -98,6 +100,7 @@ public class CommandeController implements Serializable {
     private final BarcodeproduitRepositories barcodeProduitService;
     private final MagasinRepositories depotService;
     private final MagasinFournisseurRepositories magasinFournisseurRepositories;
+    private final FournisseurRepositories fournisseurRepositories;
     private final IParamModule paramModuleService;
     private final AnneeRepository anneerepository;
     private final EntrepriseRepositories entrepriseRepositories;
@@ -529,10 +532,17 @@ public class CommandeController implements Serializable {
         Produit produit = produitService.findById(request.getProduitid());
         commande.setProduit(produit);
 
-        // Récupération du dépôt fournisseur
-        Optional<MagasinFournisseur> depotFournisseur = depotFournisseurService.findById(new MagasinFournisseurPK(request.getDepotid(), request.getFournisseurid()));
-        commande.setMagasinid(depotFournisseur.get().getMagasin());
-        commande.setFournisseurid(depotFournisseur.get().getFournisseur());
+        // Récupération du magasin et du fournisseur directement par leur id -
+        // ne suppose plus qu'une association MagasinFournisseur existe deja
+        // pour cette paire precise (un fournisseur "disponible partout" peut
+        // etre choisi pour un magasin auquel il n'a jamais ete associe
+        // explicitement).
+        Magasin magasin = depotService.findById(request.getDepotid())
+                .orElseThrow(() -> new IllegalArgumentException("Magasin introuvable : " + request.getDepotid()));
+        Fournisseur fournisseur = fournisseurRepositories.findById(request.getFournisseurid())
+                .orElseThrow(() -> new IllegalArgumentException("Fournisseur introuvable : " + request.getFournisseurid()));
+        commande.setMagasinid(magasin);
+        commande.setFournisseurid(fournisseur);
 
         // Génération du numéro si auto
         if ("".equals(request.getNumeroRepartition()) || request.getNumeroRepartition() == null) {

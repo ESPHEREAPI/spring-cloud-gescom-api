@@ -8,6 +8,7 @@ import com.mproduits.dto.CommandeRequest;
 import com.mproduits.dto.CommandeResponseDto;
 import com.mproduits.dto.DepoteDto;
 import com.mproduits.dto.ProduitDto;
+import com.mproduits.dto.PromotionRequest;
 import com.mproduits.dto.StockDepotAndBoutique;
 import com.mproduits.exceptions.Success;
 import com.mproduits.mappers.MapperDtoImpl;
@@ -178,8 +179,7 @@ public class CommandeController implements Serializable {
             ));
         } catch (Exception e) {
             log.error("Erreur lors de la récupération des prix pour le produit {}: {}", produitId, e.getMessage());
-            return (ResponseEntity<Map<String, BigDecimal>>) ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR);
-
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of());
         }
     }
 
@@ -440,6 +440,16 @@ public class CommandeController implements Serializable {
         response.put("page", prixArticles.getNumber());
 
         return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/prix-articles/{id}/promotion")
+    public ResponseEntity<PrixArticles> definirPromotion(@PathVariable Long id, @RequestBody PromotionRequest request) {
+        PrixArticles prixArticles = prixArticlesService.findByIdAndCompagnieId(id, tenantContext.currentCompagnieId())
+                .orElseThrow(() -> new IllegalArgumentException("Prix article introuvable : " + id));
+        prixArticles.setTypePromotion(request.getTypePromotion() != null ? request.getTypePromotion() : com.mproduits.enums.TypePromotion.AUCUNE);
+        prixArticles.setDateDebutPromo(request.getDateDebutPromo());
+        prixArticles.setDateFinPromo(request.getDateFinPromo());
+        return ResponseEntity.ok(prixArticlesService.save(prixArticles));
     }
 
     @GetMapping("/prix-articles/magasin/{magasinid}")

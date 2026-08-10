@@ -12,6 +12,7 @@ import com.mproduits.repositories.CommandeRepositories;
 import com.mproduits.repositories.MagasinRepositories;
 import com.mproduits.repositories.PointVenteRepositories;
 import com.mproduits.security.BoutiqueAccessGuard;
+import com.mproduits.security.TenantContext;
 import com.mproduits.services.StockTransfertService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -46,6 +47,8 @@ public class Stock_TransfertController {
     private MagasinRepositories magasinRepository;
     @Autowired
     private BoutiqueAccessGuard boutiqueAccessGuard;
+    @Autowired
+    private TenantContext tenantContext;
 
     /**
      * Récupère les détails du stock d'un produit dans un magasin
@@ -125,6 +128,10 @@ public class Stock_TransfertController {
 
         log.debug("Requête du stock pour produit {} dans magasin {}", produitId, magasinId);
 
+        if (magasinRepository.findByIdAndCompagnie_Id(magasinId, tenantContext.currentCompagnieId()).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
         try {
             BigDecimal stock = stockService.getStockActuel(magasinId, produitId);
             
@@ -169,8 +176,9 @@ public class Stock_TransfertController {
         log.info("📦 Récupération des produits disponibles pour le dépôt: {}", depotId);
         
         try {
-            // Récupérer le dépôt pour déterminer son type
-            Optional<Magasin> depotOpt = magasinRepository.findById(depotId);
+            // Récupérer le dépôt pour déterminer son type - verifie au passage
+            // qu'il appartient a la compagnie courante (protection IDOR).
+            Optional<Magasin> depotOpt = magasinRepository.findByIdAndCompagnie_Id(depotId, tenantContext.currentCompagnieId());
             if (depotOpt.isEmpty()) {
                 log.warn("❌ Dépôt non trouvé: {}", depotId);
                 return ResponseEntity.notFound().build();
@@ -260,11 +268,11 @@ public class Stock_TransfertController {
         log.debug("📊 Récupération du stock - Dépôt: {}, Produit: {}", depotId, produitId);
         
         try {
-            Optional<Magasin> depotOpt = magasinRepository.findById(depotId);
+            Optional<Magasin> depotOpt = magasinRepository.findByIdAndCompagnie_Id(depotId, tenantContext.currentCompagnieId());
             if (depotOpt.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
-            
+
             Magasin depot = depotOpt.get();
             BigDecimal quantite = BigDecimal.ZERO;
             
@@ -306,11 +314,11 @@ public class Stock_TransfertController {
         log.debug("📋 Récupération détails stock - Produit: {}, Dépôt: {}", produitId, depotId);
         
         try {
-            Optional<Magasin> depotOpt = magasinRepository.findById(depotId);
+            Optional<Magasin> depotOpt = magasinRepository.findByIdAndCompagnie_Id(depotId, tenantContext.currentCompagnieId());
             if (depotOpt.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
-            
+
             Magasin depot = depotOpt.get();
             Map<String, Object> details = new HashMap<>();
             

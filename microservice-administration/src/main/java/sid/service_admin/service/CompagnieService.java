@@ -62,6 +62,7 @@ public class CompagnieService {
         compagnie.setTel(dto.getTel());
         compagnie.setEmail(dto.getEmail());
         compagnie.setCreatedBy(createdBy);
+        compagnie.setCode(genererCodeUnique(dto.getCode() != null && !dto.getCode().isBlank() ? dto.getCode() : dto.getNom()));
         Compagnie saved = compagnieRepository.save(compagnie);
 
         // Profils par defaut (ADMIN/CAISSIER/COMMERCIAL/COMPTABLE/USER) propres a
@@ -126,6 +127,13 @@ public class CompagnieService {
 
         if (dto.getTypeCommerce() != null) {
             compagnie.setTypeCommerce(dto.getTypeCommerce());
+        }
+        // Identifiant de l'URL publique - volontairement absent de
+        // applySelfServiceFields() : seul un administrateur systeme peut le
+        // changer, pour eviter qu'une compagnie casse son propre lien public
+        // par erreur ou se l'approprie sans validation.
+        if (dto.getCode() != null && !dto.getCode().isBlank() && !dto.getCode().equals(compagnie.getCode())) {
+            compagnie.setCode(genererCodeUnique(dto.getCode()));
         }
         applySelfServiceFields(compagnie, dto);
 
@@ -300,5 +308,27 @@ public class CompagnieService {
 
     private String nullToEmpty(String value) {
         return value == null ? "" : value;
+    }
+
+    /**
+     * Derive un code URL-safe (minuscules, alphanumerique + tirets) a partir
+     * du texte fourni (nom de compagnie ou code souhaite), et garantit son
+     * unicite en ajoutant un suffixe numerique en cas de collision. Ce code
+     * identifie la compagnie sur sa page de vente publique.
+     */
+    private String genererCodeUnique(String seed) {
+        String base = seed.toLowerCase()
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("^-+|-+$", "");
+        if (base.isBlank()) {
+            base = "compagnie";
+        }
+        String candidat = base;
+        int suffixe = 2;
+        while (compagnieRepository.existsByCode(candidat)) {
+            candidat = base + "-" + suffixe;
+            suffixe++;
+        }
+        return candidat;
     }
 }

@@ -270,7 +270,9 @@ public class ProduitService {
         produit.setPacquets(dto.getPacquets());
         produit.setPrixVenteModifiable(dto.getPrixVenteModifiable());
         produit.setPrixVenteModifiableAccepter(dto.getPrixVenteModifiableAccepter());
-        produit.setUsername(dto.getUsername());
+        // Identite verifiee par le JWT - jamais celle envoyee par le client
+        // dans le corps de la requete (falsifiable).
+        produit.setUsername(tenantContext.currentUsername());
         produit.setDeletes(Boolean.FALSE);
         
         // ✅ UNE SEULE FOIS (corrigé la duplication)
@@ -307,10 +309,10 @@ public class ProduitService {
 
         if (Objects.equals(produitDto.getDeletes(), Boolean.TRUE)) {
             prd.setDateDelete(new Date());
-            prd.setDeleteUser(produitDto.getUsername());
+            prd.setDeleteUser(tenantContext.currentUsername());
 
         }
-        prd.setUsernameupdate(produitDto.getUsername());
+        prd.setUsernameupdate(tenantContext.currentUsername());
         Produit prodSave = articleRepository.save(prd);
         System.out.println("qunatite pacquet " + prodSave.getQuantiteByPacquet());
         ProduitDto pdto = mapperdto.mapperProduitDto(prodSave,new Boutique());

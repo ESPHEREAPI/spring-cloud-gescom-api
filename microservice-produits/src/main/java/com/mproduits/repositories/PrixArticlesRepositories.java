@@ -116,6 +116,15 @@ public interface PrixArticlesRepositories extends JpaRepository<PrixArticles, Lo
     @Query("SELECT DISTINCT pa FROM PrixArticles pa WHERE pa.entreprise = :e AND pa.pointVente.produit.libelle LIKE %:search% and pa.pointVente.depotId.id= :magasinid")
     Page<PrixArticles> findProduitLibelleByEntrepriseWithFilterMagasin(@Param("e") Entreprise e, @Param("search") String search, Pageable pageable, @Param("magasinid") Long magasinid);
 
+    // Page de vente publique (visiteur non authentifie, pas de TenantContext
+    // disponible) - le filtre par boutiqueId suffit a isoler par compagnie,
+    // puisqu'une boutique appartient a une seule compagnie.
+    @Query("SELECT pa FROM PrixArticles pa WHERE pa.actif = true AND pa.pointVente.boutique.id = :boutiqueId")
+    Page<PrixArticles> findActifsByBoutiqueId(@Param("boutiqueId") Long boutiqueId, Pageable pageable);
+
+    @Query("SELECT pa FROM PrixArticles pa WHERE pa.id = :id AND pa.entreprise.entreprisePK.compagnieId = :compagnieId")
+    Optional<PrixArticles> findByIdAndCompagnieId(@Param("id") Long id, @Param("compagnieId") Long compagnieId);
+
     List<PrixArticles> findTop10000ByActifTrueOrderByDateCreationDesc();
 
     @Query("SELECT pa FROM PrixArticles pa WHERE pa.pointVente.produit.reference= :ref and pa.pointVente.boutique.id= :boutiqueid and pa.entreprise.actif=true")

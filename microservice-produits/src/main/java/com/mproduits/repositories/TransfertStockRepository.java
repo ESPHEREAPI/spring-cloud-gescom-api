@@ -62,6 +62,12 @@ public interface TransfertStockRepository extends JpaRepository<TransfertStock, 
     @Query("SELECT t FROM TransfertStock t WHERE t.produit.id = :produitId AND t.entreprise.entreprisePK.compagnieId = :compagnieId")
     List<TransfertStock> findByProduitIdAndCompagnieId(@Param("produitId") Long produitId, @Param("compagnieId") Long compagnieId);
 
+    long countByEntreprise_EntreprisePK_CompagnieId(Long compagnieId);
+
+    @Query("SELECT t FROM TransfertStock t WHERE t.entreprise.entreprisePK.compagnieId = :compagnieId AND t.dateTransfert BETWEEN :dateDebut AND :dateFin")
+    List<TransfertStock> findByCompagnieIdAndDateTransfertBetween(@Param("compagnieId") Long compagnieId,
+            @Param("dateDebut") Date dateDebut, @Param("dateFin") Date dateFin);
+
     /**
      * Récupère les transferts d'un produit spécifique dans une plage de dates
      * 

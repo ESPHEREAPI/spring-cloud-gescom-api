@@ -62,6 +62,11 @@ public class Boutique implements Serializable {
     @Column(name = "quartier")
     private String quartier;
 
+    // Boutique par defaut proposee au client sur la page de vente publique
+    // de la compagnie - au plus une par compagnie (voir BoutiqueService).
+    @Column(name = "principale")
+    private Boolean principale = Boolean.FALSE;
+
     @OneToMany(mappedBy = "boutique")
     @JsonIgnore
     private Collection<Magasin> magasinCollection;
@@ -146,6 +151,14 @@ public class Boutique implements Serializable {
 
     public void setQuartier(String quartier) {
         this.quartier = quartier;
+    }
+
+    public Boolean getPrincipale() {
+        return principale;
+    }
+
+    public void setPrincipale(Boolean principale) {
+        this.principale = principale;
     }
 
     public Collection<Magasin> getMagasinCollection() {

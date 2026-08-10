@@ -8,6 +8,7 @@ import sid.service_admin.enums.TypeCommerce;
 public class CompagnieDTO {
     private Long id;
     private String nom;
+    private String code;
     private TypeCommerce typeCommerce;
     private Boolean actif;
     private Date dateCreation;

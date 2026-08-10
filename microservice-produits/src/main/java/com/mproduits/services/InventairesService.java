@@ -19,6 +19,7 @@ import com.mproduits.repositories.EntrepriseRepositories;
 import com.mproduits.repositories.PointVenteRepositories;
 import com.mproduits.repositories.PrixAchatRepositories;
 import com.mproduits.repositories.PrixArticlesRepositories;
+import com.mproduits.exceptions.BadRequestException;
 import com.mproduits.security.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
@@ -100,10 +101,16 @@ public class InventairesService {
     public void saveStockInventaire( List<PointVenteDto> allStock){
         allStock.stream()
                 .filter(pv -> pv.getStockFinalTheorie().intValue()!=0)
+                .peek(pv -> {
+                    if (pv.getStockFinalTheorie().compareTo(BigDecimal.ZERO) < 0) {
+                        throw new BadRequestException("Le stock final theorique ne peut pas etre negatif (produit "
+                                + pv.getProduit().getId() + " : " + pv.getStockFinalTheorie() + ")");
+                    }
+                })
                 .map(pvc-> saveStock(pvc,pvc.getStockFinalTheorie()))
                 .collect(Collectors.toList());
-        
-        
+
+
     }
     
     private PointVenteDto saveStock(PointVenteDto pointVenteDto ,BigDecimal quantite){

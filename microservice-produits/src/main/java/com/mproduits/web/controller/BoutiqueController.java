@@ -65,6 +65,15 @@ public class BoutiqueController {
         }
     }
     
+    @PutMapping("/boutiques/{id}/principale")
+    public ResponseEntity<Boutique> definirBoutiquePrincipale(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(boutiqueService.definirPrincipale(id));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteBoutique(@PathVariable Long id) {
         try {

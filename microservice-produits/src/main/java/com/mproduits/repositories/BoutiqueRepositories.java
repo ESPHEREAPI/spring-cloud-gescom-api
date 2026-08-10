@@ -35,4 +35,8 @@ public interface BoutiqueRepositories extends JpaRepository<Boutique, Long>{
 
     @Query("SELECT COUNT(b) FROM Boutique b WHERE b.compagnie.id = :compagnieId")
     long countByCompagnieId(@Param("compagnieId") Long compagnieId);
+
+    Optional<Boutique> findByCompagnie_IdAndPrincipaleTrue(Long compagnieId);
+
+    List<Boutique> findByCompagnie_IdAndPrincipaleTrueAndIdNot(Long compagnieId, Long id);
 }

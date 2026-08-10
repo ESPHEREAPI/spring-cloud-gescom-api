@@ -44,12 +44,37 @@ public class BoutiqueService {
         if (compagnieId != null) {
             LicenceCheckResult result = licenceStatusService.check(compagnieId);
             Integer maxBoutiques = result.getStatut() != null ? result.getStatut().getMaxBoutiques() : null;
-            if (maxBoutiques != null && boutiqueRepository.countByCompagnieId(compagnieId) >= maxBoutiques) {
+            long boutiquesExistantes = boutiqueRepository.countByCompagnieId(compagnieId);
+            if (maxBoutiques != null && boutiquesExistantes >= maxBoutiques) {
                 throw new ConflictException("Quota de boutiques atteint pour cette compagnie (max " + maxBoutiques + ")");
             }
             boutique.setCompagnieId(compagnieId);
+            // La toute premiere boutique d'une compagnie devient automatiquement
+            // sa boutique principale (page de vente publique) - a defaut, aucune
+            // ne serait selectionnee par defaut.
+            boutique.setPrincipale(boutiquesExistantes == 0);
         }
         return boutiqueRepository.save(boutique);
+    }
+
+    /**
+     * Designe la boutique principale (proposee par defaut sur la page de
+     * vente publique) parmi les boutiques de la compagnie courante -
+     * demarque automatiquement l'ancienne, une seule principale a la fois.
+     */
+    public Boutique definirPrincipale(Long boutiqueId) {
+        Long compagnieId = compagnieCourante();
+        Boutique nouvellePrincipale = boutiqueRepository.findByIdAndCompagnie_Id(boutiqueId, compagnieId)
+                .orElseThrow(() -> new RuntimeException("Boutique not found with id: " + boutiqueId));
+
+        boutiqueRepository.findByCompagnie_IdAndPrincipaleTrueAndIdNot(compagnieId, boutiqueId)
+                .forEach(b -> {
+                    b.setPrincipale(Boolean.FALSE);
+                    boutiqueRepository.save(b);
+                });
+
+        nouvellePrincipale.setPrincipale(Boolean.TRUE);
+        return boutiqueRepository.save(nouvellePrincipale);
     }
 
     @Transactional(readOnly = true)

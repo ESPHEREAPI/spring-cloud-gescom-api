@@ -6,6 +6,8 @@ import sid.service_admin.enums.TypeCommerce;
 @Data
 public class UpdateCompagnieDTO {
     private String nom;
+    /** Modifiable uniquement via CompagnieController#update (SUPER_ADMIN/SYSTEM_ADMIN) - jamais en libre-service. */
+    private String code;
     private TypeCommerce typeCommerce;
     private String adresse;
     private String tel;

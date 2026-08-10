@@ -6,6 +6,8 @@ import sid.service_admin.enums.TypeCommerce;
 @Data
 public class CreateCompagnieDTO {
     private String nom;
+    /** Optionnel : genere automatiquement depuis le nom si absent. */
+    private String code;
     private TypeCommerce typeCommerce;
     private String adresse;
     private String tel;

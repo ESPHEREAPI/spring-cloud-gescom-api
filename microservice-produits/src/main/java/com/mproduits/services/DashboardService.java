@@ -55,12 +55,12 @@ public class DashboardService {
      * 
      * @return Dashboard avec toutes les données agrégées
      */
-    public DashboardStockDTO genererDashboard() {
-        log.info("Génération du dashboard de stock...");
+    public DashboardStockDTO genererDashboard(Long compagnieId) {
+        log.info("Génération du dashboard de stock pour la compagnie {}...", compagnieId);
 
-        // Récupérer tous les magasins et points de vente
-        List<Magasin> magasinsDeStock = magasinRepository.findMagasinsDeStock();
-        List<Magasin> pointsDeVente = magasinRepository.findPointsDeVente();
+        // Récupérer les magasins et points de vente de cette compagnie uniquement
+        List<Magasin> magasinsDeStock = magasinRepository.findMagasinsDeStockByCompagnieId(compagnieId);
+        List<Magasin> pointsDeVente = magasinRepository.findPointsDeVenteByCompagnieId(compagnieId);
 
         // Calculer les valeurs
         List<DashboardStockDTO.ValeurParMagasinDTO> valeurMagasins = calculerValeurParMagasin(magasinsDeStock);
@@ -81,7 +81,7 @@ public class DashboardService {
                 magasinsDeStock, pointsDeVente);
 
         // Récupérer les mouvements récents
-        int nombreMouvements = (int) transfertStockRepository.count();
+        int nombreMouvements = (int) transfertStockRepository.countByEntreprise_EntreprisePK_CompagnieId(compagnieId);
 
         // Construire et retourner le dashboard
         DashboardStockDTO dashboard = DashboardStockDTO.builder()
@@ -93,7 +93,7 @@ public class DashboardService {
                 .valeurMagasins(valeurMagasins)
                 .valeurPointsVente(valeurPointsVente)
                 .produitsFaibleStock(produitsFaibles)
-                .evolutionStock(obtenirEvolutionStock())
+                .evolutionStock(obtenirEvolutionStock(compagnieId))
                 .build();
 
         log.info("Dashboard généré. Valeur totale: {}", totalValeurStock);
@@ -290,7 +290,7 @@ public class DashboardService {
      * 
      * @return Liste des évolutions mensuelles
      */
-    private List<DashboardStockDTO.EvolutionStockDTO> obtenirEvolutionStock() {
+    private List<DashboardStockDTO.EvolutionStockDTO> obtenirEvolutionStock(Long compagnieId) {
         List<DashboardStockDTO.EvolutionStockDTO> evolution = new ArrayList<>();
 
         // Générer des données pour les 12 derniers mois
@@ -304,8 +304,9 @@ public class DashboardService {
             cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH));
             Date dateFin = new Date(cal.getTimeInMillis());
 
-            // Récupérer les transferts du mois
-            List<TransfertStock> transferts = transfertStockRepository.findByDateTransfertBetween(dateDebut, dateFin);
+            // Récupérer les transferts du mois pour cette compagnie uniquement
+            List<TransfertStock> transferts = transfertStockRepository
+                    .findByCompagnieIdAndDateTransfertBetween(compagnieId, dateDebut, dateFin);
 
             int entrees = 0;
             int sorties = 0;

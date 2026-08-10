@@ -41,6 +41,13 @@ public class Compagnie implements Serializable {
     @Column(nullable = false)
     private String nom;
 
+    // Identifiant public unique de la compagnie, utilise dans l'URL de sa
+    // page de vente publique (ex. /lipadi/...). Nullable pour les compagnies
+    // existantes tant qu'elles n'ont pas ete migrees - genere automatiquement
+    // a la creation d'une nouvelle compagnie (voir CompagnieService).
+    @Column(unique = true)
+    private String code;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "type_commerce")
     private TypeCommerce typeCommerce;

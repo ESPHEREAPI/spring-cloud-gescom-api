@@ -29,6 +29,11 @@ public class Compagnie implements Serializable {
     @Column(nullable = false)
     private String nom;
 
+    // Identifiant public unique (URL de la page de vente publique) -
+    // proprietaire reel : microservice-administration, meme table physique
+    // partagee. Lecture seule ici.
+    private String code;
+
     // Champs supplementaires en lecture seule (identite fiscale/contact de la
     // compagnie), utilises pour l'impression des tickets/factures - meme table
     // physique partagee, proprietaire reel : microservice-administration.
@@ -67,6 +72,14 @@ public class Compagnie implements Serializable {
 
     public void setNom(String nom) {
         this.nom = nom;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
     }
 
     public String getAdresse() {

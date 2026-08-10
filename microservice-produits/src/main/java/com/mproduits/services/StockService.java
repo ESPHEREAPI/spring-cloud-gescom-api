@@ -208,18 +208,19 @@ public Map<String, Integer> getCurrentPrixBatch(List<Long> produitIds, Long bout
     public List<Map<String, Object>> getMouvementsHistorique(Long produitId, Long pointVenteId) {
 
         log.debug("Récupération historique: produit={}, pointVente={}", produitId, pointVenteId);
+        Long compagnieId = tenantContext.currentCompagnieId();
 
         var mouvements = switch (determineFiltreType(produitId, pointVenteId)) {
             case PRODUIT_ONLY ->
-                movementRepo.findByProduitId(produitId);
+                movementRepo.findByProduitIdAndCompagnieId(produitId, compagnieId);
             case POINT_VENTE_ONLY ->
-                movementRepo.findByPointVenteId(pointVenteId);
+                movementRepo.findByPointVenteIdAndCompagnieId(pointVenteId, compagnieId);
             case BOTH ->
-                movementRepo.findByProduitId(produitId).stream()
+                movementRepo.findByProduitIdAndCompagnieId(produitId, compagnieId).stream()
                 .filter(m -> m.getPointVente().getId().equals(pointVenteId))
                 .toList();
             case NONE ->
-                movementRepo.findAll();
+                movementRepo.findAllByCompagnieId(compagnieId);
         };
 
         return mouvements.stream()

@@ -4,6 +4,7 @@
  */
 package com.mproduits.web.controller;
 import com.mproduits.dto.DashboardStockDTO;
+import com.mproduits.security.TenantContext;
 import com.mproduits.services.DashboardService;
 import com.mproduits.services.StockTransfertService;
 import lombok.extern.slf4j.Slf4j;
@@ -21,12 +22,15 @@ import java.util.Map;
 @RestController
 @RequestMapping("/microservice-produits/dashboard-transfert-stock")
 public class DashboardController {
-    
+
     @Autowired
     private DashboardService dashboardService;
 
     @Autowired
     private StockTransfertService stockService;
+
+    @Autowired
+    private TenantContext tenantContext;
 
     /**
      * Récupère le dashboard complet avec tous les KPIs
@@ -52,7 +56,7 @@ public class DashboardController {
     public ResponseEntity<?> obtenirDashboard() {
         log.info("Requête du dashboard de stock");
         try {
-            DashboardStockDTO dashboard = dashboardService.genererDashboard();
+            DashboardStockDTO dashboard = dashboardService.genererDashboard(tenantContext.currentCompagnieId());
             return ResponseEntity.ok(dashboard);
         } catch (Exception e) {
             log.error("Erreur lors de la génération du dashboard", e);
@@ -73,7 +77,7 @@ public class DashboardController {
     public ResponseEntity<?> obtenirValeurMagasins() {
         log.debug("Requête des valeurs par magasin");
         try {
-            DashboardStockDTO dashboard = dashboardService.genererDashboard();
+            DashboardStockDTO dashboard = dashboardService.genererDashboard(tenantContext.currentCompagnieId());
             return ResponseEntity.ok(dashboard.getValeurMagasins());
         } catch (Exception e) {
             log.error("Erreur lors de la récupération des valeurs magasins", e);
@@ -94,7 +98,7 @@ public class DashboardController {
     public ResponseEntity<?> obtenirValeurPointsVente() {
         log.debug("Requête des valeurs par point de vente");
         try {
-            DashboardStockDTO dashboard = dashboardService.genererDashboard();
+            DashboardStockDTO dashboard = dashboardService.genererDashboard(tenantContext.currentCompagnieId());
             return ResponseEntity.ok(dashboard.getValeurPointsVente());
         } catch (Exception e) {
             log.error("Erreur lors de la récupération des valeurs points de vente", e);
@@ -119,7 +123,7 @@ public class DashboardController {
     public ResponseEntity<?> obtenirProduitsFaibles() {
         log.debug("Requête des produits en stock faible");
         try {
-            DashboardStockDTO dashboard = dashboardService.genererDashboard();
+            DashboardStockDTO dashboard = dashboardService.genererDashboard(tenantContext.currentCompagnieId());
             return ResponseEntity.ok(dashboard.getProduitsFaibleStock());
         } catch (Exception e) {
             log.error("Erreur lors de la récupération des produits faibles", e);
@@ -140,7 +144,7 @@ public class DashboardController {
     public ResponseEntity<?> obtenirEvolution() {
         log.debug("Requête de l'évolution du stock");
         try {
-            DashboardStockDTO dashboard = dashboardService.genererDashboard();
+            DashboardStockDTO dashboard = dashboardService.genererDashboard(tenantContext.currentCompagnieId());
             return ResponseEntity.ok(dashboard.getEvolutionStock());
         } catch (Exception e) {
             log.error("Erreur lors de la récupération de l'évolution", e);

@@ -40,6 +40,10 @@ public class SecurityConfig {
                 .exceptionHandling(e -> e.authenticationEntryPoint(authenticationEntryPoint))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health").permitAll()
+                        // Page de vente publique (visiteur anonyme, sans JWT) - voir
+                        // EcomPublicController. Chaque endpoint resout lui-meme sa
+                        // compagnie/boutique a partir de l'URL, jamais de TenantContext.
+                        .requestMatchers("/microservice-produits/e-com/compagnie/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(licenceCheckFilter, JwtAuthFilter.class)

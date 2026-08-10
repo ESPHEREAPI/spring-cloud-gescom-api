@@ -24,5 +24,20 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, Lo
     @Query("SELECT sm FROM StockMovement sm WHERE sm.pointVente.id = :pointVenteId " +
            "ORDER BY sm.dateCreation DESC")
     List<StockMovement> findByPointVenteId(@Param("pointVenteId") Long pointVenteId);
-    
+
+    // Variantes scopees par compagnie (voir StockController /mouvements) -
+    // passe par pointVente.depotId (toujours renseigne, boutique ou pas)
+    // plutot que pointVente.boutique (nullable pour un depot de stock, ce
+    // qui exclurait silencieusement ces lignes d'un join direct).
+    @Query("SELECT sm FROM StockMovement sm WHERE sm.produit.id = :produitId " +
+           "AND sm.pointVente.depotId.compagnie.id = :compagnieId ORDER BY sm.dateCreation DESC")
+    List<StockMovement> findByProduitIdAndCompagnieId(@Param("produitId") Long produitId, @Param("compagnieId") Long compagnieId);
+
+    @Query("SELECT sm FROM StockMovement sm WHERE sm.pointVente.id = :pointVenteId " +
+           "AND sm.pointVente.depotId.compagnie.id = :compagnieId ORDER BY sm.dateCreation DESC")
+    List<StockMovement> findByPointVenteIdAndCompagnieId(@Param("pointVenteId") Long pointVenteId, @Param("compagnieId") Long compagnieId);
+
+    @Query("SELECT sm FROM StockMovement sm WHERE sm.pointVente.depotId.compagnie.id = :compagnieId ORDER BY sm.dateCreation DESC")
+    List<StockMovement> findAllByCompagnieId(@Param("compagnieId") Long compagnieId);
+
 }

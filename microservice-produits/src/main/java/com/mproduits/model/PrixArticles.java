@@ -5,9 +5,12 @@
 package com.mproduits.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.mproduits.enums.TypePromotion;
 import jakarta.persistence.Basic;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -88,6 +91,18 @@ public class PrixArticles implements Serializable {
     @JoinColumn(name = "pointventeid", referencedColumnName = "id")
     @ManyToOne
     private PointVente pointVente;
+    // Promotion/solde par boutique (page de vente publique) - reutilise le
+    // champ "remise" existant pour le pourcentage. Bornes de dates
+    // optionnelles pour une promotion qui expire automatiquement.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type_promotion")
+    private TypePromotion typePromotion = TypePromotion.AUCUNE;
+    @Column(name = "date_debut_promo")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date dateDebutPromo;
+    @Column(name = "date_fin_promo")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date dateFinPromo;
 //    @OneToMany(cascade = CascadeType.ALL, mappedBy = "prixArticles")
 //    private Collection<Barcodeproduit> barcodeproduitCollection;
     @Transient
@@ -113,5 +128,20 @@ public class PrixArticles implements Serializable {
 //            this.prixVenteTTC = this.prixVenteNet * (1 + tva / 100);
 //        }
 //    }
+
+    /** Promotion/solde en cours a l'instant present, compte tenu des bornes de dates optionnelles. */
+    public boolean isPromotionActive() {
+        if (typePromotion == null || typePromotion == TypePromotion.AUCUNE) {
+            return false;
+        }
+        Date maintenant = new Date();
+        if (dateDebutPromo != null && maintenant.before(dateDebutPromo)) {
+            return false;
+        }
+        if (dateFinPromo != null && maintenant.after(dateFinPromo)) {
+            return false;
+        }
+        return true;
+    }
 
 }

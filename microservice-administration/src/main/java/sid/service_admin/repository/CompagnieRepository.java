@@ -11,5 +11,9 @@ public interface CompagnieRepository extends JpaRepository<Compagnie, Long> {
 
     boolean existsByNom(String nom);
 
+    Optional<Compagnie> findByCode(String code);
+
+    boolean existsByCode(String code);
+
     List<Compagnie> findByActifTrue();
 }

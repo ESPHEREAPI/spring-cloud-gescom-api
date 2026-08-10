@@ -67,6 +67,13 @@ public interface MagasinRepositories  extends JpaRepository<Magasin, Long>{
     @Query("SELECT m FROM Magasin m WHERE m.boutique IS NOT NULL ORDER BY m.libelle ASC")
     List<Magasin> findPointsDeVente();
 
+    /** Variantes scopees par compagnie (voir DashboardService - dashboard transfert stock). */
+    @Query("SELECT m FROM Magasin m WHERE m.boutique IS NULL AND m.compagnie.id = :compagnieId ORDER BY m.libelle ASC")
+    List<Magasin> findMagasinsDeStockByCompagnieId(@Param("compagnieId") Long compagnieId);
+
+    @Query("SELECT m FROM Magasin m WHERE m.boutique IS NOT NULL AND m.compagnie.id = :compagnieId ORDER BY m.libelle ASC")
+    List<Magasin> findPointsDeVenteByCompagnieId(@Param("compagnieId") Long compagnieId);
+
     /**
      * Vérifie si un magasin est un point de vente
      */

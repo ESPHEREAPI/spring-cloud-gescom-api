@@ -41,7 +41,10 @@ public class BarcodeService {
     // Constants
     private static final BigDecimal ZERO = BigDecimal.ZERO;
     private static final int TOP_ARTICLES_LIMIT = 10000;
-    private static final String PROFIL_CAISSE = "CAISSE";
+    // Doit correspondre exactement au code semé par defaut cote
+    // microservice-administration (UserService.seedProfilsParDefautPourCompagnie)
+    // - un mismatch ici rend tout compte caissier invisible sans aucune erreur.
+    private static final String PROFIL_CAISSE = "CAISSIER";
 
     // Dependencies (final avec @RequiredArgsConstructor)
     private final BarcodeproduitRepositories barcodeproduitRepositories;
@@ -314,10 +317,12 @@ public class BarcodeService {
     @Transactional(readOnly = true)
     public List<UserDTO> listeCaissiers(Long boutiqueid) {
         var profilCaisse = profilRepositories.findByCode(PROFIL_CAISSE);
+        if (profilCaisse == null) {
+            log.warn("Profil '{}' introuvable - impossible de lister les caissiers", PROFIL_CAISSE);
+            return List.of();
+        }
 
-        return personneRepositories.findActiveUserByProfil(profilCaisse).stream()
-                .filter(p -> Boolean.TRUE.equals(p.getCompteActif()  && p.getBoutique().getId().equals(boutiqueid))
-                && PROFIL_CAISSE.equals(p.getProfilid().getCode()))
+        return personneRepositories.findActiveUserByProfilAndBoutiqueId(profilCaisse, boutiqueid).stream()
                 .map(this::createUserDTO)
                 .toList();
     }

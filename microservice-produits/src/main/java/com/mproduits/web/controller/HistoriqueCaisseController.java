@@ -77,19 +77,16 @@ public class HistoriqueCaisseController {
         return ResponseEntity.ok(allDates);
     }
     @GetMapping("{datevente}/historique")
-    public ResponseEntity<List<VenteDto>> listDates(@PathVariable("datevente") String datevente, @RequestParam("anneeId") int anneeid, @RequestParam("vendeur") String vendeur, @RequestParam("boutiqueid") Long boutiqueid) {
+    public ResponseEntity<List<VenteDto>> listDates(@PathVariable("datevente") String datevente, @RequestParam("anneeId") int anneeid, @RequestParam(value = "vendeur", required = false) String vendeur, @RequestParam("boutiqueid") Long boutiqueid) {
         boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
         try {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
             Date parsedDate = sdf.parse(datevente);
             List<VenteDto> allventes = historiqueCaisseService.allVenteByVendeurByDate(parsedDate, anneeid, vendeur,boutiqueid);
             return ResponseEntity.ok(allventes);
-
-            // return ResponseEntity.ok(allventes);
         } catch (ParseException e) {
-            
+            return ResponseEntity.badRequest().build();
         }
-        return null;
     }
 
 //    @GetMapping("/marge-journalier")

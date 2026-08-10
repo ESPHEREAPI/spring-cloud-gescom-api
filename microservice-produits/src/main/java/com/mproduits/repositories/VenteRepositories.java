@@ -76,6 +76,11 @@ public interface VenteRepositories extends JpaRepository<Vente, Long>, JpaSpecif
     @Query("SELECT v FROM Vente v WHERE DATE(v.dateVente)= :datevente and v.vendeur.userName= :vendeur and v.entreprise.annee.id= :anneeid and v.boutique.id= :boutiqueid")
     public List<Vente> allVentesByUsersDate(@Param("datevente") Date datevente, @Param("vendeur") String vendeur, @Param("anneeid") int anneeid,@Param("boutiqueid") long boutiqueid);
 
+    // Vue "toute la boutique" (aucun vendeur precis) - pour un admin/gerant
+    // qui consulte le recapitulatif sans filtrer sur un caissier particulier.
+    @Query("SELECT v FROM Vente v WHERE DATE(v.dateVente)= :datevente and v.entreprise.annee.id= :anneeid and v.boutique.id= :boutiqueid")
+    public List<Vente> allVentesByDate(@Param("datevente") Date datevente, @Param("anneeid") int anneeid,@Param("boutiqueid") long boutiqueid);
+
     @Query("SELECT DISTINCT(v.entreprise.annee) FROM Vente v where v.boutique.id= :boutiqueid")
     public List<Annee> listeVenteByAnnee(@Param("boutiqueid") Long boutiqueid);
 

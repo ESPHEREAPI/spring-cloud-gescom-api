@@ -328,7 +328,7 @@ public class HistoriquePhotocopieService {
     
     public List<Mois>getAllMoisByAnneeForCaissier(int anneeid,String usrname){
         Personne personne =this.findPersonneOrThrow(usrname);
-        if ("CAISSE".equals(personne.getProfilid().getCode())) {
+        if ("CAISSIER".equals(personne.getProfilid().getCode())) {
             
             return photocopieRepository.listMoisByAnnee(anneeid, usrname);
         }
@@ -336,7 +336,7 @@ public class HistoriquePhotocopieService {
     }
     
     public List<UserDTO>getAllCaisssierByBoutique(Long boutiqueid){
-        List<Personne> allCaissierBoutique= photocopieRepository.listCaissier(boutiqueid, "CAISSE");
+        List<Personne> allCaissierBoutique= photocopieRepository.listCaissier(boutiqueid, "CAISSIER");
      return allCaissierBoutique.stream().map(this::personneToUserDto).toList();
     }
     

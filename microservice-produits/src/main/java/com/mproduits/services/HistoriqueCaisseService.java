@@ -94,8 +94,14 @@ public class HistoriqueCaisseService {
      * Récupère toutes les ventes d'un vendeur pour une date donnée
      */
     public List<VenteDto> allVenteByVendeurByDate(Date datevente, int anneid, String vendeur,Long boutiqueid) {
-        return venteRepositories.allVentesByUsersDate(datevente, vendeur, anneid,boutiqueid)
-                .stream()
+        // vendeur absent/vide = vue "toute la boutique" (admin/gerant sans
+        // caissier precis selectionne), sinon filtre sur ce vendeur precis
+        // (compte CAISSE, ou admin ayant choisi un caissier dans la liste).
+        List<com.mproduits.model.Vente> ventes = (vendeur == null || vendeur.isBlank())
+                ? venteRepositories.allVentesByDate(datevente, anneid, boutiqueid)
+                : venteRepositories.allVentesByUsersDate(datevente, vendeur, anneid, boutiqueid);
+
+        return ventes.stream()
                 .filter(ve -> ve.getStatut() == StatutVente.TERMINEE)
                 .map(mapperDtoImpl::mapperVentByVenteDto)
                 .toList();

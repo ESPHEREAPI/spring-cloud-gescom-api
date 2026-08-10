@@ -76,6 +76,11 @@ public class BonAchatService {
         if (bonAchat.getMontantUtilise() == null) {
             bonAchat.setMontantUtilise(java.math.BigDecimal.ZERO);
         }
+        // Le responsable/administrateur n'a pas besoin d'inventer un code -
+        // seul un code fourni explicitement (cas rare) est conserve tel quel.
+        if (bonAchat.getCodeBon() == null || bonAchat.getCodeBon().isBlank()) {
+            bonAchat.setCodeBon(genererCodeUnique("PROMO"));
+        }
         return bonAchatRepository.save(bonAchat);
     }
 
@@ -167,7 +172,7 @@ public class BonAchatService {
         }
 
         BonAchat bon = new BonAchat();
-        bon.setCodeBon(genererCodeUnique());
+        bon.setCodeBon(genererCodeUnique("RDU"));
         bon.setMontantTotal(montant);
         bon.setMontantUtilise(BigDecimal.ZERO);
         bon.setDateExpiration(Date.from(Instant.now().plus(VALIDITE_RELIQUAT_JOURS, ChronoUnit.DAYS)));
@@ -176,10 +181,10 @@ public class BonAchatService {
         return bonAchatRepository.save(bon);
     }
 
-    private String genererCodeUnique() {
+    private String genererCodeUnique(String prefixe) {
         String code;
         do {
-            code = "RDU" + System.currentTimeMillis() % 1000000 + ThreadLocalRandom.current().nextInt(100, 999);
+            code = prefixe + System.currentTimeMillis() % 1000000 + ThreadLocalRandom.current().nextInt(100, 999);
         } while (bonAchatRepository.findByCodeBon(code).isPresent());
         return code;
     }

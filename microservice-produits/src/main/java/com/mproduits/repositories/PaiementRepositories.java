@@ -6,7 +6,7 @@ package com.mproduits.repositories;
 
 import com.mproduits.model.Paiement;
 import com.mproduits.model.Vente;
-import java.util.Optional;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
@@ -14,5 +14,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
  * @author USER01
  */
 public interface PaiementRepositories extends JpaRepository<Paiement, Long>{
-    Optional<Paiement> findByVente(Vente vente);
+    // Une vente peut avoir plusieurs lignes de paiement (paiement mixte) -
+    // ne pas utiliser une methode derivee a resultat unique ici, elle
+    // leverait IncorrectResultSizeDataAccessException des qu'il y a 2+ lignes.
+    List<Paiement> findAllByVente(Vente vente);
+
+    void deleteAllByVente(Vente vente);
 }

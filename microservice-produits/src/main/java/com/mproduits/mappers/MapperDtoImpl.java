@@ -203,10 +203,15 @@ public class MapperDtoImpl {
         venteDto.setNumeroTicket(vente.getNumeroTicket());
         venteDto.setRemise(vente.getTotalRemise());
 
-        // Gestion paiement
-        Paiement paiement = paiementRepositories.findByVente(vente).orElse(null);
-        if (paiement != null && paiement.getTypePaiement() != null) {
-            venteDto.setTypePaiement(paiement.getTypePaiement().name());
+        // Gestion paiement (une vente peut avoir plusieurs lignes de paiement -
+        // paiement mixte especes+mobile money+bon d'achat)
+        List<Paiement> paiementsVente = paiementRepositories.findAllByVente(vente);
+        Paiement paiement = paiementsVente.isEmpty() ? null : paiementsVente.get(0);
+        if (!paiementsVente.isEmpty()) {
+            venteDto.setTypePaiement(paiementsVente.stream()
+                    .map(p -> p.getTypePaiement().name())
+                    .distinct()
+                    .collect(Collectors.joining(" + ")));
         } else {
             venteDto.setTypePaiement(null); // ou "INCONNU"
         }

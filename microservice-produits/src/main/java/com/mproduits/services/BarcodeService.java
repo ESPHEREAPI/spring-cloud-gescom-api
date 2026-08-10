@@ -40,6 +40,9 @@ public class BarcodeService {
 
     // Constants
     private static final BigDecimal ZERO = BigDecimal.ZERO;
+    // Tolerance d'arrondi pour valider qu'un paiement mixte couvre bien le
+    // montant net (evite de rejeter un paiement a 1 centime pres).
+    private static final BigDecimal MONTANT_TOLERANCE = new BigDecimal("0.01");
     private static final int TOP_ARTICLES_LIMIT = 10000;
     // Doit correspondre exactement au code semé par defaut cote
     // microservice-administration (UserService.seedProfilsParDefautPourCompagnie)
@@ -64,6 +67,7 @@ public class BarcodeService {
     private final BoutiqueRepositories boutiqueRepositories;
     private final TenantContext tenantContext;
     private final EntrepriseService entrepriseService;
+    private final BonAchatService bonAchatService;
 
     /**
      * Charge un produit par son code-barres
@@ -257,9 +261,23 @@ public class BarcodeService {
      * Récupère le paiement d'une vente
      */
     @Transactional(readOnly = true)
-    public Paiement getPaiementByVente(Vente vente) {
-        return paiementRepositories.findByVente(vente)
-                .orElseThrow(() -> new EntityNotFoundException("Paiement non trouvé pour la vente: " + vente.getId()));
+    public List<Paiement> getPaiementsByVente(Vente vente) {
+        var paiements = paiementRepositories.findAllByVente(vente);
+        if (paiements.isEmpty()) {
+            throw new EntityNotFoundException("Paiement non trouvé pour la vente: " + vente.getId());
+        }
+        return paiements;
+    }
+
+    /**
+     * Libellé du/des mode(s) de paiement d'une vente (ex: "ESPECES" ou
+     * "ESPECES + ORANGE_MONEY" pour un paiement mixte), pour affichage/impression.
+     */
+    public String getModePaiementLabel(Vente vente) {
+        return getPaiementsByVente(vente).stream()
+                .map(p -> p.getTypePaiement().name())
+                .distinct()
+                .collect(Collectors.joining(" + "));
     }
 
     /**
@@ -267,13 +285,17 @@ public class BarcodeService {
      */
     public void createTicketCaisseTXT(Vente vente) throws IOException {
         var mois = getMoisActuel();
-        var paiement = getPaiementByVente(vente);
+        var paiements = getPaiementsByVente(vente);
         var lignesVente = ligneVenteRepositories.findByVente(vente);
 
         var ticketRequest = TicketRequest.builder()
                 .lignesVente(lignesVente)
                 .remboursementAvecBonAchat(Boolean.FALSE)
-                .typePaiement(paiement.getTypePaiement())
+                .typePaiement(paiements.get(0).getTypePaiement())
+                .modePaiementLabel(paiements.stream()
+                        .map(p -> p.getTypePaiement().name())
+                        .distinct()
+                        .collect(Collectors.joining(" + ")))
                 .mois(mois.getMois())
                 .vente(vente)
                 .property(new Property())
@@ -575,30 +597,71 @@ public class BarcodeService {
     }
 
     /**
-     * Crée un paiement pour une vente
+     * Crée le(s) paiement(s) d'une nouvelle vente (paiement mixte possible :
+     * plusieurs lignes especes/mobile money/bon d'achat).
      */
     private void creerPaiement(VenteDto dto, Vente vente) {
-        var paiement = new Paiement();
-        paiement.setDatePaiement(new Date());
-        paiement.setMontant(dto.getMontantNet());
-        paiement.setTypePaiement(TypePaiement.valueOf(dto.getTypePaiement()));
-        paiement.setReference(dto.getNumeroTicket());
-        paiement.setVente(vente);
-        paiementRepositories.save(paiement);
+        enregistrerLignesPaiement(dto, vente);
     }
 
     /**
-     * Met à jour un paiement existant
+     * Remplace le(s) paiement(s) d'une vente existante par les lignes fournies.
      */
     private void updatePaiement(VenteDto dto, Vente vente) {
-        var paiement = paiementRepositories.findByVente(vente)
-                .orElseThrow(() -> new EntityNotFoundException("Paiement introuvable pour la vente: " + vente.getId()));
+        paiementRepositories.deleteAllByVente(vente);
+        enregistrerLignesPaiement(dto, vente);
+    }
 
-        paiement.setDatePaiement(new Date());
-        paiement.setMontant(dto.getMontantNet());
-        paiement.setTypePaiement(TypePaiement.valueOf(dto.getTypePaiement()));
-        paiement.setReference(dto.getNumeroTicket());
-        paiementRepositories.save(paiement);
+    /**
+     * Enregistre une ou plusieurs lignes de paiement pour une vente, en
+     * validant que leur somme couvre le montant net a payer et en
+     * consommant le solde des bons d'achat utilises comme moyen de paiement.
+     * Compatibilite ascendante : si dto.getPaiements() est vide, on retombe
+     * sur l'unique couple typePaiement/montantNet (ancien format).
+     */
+    private void enregistrerLignesPaiement(VenteDto dto, Vente vente) {
+        List<PaiementDto> lignes = dto.getPaiements();
+        if (lignes == null || lignes.isEmpty()) {
+            var ligneUnique = new PaiementDto();
+            ligneUnique.setTypePaiement(dto.getTypePaiement());
+            ligneUnique.setMontant(dto.getMontantNet());
+            ligneUnique.setReference(dto.getNumeroTicket());
+            lignes = List.of(ligneUnique);
+        }
+
+        var montantDu = dto.getMontantNet() != null ? dto.getMontantNet() : ZERO;
+        var totalPaye = lignes.stream()
+                .map(PaiementDto::getMontant)
+                .filter(Objects::nonNull)
+                .reduce(ZERO, BigDecimal::add);
+
+        if (totalPaye.compareTo(montantDu.subtract(MONTANT_TOLERANCE)) < 0) {
+            throw new MetierException("Le total des paiements (" + totalPaye
+                    + ") est inférieur au montant net à payer (" + montantDu + ")");
+        }
+
+        for (PaiementDto ligne : lignes) {
+            if (ligne.getTypePaiement() == null) {
+                throw new MetierException("Le type de paiement est requis pour chaque ligne");
+            }
+            var typePaiement = TypePaiement.valueOf(ligne.getTypePaiement());
+            var montant = ligne.getMontant() != null ? ligne.getMontant() : ZERO;
+
+            if (typePaiement == TypePaiement.BON_ACHAT) {
+                if (ligne.getReference() == null || ligne.getReference().isBlank()) {
+                    throw new MetierException("Le code du bon d'achat est requis pour un paiement par bon d'achat");
+                }
+                bonAchatService.consommer(ligne.getReference(), montant);
+            }
+
+            var paiement = new Paiement();
+            paiement.setDatePaiement(new Date());
+            paiement.setMontant(montant);
+            paiement.setTypePaiement(typePaiement);
+            paiement.setReference(ligne.getReference() != null ? ligne.getReference() : dto.getNumeroTicket());
+            paiement.setVente(vente);
+            paiementRepositories.save(paiement);
+        }
     }
 
     /**

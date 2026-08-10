@@ -481,7 +481,7 @@ public class CaisseController {
         }
 
         LigneVente lv = (LigneVente) listeVentes.toArray()[0];
-        Paiement p = barcodeService.getPaiementByVente(lv.getVente());
+        String modePaiement = barcodeService.getModePaiementLabel(lv.getVente());
 
         BigDecimal remise = BigDecimal.ZERO;
         BigDecimal netAPayer = BigDecimal.ZERO;
@@ -504,7 +504,7 @@ public class CaisseController {
         Font totalBoldFont = new Font(Font.FontFamily.HELVETICA, 11, Font.BOLD);
 
         // Lignes des totaux
-        ajouterLigneTotal(totalTable, "payer par:", p.getTypePaiement().name(), totalFont, false);
+        ajouterLigneTotal(totalTable, "payer par:", modePaiement, totalFont, false);
         ajouterLigneTotal(totalTable, "Total brut:", formatMontant(totalBrut), totalFont, false);
 
         if (remise.compareTo(BigDecimal.ZERO) > 0) {
@@ -928,7 +928,7 @@ public class CaisseController {
         }
 
         LigneVente lv = (LigneVente) listeVentes.toArray()[0];
-        Paiement p = barcodeService.getPaiementByVente(lv.getVente());
+        String modePaiement = barcodeService.getModePaiementLabel(lv.getVente());
 
         BigDecimal remise = BigDecimal.ZERO;
         BigDecimal netAPayer = totalBrut;
@@ -948,7 +948,7 @@ public class CaisseController {
         Font totalBoldFont = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD);
 
         // Lignes des totaux
-        ajouterLigneTotalOptimise(totalTable, "Mode paiement:", p.getTypePaiement().name(), totalFont, false);
+        ajouterLigneTotalOptimise(totalTable, "Mode paiement:", modePaiement, totalFont, false);
 
         if (remise.compareTo(BigDecimal.ZERO) > 0) {
             ajouterLigneTotalOptimise(totalTable, "Remise:", "-" + formatMontant(remise), totalFont, false);
@@ -1293,7 +1293,7 @@ public class CaisseController {
         }
 
         LigneVente lv = (LigneVente) listeVentes.toArray()[0];
-        Paiement p = barcodeService.getPaiementByVente(lv.getVente());
+        String modePaiement = barcodeService.getModePaiementLabel(lv.getVente());
 
         BigDecimal remise = BigDecimal.ZERO;
         BigDecimal netAPayer = totalBrut;
@@ -1303,7 +1303,7 @@ public class CaisseController {
         }
 
         // Affichage totaux
-        document.add(new Paragraph("Mode paiement: " + p.getTypePaiement().name(), totalFont));
+        document.add(new Paragraph("Mode paiement: " + modePaiement, totalFont));
 
         if (remise.compareTo(BigDecimal.ZERO) > 0) {
             document.add(new Paragraph("Remise: -" + formatMontantSimple(remise), totalFont));

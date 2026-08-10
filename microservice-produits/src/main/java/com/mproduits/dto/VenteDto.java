@@ -22,6 +22,10 @@ public class VenteDto {
     private Date date;
     List<Caissedto> items;
     private String typePaiement;
+    // Paiement mixte : plusieurs lignes (ex. especes + Orange Money + bon
+    // d'achat). Si absent/vide, on retombe sur typePaiement/montantNet
+    // (compatibilite avec les clients qui n'envoient encore qu'un seul mode).
+    private List<PaiementDto> paiements;
     BigDecimal montantTotal, montantRecu, monnaieRendue, montantNet;
     private ClientDto client;
     BigDecimal remise;

@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -100,6 +102,34 @@ public class BonAchatService {
         existant.setDateExpiration(bonAchat.getDateExpiration());
         existant.setActif(bonAchat.isActif());
         return bonAchatRepository.save(existant);
+    }
+
+    // Consommation d'un bon d'achat comme moyen de paiement d'une vente -
+    // distinct du PUT generique (update ci-dessus) qui ne fait que valider
+    // un montantUtilise fourni par le client sans jamais garantir qu'il
+    // correspond a une vraie transaction de paiement.
+    public BonAchat consommer(String codeBon, BigDecimal montant) {
+        if (montant == null || montant.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BadRequestException("Le montant a consommer sur le bon d'achat doit etre superieur a zero");
+        }
+        BonAchat bon = bonAchatRepository.findByCodeBonAndClientBonAchat_Compagnie_Id(codeBon, compagnieCourante())
+                .orElseThrow(() -> new EntityNotFoundException("Bon d'achat introuvable: " + codeBon));
+
+        if (!bon.isActif()) {
+            throw new BadRequestException("Ce bon d'achat n'est plus actif");
+        }
+        if (bon.getDateExpiration() != null && bon.getDateExpiration().before(new Date())) {
+            throw new BadRequestException("Ce bon d'achat a expire");
+        }
+
+        BigDecimal disponible = bon.getMontantTotal().subtract(bon.getMontantUtilise());
+        if (montant.compareTo(disponible) > 0) {
+            throw new BadRequestException("Solde insuffisant sur le bon d'achat " + codeBon
+                    + " (disponible: " + disponible + ")");
+        }
+
+        bon.setMontantUtilise(bon.getMontantUtilise().add(montant));
+        return bonAchatRepository.save(bon);
     }
 
     public void deleteById(Long id) {

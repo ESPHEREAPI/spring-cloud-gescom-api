@@ -243,8 +243,12 @@ public class TicketCaisseService {
             bw.newLine();
             bw.write(alignRight("Articles : " + nbreArticle, width));
             bw.newLine();
-            Optional<Paiement> p = paiementRepositories.findByVente(vente);
-            bw.write(alignRight("Paiement : " + p.get().getTypePaiement().toString(), width));
+            List<Paiement> paiementsVente = paiementRepositories.findAllByVente(vente);
+            String modePaiement = paiementsVente.stream()
+                    .map(pai -> pai.getTypePaiement().toString())
+                    .distinct()
+                    .collect(java.util.stream.Collectors.joining(" + "));
+            bw.write(alignRight("Paiement : " + modePaiement, width));
             bw.newLine();
 
             if (vente.getTotalRemise().intValue() > 0) {
@@ -402,8 +406,10 @@ public class TicketCaisseService {
 
         // Total
 //        content.append("║ TOTAL: ").append(padLeft(total + " FCFA", 30)).append(" ║\n");
-        // Type de paiement
-        String typePaiement = getTypePaiementLabel(request.getTypePaiement());
+        // Type de paiement (libelle combine si paiement mixte)
+        String typePaiement = (request.getModePaiementLabel() != null && !request.getModePaiementLabel().isBlank())
+                ? request.getModePaiementLabel()
+                : getTypePaiementLabel(request.getTypePaiement());
         content.append(" Paiement: ").append(padLeft(typePaiement, 27)).append(" \n");
 
         // Gestion des remises et rendu

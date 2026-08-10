@@ -26,6 +26,9 @@ public class TicketRequest {
     private Boolean enregistrer;
     private Boolean remboursementAvecBonAchat;
     private TypePaiement typePaiement;
+    // Libelle affichable du paiement, incluant le cas des paiements mixtes
+    // (ex: "ESPECES + ORANGE_MONEY"). Prioritaire sur typePaiement a l'impression.
+    private String modePaiementLabel;
     private String mois;
     private Vente vente;
 }

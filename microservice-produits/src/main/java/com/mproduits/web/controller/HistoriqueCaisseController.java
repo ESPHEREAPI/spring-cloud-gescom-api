@@ -45,7 +45,12 @@ public class HistoriqueCaisseController {
         return ResponseEntity.ok(allAnnees);
     }
 
-    @GetMapping("/annees/{boutiqueid}")
+    // Prefixe /historique-caisse/ pour eviter une ambiguite de routage avec
+    // AnneeController (@RequestMapping("/microservice-produits/annees"),
+    // GET /{id}) qui matchait le meme pattern /annees/{x} - provoquait une
+    // IllegalStateException "Ambiguous handler methods" a chaque appel,
+    // empechant l'ecran Historique Caisse de charger quoi que ce soit.
+    @GetMapping("/historique-caisse/annees/{boutiqueid}")
     public ResponseEntity<List<Annee>> listAnnee(@PathVariable Long boutiqueid) {
         boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
         List<Annee> allAnnees = historiqueCaisseService.listeAnneeByVente(boutiqueid);

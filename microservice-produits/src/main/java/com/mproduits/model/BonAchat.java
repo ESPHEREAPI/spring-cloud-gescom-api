@@ -45,4 +45,11 @@ public class BonAchat implements Serializable {
     private ClientBonAchat clientBonAchat;
     private boolean actif;
 
+    // Trace d'impression - un bon deja imprime ne doit plus pouvoir l'etre a
+    // nouveau (evite qu'un meme bon circule en plusieurs exemplaires papier).
+    private boolean imprime;
+    @Column(name = "date_impression")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date dateImpression;
+
 }

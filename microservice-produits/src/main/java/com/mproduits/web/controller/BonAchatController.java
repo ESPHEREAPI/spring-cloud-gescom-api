@@ -2,9 +2,12 @@ package com.mproduits.web.controller;
 
 import com.mproduits.model.BonAchat;
 import com.mproduits.services.BonAchatService;
+import com.mproduits.services.BonAchatTicketService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +24,7 @@ import java.util.List;
 public class BonAchatController {
 
     private final BonAchatService bonAchatService;
+    private final BonAchatTicketService bonAchatTicketService;
 
     @GetMapping
     public ResponseEntity<List<BonAchat>> allBonsAchat() {
@@ -74,6 +78,20 @@ public class BonAchatController {
     public ResponseEntity<BonAchat> emettreDepuisRendu(@RequestBody EmettreReliquatRequest request) {
         BonAchat bon = bonAchatService.emettreDepuisRendu(request.getNomClient(), request.getTelephoneClient(), request.getMontant());
         return ResponseEntity.status(HttpStatus.CREATED).body(bon);
+    }
+
+    // Genere le ticket imprimable (PDF, format ticket de caisse avec
+    // code-barres) ET marque le bon comme imprime dans le meme appel -
+    // un seul point d'entree, impossible a contourner en sautant l'etape de
+    // marquage : un bon deja imprime renvoie une erreur au lieu du PDF.
+    @GetMapping("/{id}/ticket")
+    public ResponseEntity<byte[]> telechargerTicket(@PathVariable Long id) {
+        BonAchat bon = bonAchatService.marquerImprime(id);
+        byte[] pdf = bonAchatTicketService.genererTicket(bon);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=bon-achat-" + bon.getCodeBon() + ".pdf")
+                .body(pdf);
     }
 
     @Data

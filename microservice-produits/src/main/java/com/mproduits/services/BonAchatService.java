@@ -215,6 +215,23 @@ public class BonAchatService {
                 .orElse(VALIDITE_RELIQUAT_JOURS_DEFAUT);
     }
 
+    // Marque un bon comme imprime - appele juste avant de declencher
+    // l'impression cote client. Bloque toute impression ulterieure du meme
+    // bon (le ticket papier vaut preuve d'achat/reduction, un deuxieme
+    // exemplaire imprimable librement permettrait de le faire circuler
+    // plusieurs fois).
+    public BonAchat marquerImprime(Long id) {
+        BonAchat bon = bonAchatRepository.findByIdAndClientBonAchat_Compagnie_Id(id, compagnieCourante())
+                .orElseThrow(() -> new EntityNotFoundException("Bon d'achat non trouve avec l'ID: " + id));
+        if (bon.isImprime()) {
+            throw new BadRequestException("Ce bon d'achat a déjà été imprimé le "
+                    + bon.getDateImpression());
+        }
+        bon.setImprime(true);
+        bon.setDateImpression(new Date());
+        return bonAchatRepository.save(bon);
+    }
+
     private String genererCodeUnique(String prefixe) {
         String code;
         do {

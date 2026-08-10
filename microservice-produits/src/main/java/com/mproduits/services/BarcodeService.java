@@ -285,14 +285,19 @@ public class BarcodeService {
      */
     public void createTicketCaisseTXT(Vente vente) throws IOException {
         var mois = getMoisActuel();
-        var paiements = getPaiementsByVente(vente);
+        // Un ticket doit toujours pouvoir s'imprimer meme si, pour une raison
+        // imprevue, aucune ligne de paiement n'est retrouvee - avant, ce cas
+        // (rarissime mais pas impossible : delai de replication, appel
+        // concurrent...) faisait echouer TOUTE la generation du ticket, avec
+        // un onglet d'impression qui restait vide sans aucune explication.
+        var paiements = paiementRepositories.findAllByVente(vente);
         var lignesVente = ligneVenteRepositories.findByVente(vente);
 
         var ticketRequest = TicketRequest.builder()
                 .lignesVente(lignesVente)
                 .remboursementAvecBonAchat(Boolean.FALSE)
-                .typePaiement(paiements.get(0).getTypePaiement())
-                .modePaiementLabel(paiements.stream()
+                .typePaiement(paiements.isEmpty() ? null : paiements.get(0).getTypePaiement())
+                .modePaiementLabel(paiements.isEmpty() ? "N/A" : paiements.stream()
                         .map(p -> p.getTypePaiement().name())
                         .distinct()
                         .collect(Collectors.joining(" + ")))

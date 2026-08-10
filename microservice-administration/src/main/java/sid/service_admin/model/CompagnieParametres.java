@@ -125,6 +125,17 @@ public class CompagnieParametres implements Serializable {
     @Column(name = "facture_echeance_jours_defaut")
     private Integer factureEcheanceJoursDefaut = 30;
 
+    // --- Bon d'achat ---
+    /**
+     * Duree de validite par defaut (en jours) d'un bon d'achat emis par un
+     * caissier pour compenser un reliquat de monnaie (pas de piece/billet
+     * disponible pour rendre la monnaie exacte). Lu par microservice-produits
+     * (BonAchatService.emettreDepuisRendu) via un miroir en lecture seule de
+     * cette table, meme pattern que Compagnie.
+     */
+    @Column(name = "bon_achat_duree_validite_jours")
+    private Integer bonAchatDureeValiditeJours = 90;
+
     public CompagnieParametres(Compagnie compagnie) {
         this.compagnie = compagnie;
     }

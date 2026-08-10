@@ -77,6 +77,9 @@ public class CompagnieParametresService {
         if (dto.getFactureEcheanceJoursDefaut() != null && dto.getFactureEcheanceJoursDefaut() < 0) {
             throw new BadRequestException("Le delai de paiement par defaut ne peut pas etre negatif");
         }
+        if (dto.getBonAchatDureeValiditeJours() != null && dto.getBonAchatDureeValiditeJours() < 1) {
+            throw new BadRequestException("La duree de validite du bon d'achat doit etre d'au moins 1 jour");
+        }
     }
 
     private CompagnieParametresDTO toDTO(CompagnieParametres parametres) {

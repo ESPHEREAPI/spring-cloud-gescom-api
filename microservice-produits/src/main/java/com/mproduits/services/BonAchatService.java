@@ -5,6 +5,7 @@ import com.mproduits.model.BonAchat;
 import com.mproduits.model.ClientBonAchat;
 import com.mproduits.repositories.BonAchatRepositories;
 import com.mproduits.repositories.ClientBonAchatRepositories;
+import com.mproduits.repositories.CompagnieParametresRepositories;
 import com.mproduits.security.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -24,13 +25,16 @@ import java.util.concurrent.ThreadLocalRandom;
 @Transactional
 public class BonAchatService {
 
-    // Duree de validite par defaut d'un bon d'achat emis par le caissier pour
-    // compenser un reliquat de monnaie (ex: rendu de 150 F sans piece
-    // disponible). Decision produit du 2026-08-10.
-    private static final int VALIDITE_RELIQUAT_JOURS = 90;
+    // Duree de validite par defaut (si la compagnie n'a pas configure la
+    // sienne - voir CompagnieParametres.bonAchatDureeValiditeJours,
+    // modifiable par l'administrateur de la compagnie dans "Option
+    // Entreprise") d'un bon d'achat emis par le caissier pour compenser un
+    // reliquat de monnaie (ex: rendu de 150 F sans piece disponible).
+    private static final int VALIDITE_RELIQUAT_JOURS_DEFAUT = 90;
 
     private final BonAchatRepositories bonAchatRepository;
     private final ClientBonAchatRepositories clientBonAchatRepository;
+    private final CompagnieParametresRepositories compagnieParametresRepository;
     private final TenantContext tenantContext;
 
     private Long compagnieCourante() {
@@ -198,10 +202,17 @@ public class BonAchatService {
         bon.setCodeBon(genererCodeUnique("RDU"));
         bon.setMontantTotal(montant);
         bon.setMontantUtilise(BigDecimal.ZERO);
-        bon.setDateExpiration(Date.from(Instant.now().plus(VALIDITE_RELIQUAT_JOURS, ChronoUnit.DAYS)));
+        bon.setDateExpiration(Date.from(Instant.now().plus(dureeValiditeReliquatJours(compagnieId), ChronoUnit.DAYS)));
         bon.setActif(true);
         bon.setClientBonAchat(client);
         return bonAchatRepository.save(bon);
+    }
+
+    private int dureeValiditeReliquatJours(Long compagnieId) {
+        return compagnieParametresRepository.findByCompagnie_Id(compagnieId)
+                .map(com.mproduits.model.CompagnieParametres::getBonAchatDureeValiditeJours)
+                .filter(java.util.Objects::nonNull)
+                .orElse(VALIDITE_RELIQUAT_JOURS_DEFAUT);
     }
 
     private String genererCodeUnique(String prefixe) {

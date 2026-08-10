@@ -33,4 +33,6 @@ public class CompagnieParametresDTO {
     private String factureMentionsLegales;
     private String facturePrefixeNumerotation;
     private Integer factureEcheanceJoursDefaut;
+
+    private Integer bonAchatDureeValiditeJours;
 }

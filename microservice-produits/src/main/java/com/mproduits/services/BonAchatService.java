@@ -12,14 +12,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class BonAchatService {
+
+    // Duree de validite par defaut d'un bon d'achat emis par le caissier pour
+    // compenser un reliquat de monnaie (ex: rendu de 150 F sans piece
+    // disponible). Decision produit du 2026-08-10.
+    private static final int VALIDITE_RELIQUAT_JOURS = 90;
 
     private final BonAchatRepositories bonAchatRepository;
     private final ClientBonAchatRepositories clientBonAchatRepository;
@@ -130,6 +138,50 @@ public class BonAchatService {
 
         bon.setMontantUtilise(bon.getMontantUtilise().add(montant));
         return bonAchatRepository.save(bon);
+    }
+
+    // Emission rapide d'un bon d'achat par le caissier depuis la caisse, pour
+    // convertir un reliquat de monnaie (pas de piece/billet disponible) en
+    // avoir reutilisable. Le nom du client est obligatoire pour que le bon
+    // reste reclamable si le ticket est perdu ; le telephone est optionnel
+    // mais sert a retrouver/reutiliser une fiche client existante.
+    public BonAchat emettreDepuisRendu(String nomClient, String telephoneClient, BigDecimal montant) {
+        if (nomClient == null || nomClient.isBlank()) {
+            throw new BadRequestException("Le nom du client est requis pour émettre un bon d'achat");
+        }
+        if (montant == null || montant.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BadRequestException("Le montant du bon d'achat doit être supérieur à zéro");
+        }
+        Long compagnieId = compagnieCourante();
+
+        ClientBonAchat client = null;
+        if (telephoneClient != null && !telephoneClient.isBlank()) {
+            client = clientBonAchatRepository.findByTelephoneAndCompagnie_Id(telephoneClient, compagnieId).orElse(null);
+        }
+        if (client == null) {
+            client = new ClientBonAchat();
+            client.setNom(nomClient.trim());
+            client.setTelephone(telephoneClient != null ? telephoneClient.trim() : null);
+            client.setCompagnieId(compagnieId);
+            client = clientBonAchatRepository.save(client);
+        }
+
+        BonAchat bon = new BonAchat();
+        bon.setCodeBon(genererCodeUnique());
+        bon.setMontantTotal(montant);
+        bon.setMontantUtilise(BigDecimal.ZERO);
+        bon.setDateExpiration(Date.from(Instant.now().plus(VALIDITE_RELIQUAT_JOURS, ChronoUnit.DAYS)));
+        bon.setActif(true);
+        bon.setClientBonAchat(client);
+        return bonAchatRepository.save(bon);
+    }
+
+    private String genererCodeUnique() {
+        String code;
+        do {
+            code = "RDU" + System.currentTimeMillis() % 1000000 + ThreadLocalRandom.current().nextInt(100, 999);
+        } while (bonAchatRepository.findByCodeBon(code).isPresent());
+        return code;
     }
 
     public void deleteById(Long id) {

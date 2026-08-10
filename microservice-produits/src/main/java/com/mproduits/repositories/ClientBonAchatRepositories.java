@@ -18,4 +18,6 @@ public interface ClientBonAchatRepositories extends JpaRepository<ClientBonAchat
     List<ClientBonAchat> findByCompagnie_Id(Long compagnieId);
 
     Optional<ClientBonAchat> findByIdAndCompagnie_Id(Long id, Long compagnieId);
+
+    Optional<ClientBonAchat> findByTelephoneAndCompagnie_Id(String telephone, Long compagnieId);
 }

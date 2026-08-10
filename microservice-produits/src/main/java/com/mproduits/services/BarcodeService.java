@@ -61,7 +61,6 @@ public class BarcodeService {
     private final MapperDtoImpl mapper;
     private final TicketCaisseService ticketCaisseService;
     private final MoisRepositories moisRepositories;
-    private final ProfilRepositories profilRepositories;
     private final BoutiqueRepositories boutiqueRepositories;
     private final TenantContext tenantContext;
     private final EntrepriseService entrepriseService;
@@ -316,13 +315,12 @@ public class BarcodeService {
      */
     @Transactional(readOnly = true)
     public List<UserDTO> listeCaissiers(Long boutiqueid) {
-        var profilCaisse = profilRepositories.findByCode(PROFIL_CAISSE);
-        if (profilCaisse == null) {
-            log.warn("Profil '{}' introuvable - impossible de lister les caissiers", PROFIL_CAISSE);
-            return List.of();
-        }
-
-        return personneRepositories.findActiveUserByProfilAndBoutiqueId(profilCaisse, boutiqueid).stream()
+        // Filtre par code de profil directement (pas par une entite Profil
+        // resolue au prealable) - la table profil n'a pas de colonne
+        // compagnie ici, donc plusieurs compagnies ont chacune leur propre
+        // ligne "CAISSIER" et profilRepositories.findByCode() plante des
+        // qu'il y en a plus d'une (NonUniqueResultException).
+        return personneRepositories.findActiveUserByProfilAndBoutiqueId(PROFIL_CAISSE, boutiqueid).stream()
                 .map(this::createUserDTO)
                 .toList();
     }

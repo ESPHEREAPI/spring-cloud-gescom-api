@@ -35,11 +35,13 @@ public interface PersonneRepositories extends JpaRepository<Personne, Long> {
     @Query("SELECT p FROM Personne p WHERE p.profilid = :profil AND p.compteActif = true")
     List<Personne> findActiveUserByProfil(@Param("profil") Profil profil);
 
-    // Variante filtree directement en base par boutique (evite de charger
-    // les comptes actifs de ce profil pour toutes les compagnies de la
-    // plateforme avant de filtrer en memoire) - a utiliser pour tout listing
-    // de caissiers scope a une boutique precise.
-    @Query("SELECT p FROM Personne p WHERE p.profilid = :profil AND p.compteActif = true AND p.boutique.id = :boutiqueId")
-    List<Personne> findActiveUserByProfilAndBoutiqueId(@Param("profil") Profil profil, @Param("boutiqueId") Long boutiqueId);
+    // Filtre par CODE de profil (pas par une entite Profil resolue au
+    // prealable) : la table profil n'a pas de colonne compagnie dans ce
+    // module - chaque compagnie a sa propre ligne portant le meme code
+    // (ex. "CAISSIER"), donc plusieurs lignes existent en base avec ce
+    // code des qu'il y a plusieurs compagnies. Filtrer par boutique.id
+    // suffit a isoler la bonne compagnie (une boutique = une compagnie).
+    @Query("SELECT p FROM Personne p WHERE p.profilid.code = :profilCode AND p.compteActif = true AND p.boutique.id = :boutiqueId")
+    List<Personne> findActiveUserByProfilAndBoutiqueId(@Param("profilCode") String profilCode, @Param("boutiqueId") Long boutiqueId);
 
 }

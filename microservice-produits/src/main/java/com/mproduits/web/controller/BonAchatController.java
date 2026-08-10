@@ -59,6 +59,14 @@ public class BonAchatController {
         }
     }
 
+    // Verification en caisse avant paiement - lecture seule, ne consomme rien
+    // (voir BonAchatService.verifierPourPaiement). La consommation reelle a
+    // lieu a la validation de la vente, via la ligne de paiement BON_ACHAT.
+    @GetMapping("/verifier/{code}")
+    public ResponseEntity<BonAchat> verifierPourPaiement(@PathVariable String code) {
+        return ResponseEntity.ok(bonAchatService.verifierPourPaiement(code));
+    }
+
     // Emission rapide depuis la caisse (conversion d'un reliquat de monnaie
     // en bon d'achat) - genere le code et applique la periode de validite
     // par defaut, contrairement au POST generique qui exige tous les champs.

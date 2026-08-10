@@ -117,6 +117,29 @@ public class BonAchatService {
         return bonAchatRepository.save(existant);
     }
 
+    // Verification en lecture seule d'un bon d'achat avant de l'utiliser comme
+    // moyen de paiement (bouton "Verifier" en caisse) - ne consomme RIEN, la
+    // vraie consommation n'a lieu qu'a la validation de la vente (voir
+    // consommer() ci-dessous, appele depuis BarcodeService). Verifier puis
+    // annuler la vente ne doit jamais entamer le solde du bon.
+    @Transactional(readOnly = true)
+    public BonAchat verifierPourPaiement(String codeBon) {
+        BonAchat bon = bonAchatRepository.findByCodeBonAndClientBonAchat_Compagnie_Id(codeBon, compagnieCourante())
+                .orElseThrow(() -> new EntityNotFoundException("Bon d'achat introuvable: " + codeBon));
+
+        if (!bon.isActif()) {
+            throw new BadRequestException("Ce bon d'achat n'est plus actif");
+        }
+        if (bon.getDateExpiration() != null && bon.getDateExpiration().before(new Date())) {
+            throw new BadRequestException("Ce bon d'achat a expiré");
+        }
+        BigDecimal disponible = bon.getMontantTotal().subtract(bon.getMontantUtilise());
+        if (disponible.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BadRequestException("Ce bon d'achat est déjà entièrement utilisé");
+        }
+        return bon;
+    }
+
     // Consommation d'un bon d'achat comme moyen de paiement d'une vente -
     // distinct du PUT generique (update ci-dessus) qui ne fait que valider
     // un montantUtilise fourni par le client sans jamais garantir qu'il

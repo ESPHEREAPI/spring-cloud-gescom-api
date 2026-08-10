@@ -575,6 +575,13 @@ public class ServiceCommande implements IServiceCommande {
             newPrixArticles.setPointVente(newpointVente);
             newPrixArticles.setEntreprise(entreprise);
             newPrixArticles.setPrixVenteNet(commande.getPrixVente());
+            // L'approvisionnement ne capture pas encore de TVA/remise (voir
+            // Commande) - laisser ces champs a null plutot qu'a 0 explicite
+            // se traduisait par un "NaN%"/"NaN FCFA" a l'affichage (ex. ecran
+            // Gestion des Points de Vente). Un taux reel se regle ensuite
+            // manuellement depuis cet ecran.
+            newPrixArticles.setTva(BigDecimal.ZERO);
+            newPrixArticles.setRemise(BigDecimal.ZERO);
             PrixArticles prixArticleSave = prixArticlesRepositories.save(newPrixArticles);
 
             // Gestion du code-barres

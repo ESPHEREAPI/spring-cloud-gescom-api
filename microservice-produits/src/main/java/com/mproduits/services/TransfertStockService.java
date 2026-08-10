@@ -302,6 +302,10 @@ public class TransfertStockService {
                     pa.setPointVente(savePv);
                     pa.setPrixVenteNet(vente.get().getPrix());
                       pa.setPrixVenteTTC(vente.get().getPrix());
+                    // Sans ceci, tva/remise restent null -> "NaN%"/"NaN FCFA"
+                    // a l'affichage (ex. ecran Gestion des Points de Vente).
+                    pa.setTva(BigDecimal.ZERO);
+                    pa.setRemise(BigDecimal.ZERO);
                     prixArticlesRepositories.save(pa);
                     
                     log.debug("PointVente destination mise à jour: ID={}, nouvelle entrée={}, nouveau stock={}",

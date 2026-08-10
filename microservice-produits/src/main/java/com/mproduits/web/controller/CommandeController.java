@@ -314,6 +314,22 @@ public class CommandeController implements Serializable {
 
         return ResponseEntity.ok(depots);
     }
+
+    // Tous les magasins de la compagnie (depots ET points de vente) - pour le
+    // Transfert de Stock, ou source et destination peuvent etre n'importe
+    // laquelle des deux natures (contrairement a /depots-stockage ci-dessous,
+    // volontairement limite aux depots purs pour l'ecran Gestion des Points
+    // de Vente, qui a deja un selecteur "Boutique" separe pour les points de
+    // vente - l'elargir la aurait duplique les points de vente dans les deux
+    // menus).
+    @GetMapping("/magasins-transfert")
+    public ResponseEntity<List<DepoteDto>> allMagasinsPourTransfert() {
+        List<DepoteDto> magasins = magasinRepository.findAllByCompagnieId(tenantContext.currentCompagnieId()).stream()
+                .map(d -> mapperDto.mapperDepot(d))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(magasins);
+    }
+
       @GetMapping("/depots-stockage")
     public ResponseEntity<List<DepoteDto>> allDepotsStockage() {
         List<DepoteDto> depots = new ArrayList<>();

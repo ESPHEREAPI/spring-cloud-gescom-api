@@ -318,8 +318,12 @@ public class CommandeController implements Serializable {
     public ResponseEntity<List<DepoteDto>> allDepotsStockage() {
         List<DepoteDto> depots = new ArrayList<>();
         try {
-            depots = magasinFournisseurRepositories.findAllByCompagnieId(tenantContext.currentCompagnieId()).stream()
-                    .filter(depot -> depot.getMagasin().getBoutiqueId()==null)
+            // Directement depuis Magasin (pas via MagasinFournisseur) : un depot
+            // n'a plus forcement d'association explicite depuis la refonte
+            // approvisionnement (fournisseur "disponible partout"), donc le
+            // deduire des associations le faisait disparaitre de cette liste
+            // des qu'il n'en avait aucune.
+            depots = magasinRepository.findMagasinsDeStockByCompagnieId(tenantContext.currentCompagnieId()).stream()
                     .map(d -> mapperDto.mapperDepot(d))
                     .collect(Collectors.toList());
             // Authentification de l'utilisateur ici

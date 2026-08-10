@@ -134,7 +134,7 @@ public class BarcodeService {
             var entreprise = findActiveEntreprise();
             // Identite verifiee par le JWT - jamais celle envoyee par le client
             // (falsifiable), qui sert de "Caissier" sur le ticket imprime.
-            var vendeur = findPersonneByUsername(tenantContext.currentUsername());
+            var vendeur = findVendeurConnecte();
             var client = findOrCreateClient(venteDto.getClient());
 
             var vente = creerVente(venteDto, entreprise, vendeur, client);
@@ -166,7 +166,7 @@ public class BarcodeService {
     public Long valideVente(VenteDto venteDto, long numeroCommande, Long boutiqueid) {
         try {
             var entreprise = findActiveEntreprise();
-            var vendeur = findPersonneByUsername(tenantContext.currentUsername());
+            var vendeur = findVendeurConnecte();
             var client = findOrCreateClient(venteDto.getClient());
 
             // Récupérer la vente en cours
@@ -699,10 +699,25 @@ public class BarcodeService {
     }
 
     /**
-     * Trouve une personne par username
+     * Trouve une personne par username - scope par boutique/compagnie car ce
+     * username peut venir du client (flux e-commerce, voir plus bas) et doit
+     * donc rester verifie avant d'etre utilise.
      */
     private Personne findPersonneByUsername(String username) {
         return personneRepositories.findByUserNameAndBoutique_Compagnie_Id(username, tenantContext.currentCompagnieId())
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé: " + username));
+    }
+
+    /**
+     * Vendeur = utilisateur actuellement authentifie (identite deja verifiee
+     * par le JWT, jamais un nom fourni par le client) - recherche non scopee
+     * par boutique car ca casserait la vente pour un compte admin/gerant sans
+     * boutique fixe assignee ; sans risque puisque le username vient de
+     * TenantContext, pas du corps de la requete.
+     */
+    private Personne findVendeurConnecte() {
+        String username = tenantContext.currentUsername();
+        return personneRepositories.findByUserName(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé: " + username));
     }
 

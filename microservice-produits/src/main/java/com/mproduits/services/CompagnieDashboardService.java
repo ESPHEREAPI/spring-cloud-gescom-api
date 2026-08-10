@@ -54,7 +54,12 @@ public class CompagnieDashboardService {
         BigDecimal totalVentesMois = venteRepositories.sumTotalNetByCompagnieAndPeriode(compagnieId, debutMois, finMois);
         long nombreVentesMois = venteRepositories.countByCompagnieAndPeriode(compagnieId, debutMois, finMois);
 
-        Object[] impaye = factureRepository.calculerImpayeParCompagnie(compagnieId);
+        // Requete sans GROUP BY : renvoie toujours exactement une ligne, mais
+        // Spring Data JPA ne l'unwrap pas correctement si la methode est
+        // declaree Object[] directement (impaye[0] se retrouve etre l'Object[]
+        // de la ligne elle-meme, pas la premiere colonne) - d'ou List<Object[]>.
+        List<Object[]> impayeRows = factureRepository.calculerImpayeParCompagnie(compagnieId);
+        Object[] impaye = !impayeRows.isEmpty() ? impayeRows.get(0) : null;
         BigDecimal montantImpaye = impaye != null && impaye[0] != null ? (BigDecimal) impaye[0] : BigDecimal.ZERO;
         long nombreFacturesImpayees = impaye != null && impaye[1] != null ? (Long) impaye[1] : 0L;
 

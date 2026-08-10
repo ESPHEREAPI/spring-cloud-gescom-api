@@ -1128,6 +1128,18 @@ public class ServiceCommande implements IServiceCommande {
     }
 
     @Override
+    public Page<PrixArticles> getPrixArticlesByMagasin(int page, int size, String search, Long magasinid) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+        Entreprise e = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
+
+        if (search != null && !search.isEmpty()) {
+            return prixArticlesRepositories.findProduitLibelleByEntrepriseWithFilterMagasin(e, search, pageable, magasinid);
+        } else {
+            return prixArticlesRepositories.findAllByEntrepriseProduitActifMagasin(e, Boolean.TRUE, pageable, magasinid);
+        }
+    }
+
+    @Override
     public List<PrixArticles> getPrixArticlesFilster(String search, Long boutiqueid) {
         Entreprise e = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
         if (search != null && !search.trim().isEmpty()) {

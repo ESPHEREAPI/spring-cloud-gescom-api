@@ -2,6 +2,8 @@ package com.mproduits.security;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 /**
@@ -23,5 +25,16 @@ public class TenantContext {
 
     public Long currentCompagnieId() {
         return (Long) request.getAttribute("compagnieId");
+    }
+
+    /**
+     * Identite verifiee par le JWT (posee par JwtAuthFilter dans le
+     * SecurityContext), a utiliser pour toute trace d'audit (qui a saisi/
+     * modifie quoi). A ne jamais remplacer par une valeur fournie par le
+     * client dans le corps de la requete - celle-ci est falsifiable.
+     */
+    public String currentUsername() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null ? authentication.getName() : null;
     }
 }

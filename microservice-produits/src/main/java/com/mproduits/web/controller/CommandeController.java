@@ -442,6 +442,25 @@ public class CommandeController implements Serializable {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/prix-articles/magasin/{magasinid}")
+    public ResponseEntity<Map<String, Object>> getPrixArticlesByMagasin(@PathVariable Long magasinid,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search
+    ) {
+        magasinRepository.findByIdAndCompagnie_Id(magasinid, tenantContext.currentCompagnieId())
+                .orElseThrow(() -> new IllegalArgumentException("Magasin introuvable : " + magasinid));
+        Page<PrixArticles> prixArticles = commandeService.getPrixArticlesByMagasin(page, size, search, magasinid);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", prixArticles.getContent());
+        response.put("totalElements", prixArticles.getTotalElements());
+        response.put("totalPages", prixArticles.getTotalPages());
+        response.put("page", prixArticles.getNumber());
+
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/prix-articles/filter/{boutiqueid}")
     public ResponseEntity<List<PrixArticles>> getPrixArticles(@PathVariable Long boutiqueid,
             @RequestParam(required = false) String filters
@@ -526,7 +545,10 @@ public class CommandeController implements Serializable {
         commande.setPrixVente(request.getPrixVente());
         //commande.set
         commande.setQuantite(request.getQuantite());
-        commande.setUsercreate(request.getUsercreate());
+        // Trace d'audit : identite verifiee par le JWT, jamais celle envoyee
+        // par le client dans le corps de la requete (falsifiable) - propage
+        // vers DetailCommandeEntree/DetailCommandeSortie/PrixHistorique.
+        commande.setUsercreate(tenantContext.currentUsername());
 
         // Récupération du produit
         Produit produit = produitService.findById(request.getProduitid());

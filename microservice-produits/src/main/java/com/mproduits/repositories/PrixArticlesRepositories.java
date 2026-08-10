@@ -110,6 +110,12 @@ public interface PrixArticlesRepositories extends JpaRepository<PrixArticles, Lo
     @Query("SELECT pa FROM PrixArticles pa WHERE pa.entreprise = :e   AND pa.actif = :active and pa.pointVente.boutique.id= :boutiqueid")
     List<PrixArticles> findAllByEntrepriseProduitActif(@Param("e") Entreprise e, @Param("active") Boolean active, @Param("boutiqueid") Long boutiqueid);
 
+    @Query("SELECT pa FROM PrixArticles pa WHERE pa.entreprise = :e AND pa.actif = :active and pa.pointVente.depotId.id= :magasinid")
+    Page<PrixArticles> findAllByEntrepriseProduitActifMagasin(@Param("e") Entreprise e, @Param("active") Boolean active, Pageable pageable, @Param("magasinid") Long magasinid);
+
+    @Query("SELECT DISTINCT pa FROM PrixArticles pa WHERE pa.entreprise = :e AND pa.pointVente.produit.libelle LIKE %:search% and pa.pointVente.depotId.id= :magasinid")
+    Page<PrixArticles> findProduitLibelleByEntrepriseWithFilterMagasin(@Param("e") Entreprise e, @Param("search") String search, Pageable pageable, @Param("magasinid") Long magasinid);
+
     List<PrixArticles> findTop10000ByActifTrueOrderByDateCreationDesc();
 
     @Query("SELECT pa FROM PrixArticles pa WHERE pa.pointVente.produit.reference= :ref and pa.pointVente.boutique.id= :boutiqueid and pa.entreprise.actif=true")

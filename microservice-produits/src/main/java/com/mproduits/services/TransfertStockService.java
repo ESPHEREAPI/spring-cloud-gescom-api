@@ -128,8 +128,9 @@ public class TransfertStockService {
         transfert.setValeurEstimation(valeurEstimation);
         transfert.setNotes(requete.getNotes());
         transfert.setEntreprise(e);
-        // TODO: récupérer depuis SecurityContext
-        transfert.setUtilisateur(requete.getUsername());
+        // Identite verifiee par le JWT - jamais celle envoyee par le client
+        // dans le corps de la requete (falsifiable).
+        transfert.setUtilisateur(tenantContext.currentUsername());
 
         TransfertStock transfertSauve = transfertStockRepository.save(transfert);
 

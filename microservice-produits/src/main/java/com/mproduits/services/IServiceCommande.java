@@ -76,6 +76,7 @@ public interface IServiceCommande {
 
     public String deleteOneProduit(Produit p);
     public Page<PrixArticles> getPrixArticles(int page, int size, String filter,Long boutiqueid);
+    public Page<PrixArticles> getPrixArticlesByMagasin(int page, int size, String filter, Long magasinid);
     List<PrixArticles> getPrixArticlesFilster(String search,Long boutiqueid);
     public BigDecimal stockProduit(Long produitId ,Long boutiqueid);
     public BigDecimal stockDepot(Long produitId ,Long boutiqueid);

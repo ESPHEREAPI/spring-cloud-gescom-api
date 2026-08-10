@@ -91,13 +91,12 @@ public class CaisseController {
         boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
         List<ProduitDto> articles = barcodeService.getTopArticles(boutiqueid);
 
-        // Cache plus long pour les articles populaires
-        CacheControl cacheControl = CacheControl.maxAge(10, TimeUnit.MINUTES)
-                .cachePublic();
-
-        return ResponseEntity.ok()
-                .cacheControl(cacheControl)
-                .body(articles);
+        // Pas de Cache-Control HTTP ici : le cache serveur (Caffeine,
+        // "topArticles") joue deja ce role et est correctement evince des
+        // qu'un article est approvisionne/transfere. Un Cache-Control
+        // navigateur en plus empecherait cette eviction d'avoir un effet
+        // visible avant l'expiration du cache navigateur.
+        return ResponseEntity.ok().body(articles);
     }
     
     

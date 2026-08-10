@@ -24,6 +24,7 @@ import com.mproduits.security.TenantContext;
 import java.awt.PointerInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
@@ -70,6 +71,10 @@ public class TransfertStockService {
      * @return Réponse avec détails du transfert effectué
      * @throws IllegalArgumentException si la requête est invalide
      */
+    // Un article qui arrive dans une boutique par transfert doit apparaitre
+    // immediatement en caisse - voir la meme justification sur
+    // ServiceCommande.addProduitByPointVente.
+    @CacheEvict(value = {"topArticles", "produits", "articleAutocomplete"}, allEntries = true)
     public TransfertStockResponse effectuerTransfert(TransfertStockRequest requete) {
         log.info("Début du transfert de stock: {} unités du produit {} de {} vers {}",
                 requete.getQuantite(), requete.getProduitId(),

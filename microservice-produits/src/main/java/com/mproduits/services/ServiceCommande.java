@@ -57,6 +57,7 @@ import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -471,6 +472,11 @@ public class ServiceCommande implements IServiceCommande {
 
     @Override
     @Transactional(propagation = Propagation.REQUIRED)
+    // Un article fraichement approvisionne doit apparaitre immediatement en
+    // caisse - sans ceci, le cache Caffeine "topArticles" (10 min, voir
+    // BarcodeService.getTopArticles) continue de servir l'ancienne liste et
+    // le nouvel article reste invisible en Vente Articles jusqu'a expiration.
+    @CacheEvict(value = {"topArticles", "produits", "articleAutocomplete"}, allEntries = true)
     public void addProduitByPointVente(Commande commande, Boutique boutique, Entreprise entreprise, Mois mois, Magasin depot, Barcodeproduit barcodeProduit) {
         try {
 // Gestion du code-barres
@@ -547,6 +553,11 @@ public class ServiceCommande implements IServiceCommande {
             newpointVente.setDateReception(new Date());
             newpointVente.setDepotId(commande.getMagasinid());
             newpointVente.setEntreeProduit(commande.getQuantite());
+            // Premiere reception pour ce produit dans cette boutique : le stock
+            // avant reception est bien zero (jamais mis a zero explicitement
+            // avant, ce qui laissait le champ null -> NaN a l'affichage cote
+            // Gestion Approvisionnement, entreeProduit + stockInitial).
+            newpointVente.setStockInitial(BigDecimal.ZERO);
             newpointVente.setStockFinalTheorie(commande.getQuantite());
             newpointVente.setSortiProduit(BigDecimal.ZERO);
             newpointVente.setEntreprise(entreprise);

@@ -2,6 +2,7 @@ package com.mproduits.security;
 
 import com.mproduits.repositories.BoutiqueRepositories;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 /**
@@ -39,6 +40,32 @@ public class BoutiqueAccessGuard {
                 .orElse(false);
         if (!appartient) {
             throw new TenantScopeException("Cette boutique n'appartient pas a votre compagnie.");
+        }
+    }
+
+    /**
+     * Verification stricte pour les ecrans de caisse/vente (argent, tickets,
+     * annulations) : en plus de l'appartenance a la compagnie, un compte
+     * CAISSIER ne peut agir que sur SA boutique assignee (JWT), pas
+     * seulement une boutique de la meme compagnie - empeche un caissier de
+     * la boutique A de consulter/agir sur la caisse de la boutique B.
+     * Les autres roles (admin, gerant...) ne sont pas restreints ici, pour
+     * ne pas casser les ecrans de supervision multi-boutique (Dashboard,
+     * Approvisionnement, Historique Caisse consulte par un gerant...).
+     */
+    public void verifierBoutiqueUtilisateur(Long boutiqueId) {
+        verifierAppartientALaCompagnieCourante(boutiqueId);
+
+        boolean estCaissier = SecurityContextHolder.getContext().getAuthentication() != null
+                && SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                        .anyMatch(a -> "ROLE_CAISSIER".equals(a.getAuthority()));
+        if (!estCaissier) {
+            return;
+        }
+
+        Long boutiqueUtilisateur = tenantContext.currentBoutiqueId();
+        if (boutiqueUtilisateur == null || !boutiqueUtilisateur.equals(boutiqueId)) {
+            throw new TenantScopeException("Acces refuse : vous ne pouvez agir que sur votre boutique assignee.");
         }
     }
 }

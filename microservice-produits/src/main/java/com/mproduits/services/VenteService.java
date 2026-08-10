@@ -34,6 +34,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
 /**
@@ -110,11 +111,20 @@ public class VenteService {
         return new PageImpl<>(venteDtos, pageable, ventePage.getTotalElements());
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public VenteDto updateStatut(Long id, String username, String statut, Long boutiqueid) {
         // Scope compagnie : empeche un appelant d'agir sur une vente d'une autre
         // compagnie meme s'il fournit un boutiqueid valide de sa propre compagnie.
         Vente vente = venteRepository.findByIdAndBoutique_Compagnie_Id(id, tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new RuntimeException("Vente non trouvée"));
+
+        // ANNULEE est un etat terminal : sans ce garde-fou, ré-annuler restaure
+        // le stock une seconde fois, et repasser a TERMINEE ne le redecremente
+        // jamais - un moyen de camoufler une demarque derriere un aller-retour
+        // de statut.
+        if (vente.getStatut() == StatutVente.ANNULEE) {
+            throw new BadRequestException("Cette vente est deja annulee, aucun changement de statut n'est plus possible");
+        }
 
         vente.setStatut(StatutVente.valueOf(statut));
 

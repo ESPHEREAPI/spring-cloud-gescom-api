@@ -132,7 +132,9 @@ public class BarcodeService {
     public Long valideVente(VenteDto venteDto) {
         try {
             var entreprise = findActiveEntreprise();
-            var vendeur = findPersonneByUsername(venteDto.getUserinsert());
+            // Identite verifiee par le JWT - jamais celle envoyee par le client
+            // (falsifiable), qui sert de "Caissier" sur le ticket imprime.
+            var vendeur = findPersonneByUsername(tenantContext.currentUsername());
             var client = findOrCreateClient(venteDto.getClient());
 
             var vente = creerVente(venteDto, entreprise, vendeur, client);
@@ -164,7 +166,7 @@ public class BarcodeService {
     public Long valideVente(VenteDto venteDto, long numeroCommande, Long boutiqueid) {
         try {
             var entreprise = findActiveEntreprise();
-            var vendeur = findPersonneByUsername(venteDto.getUserinsert());
+            var vendeur = findPersonneByUsername(tenantContext.currentUsername());
             var client = findOrCreateClient(venteDto.getClient());
 
             // Récupérer la vente en cours

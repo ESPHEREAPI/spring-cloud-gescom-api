@@ -18,6 +18,8 @@ import java.math.BigInteger;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -321,6 +323,16 @@ public interface CommandeRepositories extends JpaRepository<Commande, Long>{
     Optional<BigDecimal>stockFinalDepot(@Param("depot") Magasin depot,@Param("produit") Produit produit, @Param("e") Entreprise e);
     
      List<Commande> findByMagasinid(Magasin magasin);
+
+    // Liste "Prix Articles" pour un magasin de stock (depot) - le stock y est
+    // enregistre directement sur Commande, jamais sur PrixArticles/PointVente
+    // (voir ServiceCommande.approvisionner/handleBoutiqueApprovisionnement,
+    // qui n'alimentent PointVente que pour le flux point de vente).
+    @Query("SELECT c FROM Commande c WHERE c.magasinid.id = :magasinid ORDER BY c.id DESC")
+    Page<Commande> findByMagasinIdPage(@Param("magasinid") Long magasinid, Pageable pageable);
+
+    @Query("SELECT c FROM Commande c WHERE c.magasinid.id = :magasinid AND c.produit.libelle LIKE %:search% ORDER BY c.id DESC")
+    Page<Commande> findByMagasinIdAndProduitLibelleLike(@Param("magasinid") Long magasinid, @Param("search") String search, Pageable pageable);
     List<Commande> findByProduit(Produit produit);
     
     /**

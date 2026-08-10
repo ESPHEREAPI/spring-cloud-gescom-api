@@ -6,6 +6,7 @@ package com.mproduits.web.controller;
 
 import com.mproduits.dto.VenteDto;
 import com.mproduits.security.BoutiqueAccessGuard;
+import com.mproduits.security.TenantContext;
 import com.mproduits.services.VenteService;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -33,6 +34,7 @@ public class VenteController {
 
     private final VenteService venteService;
     private final BoutiqueAccessGuard boutiqueAccessGuard;
+    private final TenantContext tenantContext;
 
     @GetMapping
     public Page<VenteDto> getVentes(
@@ -46,14 +48,16 @@ public class VenteController {
 
          @RequestParam(required = false) String search, @RequestParam(required = true) Long boutiqueid
     ) {
-        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+        boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
         return venteService.getVentes(page, size, statut, dateDebut, dateFin,search,boutiqueid);
     }
 
-    @PatchMapping("/{venteId}/{username}/statut/{boutiqueid}")
-    public VenteDto updateStatut(@PathVariable Long venteId,@PathVariable String username,@PathVariable Long boutiqueid, @RequestBody Map<String, String> body) {
-        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
-        return venteService.updateStatut(venteId,username, body.get("statut"),boutiqueid);
+    @PatchMapping("/{venteId}/statut/{boutiqueid}")
+    public VenteDto updateStatut(@PathVariable Long venteId,@PathVariable Long boutiqueid, @RequestBody Map<String, String> body) {
+        boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
+        // Identite verifiee par le JWT - jamais celle envoyee par le client,
+        // qui servait auparavant a maquiller l'auteur d'une annulation de vente.
+        return venteService.updateStatut(venteId, tenantContext.currentUsername(), body.get("statut"),boutiqueid);
     }
 
     @GetMapping("/{id}")
@@ -63,13 +67,13 @@ public class VenteController {
 
     @GetMapping("/vente/{numeTicket}/{boutiqueid}")
     public ResponseEntity<VenteDto> getVente(@PathVariable String numeTicket,@PathVariable Long boutiqueid){
-        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+        boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
         VenteDto venteDto=  venteService.getVente(numeTicket,boutiqueid);
         return venteDto==null ? ResponseEntity.ok(new VenteDto()):ResponseEntity.ok(venteDto);
     }
      @GetMapping("/vente/e-com/{numeTicket}/{boutiqueid}")
     public ResponseEntity<VenteDto> getVentes(@PathVariable long numeTicket,@PathVariable Long boutiqueid){
-        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+        boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
         VenteDto venteDto=  venteService.getVenteForECom(numeTicket,boutiqueid);
         return venteDto==null ? ResponseEntity.ok(new VenteDto()):ResponseEntity.ok(venteDto);
     }

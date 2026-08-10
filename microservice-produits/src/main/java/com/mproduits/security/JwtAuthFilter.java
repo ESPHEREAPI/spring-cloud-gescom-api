@@ -45,6 +45,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 String username = jwtService.getUsername(token);
                 personneRepository.findByUserName(username).ifPresent(this::authenticate);
                 request.setAttribute("compagnieId", jwtService.getCompagnieId(token));
+                request.setAttribute("boutiqueId", jwtService.getBoutiqueId(token));
             }
         }
 

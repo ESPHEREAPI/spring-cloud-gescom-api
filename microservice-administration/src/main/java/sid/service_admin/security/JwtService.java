@@ -29,11 +29,18 @@ public class JwtService {
         return new Date(System.currentTimeMillis() + jwtExpirationMs);
     }
 
-    public String generateToken(String username, Long compagnieId, String roleName, Date expiryDate) {
+    /**
+     * boutiqueId : boutique assignee au compte (null pour un admin/gerant
+     * non rattache a une boutique precise) - permet cote microservice-produits
+     * de restreindre un compte CAISSIER a sa propre boutique (voir
+     * BoutiqueAccessGuard.verifierBoutiqueUtilisateur).
+     */
+    public String generateToken(String username, Long compagnieId, String roleName, Long boutiqueId, Date expiryDate) {
         return Jwts.builder()
                 .setSubject(username)
                 .claim("compagnieId", compagnieId)
                 .claim("role", roleName)
+                .claim("boutiqueId", boutiqueId)
                 .setIssuedAt(new Date())
                 .setExpiration(expiryDate)
                 .signWith(key())

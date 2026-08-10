@@ -53,6 +53,19 @@ public class JwtService {
         return Long.valueOf(compagnieId.toString());
     }
 
+    /**
+     * Boutique assignee au compte (claim optionnel - absent pour un admin ou
+     * un token emis avant l'ajout de ce claim). Utilise par BoutiqueAccessGuard
+     * pour restreindre un compte CAISSIER a sa propre boutique.
+     */
+    public Long getBoutiqueId(String token) {
+        Object boutiqueId = parse(token).getBody().get("boutiqueId");
+        if (boutiqueId == null) {
+            return null;
+        }
+        return Long.valueOf(boutiqueId.toString());
+    }
+
     private Jws<Claims> parse(String token) {
         return Jwts.parserBuilder().setSigningKey(key()).build().parseClaimsJws(token);
     }

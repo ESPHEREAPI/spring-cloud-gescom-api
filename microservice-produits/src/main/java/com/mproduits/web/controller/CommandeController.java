@@ -56,7 +56,9 @@ import java.io.Serializable;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -458,17 +460,53 @@ public class CommandeController implements Serializable {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String search
     ) {
-        magasinRepository.findByIdAndCompagnie_Id(magasinid, tenantContext.currentCompagnieId())
+        Magasin magasin = magasinRepository.findByIdAndCompagnie_Id(magasinid, tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new IllegalArgumentException("Magasin introuvable : " + magasinid));
-        Page<PrixArticles> prixArticles = commandeService.getPrixArticlesByMagasin(page, size, search, magasinid);
 
         Map<String, Object> response = new HashMap<>();
-        response.put("content", prixArticles.getContent());
-        response.put("totalElements", prixArticles.getTotalElements());
-        response.put("totalPages", prixArticles.getTotalPages());
-        response.put("page", prixArticles.getNumber());
+
+        if (magasin.getBoutiqueId() == null) {
+            // Magasin de stock (depot) : le stock vit sur Commande, pas sur
+            // PrixArticles/PointVente - on reconstruit une forme compatible
+            // avec ce que le frontend attend (item.pointVente.produit...).
+            Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+            Page<Commande> commandes = (search != null && !search.isEmpty())
+                    ? commandeRepositories.findByMagasinIdAndProduitLibelleLike(magasinid, search, pageable)
+                    : commandeRepositories.findByMagasinIdPage(magasinid, pageable);
+
+            response.put("content", commandes.getContent().stream().map(this::toPrixArticlesCompatible).toList());
+            response.put("totalElements", commandes.getTotalElements());
+            response.put("totalPages", commandes.getTotalPages());
+            response.put("page", commandes.getNumber());
+        } else {
+            Page<PrixArticles> prixArticles = commandeService.getPrixArticlesByMagasin(page, size, search, magasinid);
+            response.put("content", prixArticles.getContent());
+            response.put("totalElements", prixArticles.getTotalElements());
+            response.put("totalPages", prixArticles.getTotalPages());
+            response.put("page", prixArticles.getNumber());
+        }
 
         return ResponseEntity.ok(response);
+    }
+
+    /** Presente une ligne Commande (stock de depot) avec les memes champs qu'une PrixArticles, pour la liste "Prix Articles" cote frontend. */
+    private Map<String, Object> toPrixArticlesCompatible(Commande commande) {
+        Map<String, Object> pointVente = new HashMap<>();
+        pointVente.put("produit", commande.getProduit());
+        pointVente.put("entreeProduit", commande.getEntreeProduit());
+        pointVente.put("stockInitial", commande.getStockInitial());
+        pointVente.put("stockFinalTheorie", commande.getStockFinalTheorie());
+        pointVente.put("sortiProduit", commande.getSortiProduit());
+        pointVente.put("boutique", null);
+
+        Map<String, Object> item = new HashMap<>();
+        item.put("id", commande.getId());
+        item.put("pointVente", pointVente);
+        item.put("remise", BigDecimal.ZERO);
+        item.put("tva", BigDecimal.ZERO);
+        item.put("prixVenteNet", commande.getPrixVente());
+        item.put("prixVenteTTC", commande.getPrixVente());
+        return item;
     }
 
     @GetMapping("/prix-articles/filter/{boutiqueid}")

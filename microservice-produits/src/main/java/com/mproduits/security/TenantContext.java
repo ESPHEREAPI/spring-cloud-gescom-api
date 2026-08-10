@@ -28,6 +28,16 @@ public class TenantContext {
     }
 
     /**
+     * Boutique assignee a l'utilisateur courant (claim du JWT, pose par
+     * JwtAuthFilter) - null pour un compte non rattache a une boutique
+     * precise (admin, gerant, compte sans compagnie...). A utiliser
+     * uniquement via BoutiqueAccessGuard.verifierBoutiqueUtilisateur().
+     */
+    public Long currentBoutiqueId() {
+        return (Long) request.getAttribute("boutiqueId");
+    }
+
+    /**
      * Identite verifiee par le JWT (posee par JwtAuthFilter dans le
      * SecurityContext), a utiliser pour toute trace d'audit (qui a saisi/
      * modifie quoi). A ne jamais remplacer par une valeur fournie par le

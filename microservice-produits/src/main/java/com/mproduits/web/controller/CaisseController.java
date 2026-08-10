@@ -88,7 +88,7 @@ public class CaisseController {
             description = "Retourne les 50 articles les plus populaires pour l'affichage initial")
     @ApiResponse(responseCode = "200", description = "Liste des articles populaires")
     public ResponseEntity<List<ProduitDto>> getTopArticles(@PathVariable(name = "boutiqueid") long boutiqueid) {
-        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+        boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
         List<ProduitDto> articles = barcodeService.getTopArticles(boutiqueid);
 
         // Cache plus long pour les articles populaires
@@ -125,20 +125,20 @@ public class CaisseController {
 
     @PostMapping("/vente/{numerocommande}")
     public ResponseEntity<Long> getByBarcode(@PathVariable(name = "numerocommande") long numerocommande,@RequestBody VenteDto venteDto) {
-        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(venteDto.getBoutiqueid());
+        boutiqueAccessGuard.verifierBoutiqueUtilisateur(venteDto.getBoutiqueid());
         Long vendid =  numerocommande==0L ? barcodeService.valideVente(venteDto): barcodeService.valideVente(venteDto, numerocommande,venteDto.getBoutiqueid());
         return ResponseEntity.ok(vendid);
     }
      @PostMapping("/vente/e-com/{numerocommande}")
     public ResponseEntity<Long> getVenteByEcom(@PathVariable(name = "numerocommande") long numerocommande,@RequestBody VenteDto venteDto) {
-        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(venteDto.getBoutiqueid());
+        boutiqueAccessGuard.verifierBoutiqueUtilisateur(venteDto.getBoutiqueid());
         Long vendid = barcodeService.valideVente(venteDto,numerocommande,venteDto.getBoutiqueid());
         return ResponseEntity.ok(vendid);
     }
 
     @GetMapping("/reference/{boutiqueid}")
     public ResponseEntity<ProduitDto> getProduitByReferenceSearch(@PathVariable Long boutiqueid,@RequestParam String reference) {
-        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+        boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
         ProduitDto pdto = barcodeService.getArticlesByReference(reference,boutiqueid);
         return ResponseEntity.ok(pdto);
 
@@ -146,7 +146,7 @@ public class CaisseController {
 
     @GetMapping("/produit/{produitid}/{boutiqueid}")
     public ResponseEntity<ProduitDto> getProduitById(@PathVariable Long produitid,@PathVariable Long boutiqueid) {
-        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+        boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
         ProduitDto pdto = barcodeService.getArticlesByProduitId(produitid,boutiqueid);
         return ResponseEntity.ok(pdto);
 
@@ -1361,7 +1361,7 @@ public class CaisseController {
 
      @GetMapping("/allcaissier/{boutiqueid}")
      public ResponseEntity<List<UserDTO>> allCaissier(@PathVariable Long boutiqueid){
-        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+        boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
         List<UserDTO> caissiers= barcodeService.listeCaissiers(boutiqueid);
             return ResponseEntity.ok(caissiers);
      }

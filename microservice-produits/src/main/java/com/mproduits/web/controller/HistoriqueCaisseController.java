@@ -40,40 +40,40 @@ public class HistoriqueCaisseController {
     //recuperation des annee pour les ventes
     @GetMapping("/{vendeur}/{boutiqueid}/annees")
     public ResponseEntity<List<Annee>> listAnnee(@PathVariable("vendeur") String vendeur,@PathVariable("boutiqueid") Long boutiqueid) {
-        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+        boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
         List<Annee> allAnnees = historiqueCaisseService.listeAnneeByVenteAndVendeur(vendeur,boutiqueid);
         return ResponseEntity.ok(allAnnees);
     }
 
     @GetMapping("/annees/{boutiqueid}")
     public ResponseEntity<List<Annee>> listAnnee(@PathVariable Long boutiqueid) {
-        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+        boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
         List<Annee> allAnnees = historiqueCaisseService.listeAnneeByVente(boutiqueid);
         return ResponseEntity.ok(allAnnees);
     }
 
     @GetMapping("/all-dates/{anneeId}/{boutiqueid}")
     public ResponseEntity<List<Date>> listDates(@PathVariable("anneeId") Long anneeId,@PathVariable("boutiqueid") Long boutiqueid) {
-        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+        boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
         List<Date> allDates = historiqueCaisseService.listeDateVenteByAnnee(anneeId,boutiqueid);
         return ResponseEntity.ok(allDates);
     }
 
     @GetMapping("/dates/{vendeur}")
     public ResponseEntity<List<Date>> listDates(@PathVariable("vendeur") String vendeur, @RequestParam("anneeId") int anneeid,@RequestParam("boutiqueid") Long boutiqueid) {
-        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+        boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
         List<Date> allDates = historiqueCaisseService.listeDateVente(anneeid, vendeur,boutiqueid);
         return ResponseEntity.ok(allDates);
     }
      @GetMapping("/dates")
     public ResponseEntity<List<Date>> listDatesCaisse( @RequestParam("anneeId") int anneeid,@RequestParam("boutiqueid") Long boutiqueid) {
-        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+        boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
         List<Date> allDates = historiqueCaisseService.listeDateVente(anneeid,boutiqueid);
         return ResponseEntity.ok(allDates);
     }
     @GetMapping("{datevente}/historique")
     public ResponseEntity<List<VenteDto>> listDates(@PathVariable("datevente") String datevente, @RequestParam("anneeId") int anneeid, @RequestParam("vendeur") String vendeur, @RequestParam("boutiqueid") Long boutiqueid) {
-        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+        boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
         try {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
             Date parsedDate = sdf.parse(datevente);
@@ -106,7 +106,7 @@ public class HistoriqueCaisseController {
             @RequestParam("dateVente") String dateVente,
             @RequestParam("anneeId") int anneeid,
              @RequestParam("boutiqueid") Long boutiqueid) {
-        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+        boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
         try {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
             Date parsedDate = sdf.parse(dateVente);
@@ -143,7 +143,7 @@ public class HistoriqueCaisseController {
             @RequestParam("fin") String fin,
             @RequestParam("anneeId") int anneeId,
             @RequestParam("boutiqueid") Long boutiqueid) {
-        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+        boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
         try {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
             Date parsedDebut = sdf.parse(debut);

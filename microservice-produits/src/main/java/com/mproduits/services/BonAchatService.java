@@ -73,9 +73,30 @@ public class BonAchatService {
         BonAchat existant = bonAchatRepository.findByIdAndClientBonAchat_Compagnie_Id(id, compagnieCourante())
                 .orElseThrow(() -> new EntityNotFoundException("Bon d'achat non trouve avec l'ID: " + id));
 
+        // Empeche de remettre a zero un bon deja consomme (double depense) ou de
+        // gonfler artificiellement le credit disponible via un montant fictif.
+        java.math.BigDecimal montantTotal = bonAchat.getMontantTotal();
+        java.math.BigDecimal montantUtilise = bonAchat.getMontantUtilise();
+        if (montantTotal == null || montantTotal.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            throw new BadRequestException("Le montant total doit etre superieur a zero");
+        }
+        if (montantUtilise == null || montantUtilise.compareTo(java.math.BigDecimal.ZERO) < 0) {
+            throw new BadRequestException("Le montant utilise ne peut pas etre negatif");
+        }
+        if (montantUtilise.compareTo(montantTotal) > 0) {
+            throw new BadRequestException("Le montant utilise ne peut pas depasser le montant total");
+        }
+        // Un PUT generaliste ne doit jamais pouvoir FAIRE BAISSER la consommation
+        // deja enregistree (ex: remettre a zero un bon deja utilise pour le
+        // rendre a nouveau utilisable) - seule une hausse (nouvelle consommation)
+        // ou une valeur inchangee est autorisee ici.
+        if (montantUtilise.compareTo(existant.getMontantUtilise()) < 0) {
+            throw new BadRequestException("Le montant utilise ne peut pas etre diminue via cette operation");
+        }
+
         existant.setCodeBon(bonAchat.getCodeBon());
-        existant.setMontantTotal(bonAchat.getMontantTotal());
-        existant.setMontantUtilise(bonAchat.getMontantUtilise());
+        existant.setMontantTotal(montantTotal);
+        existant.setMontantUtilise(montantUtilise);
         existant.setDateExpiration(bonAchat.getDateExpiration());
         existant.setActif(bonAchat.isActif());
         return bonAchatRepository.save(existant);

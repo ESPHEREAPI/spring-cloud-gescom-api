@@ -305,11 +305,17 @@ public interface CommandeRepositories extends JpaRepository<Commande, Long>{
     // Nombre d'approvisionnements recus + valeur d'achat correspondante sur
     // une periode, pour une compagnie - voir DashboardService (dashboard
     // transfert stock, graphiques "Evolution"/"Mouvements").
-    @Query("SELECT COUNT(c), COALESCE(SUM(c.quantite * c.prixAchat), 0) FROM Commande c " +
+    @Query("SELECT COUNT(c) FROM Commande c " +
            "WHERE c.entreprise.entreprisePK.compagnieId = :compagnieId AND c.dateReception BETWEEN :debut AND :fin")
-    List<Object[]> aggregerApprovisionnementParPeriode(@Param("compagnieId") Long compagnieId,
-                                                         @Param("debut") java.util.Date debut,
-                                                         @Param("fin") java.util.Date fin);
+    long countApprovisionnementParPeriode(@Param("compagnieId") Long compagnieId,
+                                           @Param("debut") java.util.Date debut,
+                                           @Param("fin") java.util.Date fin);
+
+    @Query("SELECT COALESCE(SUM(c.entreeProduit * c.prixAchat), 0) FROM Commande c " +
+           "WHERE c.entreprise.entreprisePK.compagnieId = :compagnieId AND c.dateReception BETWEEN :debut AND :fin")
+    java.math.BigDecimal sumValeurApprovisionnementParPeriode(@Param("compagnieId") Long compagnieId,
+                                                                @Param("debut") java.util.Date debut,
+                                                                @Param("fin") java.util.Date fin);
 
     @Query("SELECT c FROM Commande c WHERE c.numeroRepartition = :code")
     Commande findByCode(@Param("code") String code);

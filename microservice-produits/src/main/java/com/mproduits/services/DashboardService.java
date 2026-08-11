@@ -329,12 +329,13 @@ public class DashboardService {
 
             // Approvisionnements recus (entrees "reelles" de stock, pas
             // seulement les transferts internes) - valeur au prix d'achat.
-            List<Object[]> approvisionnements = commandeRepository
-                    .aggregerApprovisionnementParPeriode(compagnieId, dateDebut, dateFin);
-            if (!approvisionnements.isEmpty()) {
-                Object[] ligne = approvisionnements.get(0);
-                entrees += ((Number) ligne[0]).intValue();
-                valeurMagasins = valeurMagasins.add((BigDecimal) ligne[1]);
+            long nombreApprovisionnements = commandeRepository
+                    .countApprovisionnementParPeriode(compagnieId, dateDebut, dateFin);
+            BigDecimal valeurApprovisionnements = commandeRepository
+                    .sumValeurApprovisionnementParPeriode(compagnieId, dateDebut, dateFin);
+            entrees += (int) nombreApprovisionnements;
+            if (valeurApprovisionnements != null) {
+                valeurMagasins = valeurMagasins.add(valeurApprovisionnements);
             }
 
             // Ventes realisees (sorties "reelles" de stock) - valeur au prix

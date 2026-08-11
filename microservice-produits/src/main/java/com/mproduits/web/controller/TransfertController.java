@@ -45,6 +45,8 @@ public class TransfertController {
     private TransfertStockRepository transfertStockRepository;
     @Autowired
     private TenantContext tenantContext;
+    @Autowired
+    private com.mproduits.utiles.PDFGeneratorBordereauLivraison pdfGeneratorBordereauLivraison;
 
 
     /**
@@ -120,6 +122,25 @@ public class TransfertController {
         }
 
         return ResponseEntity.ok(transfert.get());
+    }
+
+    // Bordereau de livraison PDF - piece justificative de la reception a
+    // faire signer par le depot destinataire (voir tache stock : chaque
+    // transfert doit generer un bordereau).
+    @GetMapping("/{id}/bordereau")
+    public ResponseEntity<byte[]> telechargerBordereau(@PathVariable Long id) {
+        TransfertStock transfert = transfertStockRepository
+                .findByIdAndEntreprise_EntreprisePK_CompagnieId(id, tenantContext.currentCompagnieId())
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Transfert non trouvé avec l'ID: " + id));
+
+        com.mproduits.model.Compagnie compagnie = transfert.getEntreprise() != null
+                ? transfert.getEntreprise().getCompagnie() : null;
+        byte[] pdf = pdfGeneratorBordereauLivraison.genererBordereau(transfert, compagnie);
+
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("inline", "bordereau-livraison-" + id + ".pdf");
+        return ResponseEntity.ok().headers(headers).body(pdf);
     }
 
     /**

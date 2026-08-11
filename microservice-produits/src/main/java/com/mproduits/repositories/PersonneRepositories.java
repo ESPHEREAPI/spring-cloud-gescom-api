@@ -44,4 +44,12 @@ public interface PersonneRepositories extends JpaRepository<Personne, Long> {
     @Query("SELECT p FROM Personne p WHERE p.profilid.code = :profilCode AND p.compteActif = true AND p.boutique.id = :boutiqueId")
     List<Personne> findActiveUserByProfilAndBoutiqueId(@Param("profilCode") String profilCode, @Param("boutiqueId") Long boutiqueId);
 
+    // Variante compagnie entiere (toutes boutiques confondues) - un
+    // admin/gerant qui n'est rattache a aucune boutique precise (role
+    // transverse a la compagnie) n'a pas de boutiqueId exploitable pour
+    // findActiveUserByProfilAndBoutiqueId ci-dessus, ce qui lui renvoyait
+    // toujours une liste de caissiers vide (voir Historique Caisse).
+    @Query("SELECT p FROM Personne p WHERE p.profilid.code = :profilCode AND p.compteActif = true AND p.boutique.compagnie.id = :compagnieId")
+    List<Personne> findActiveUserByProfilAndCompagnieId(@Param("profilCode") String profilCode, @Param("compagnieId") Long compagnieId);
+
 }

@@ -10,6 +10,7 @@ import com.mproduits.dto.ProduitDto;
 import com.mproduits.dto.DepoteDto;
 import com.mproduits.dto.InventaireDto;
 import com.mproduits.dto.MargeVenteDto;
+import com.mproduits.dto.PaiementDto;
 import com.mproduits.dto.PointVenteDto;
 import com.mproduits.dto.UserDTO;
 import com.mproduits.dto.VenteDto;
@@ -29,6 +30,7 @@ import com.mproduits.model.PointVente;
 import com.mproduits.model.PrixAchat;
 import com.mproduits.model.Produit;
 import com.mproduits.model.Vente;
+import com.mproduits.repositories.BonAchatRepositories;
 import com.mproduits.repositories.EntrepriseRepositories;
 import com.mproduits.repositories.LigneVenteRepositories;
 import com.mproduits.repositories.PaiementRepositories;
@@ -76,6 +78,8 @@ public class MapperDtoImpl {
     EntrepriseRepositories entrepriseRepositories;
     @Autowired
     com.mproduits.services.EntrepriseService entrepriseService;
+    @Autowired
+    BonAchatRepositories bonAchatRepositories;
     Entreprise e=null;
     public ProduitDto mapperProduitDto(Produit p,Boutique boutiqueid) {
         ProduitDto produitDto = new ProduitDto();
@@ -215,6 +219,23 @@ public class MapperDtoImpl {
         } else {
             venteDto.setTypePaiement(null); // ou "INCONNU"
         }
+        // Ventilation par mode - sans ceci, un client (ex. Historique Caisse)
+        // ne peut recalculer un total par mode que sur typePaiement, une
+        // simple chaine jointe illisible pour un paiement mixte.
+        venteDto.setPaiements(paiementsVente.stream()
+                .map(p -> {
+                    PaiementDto dto = new PaiementDto();
+                    dto.setTypePaiement(p.getTypePaiement() != null ? p.getTypePaiement().name() : null);
+                    dto.setMontant(p.getMontant());
+                    dto.setReference(p.getReference());
+                    return dto;
+                })
+                .collect(Collectors.toList()));
+
+        // Bon(s) d'achat emis en remplacement d'un rendu de monnaie pour ce
+        // ticket - aucune espece sortie du tiroir pour ce montant.
+        venteDto.setMontantBonEmis(bonAchatRepositories.sumMontantByNumeroTicketOrigineAndCompagnie(
+                vente.getNumeroTicket(), tenantContext.currentCompagnieId()));
 
         // Gestion vendeur
         if (vente.getVendeur() != null) {

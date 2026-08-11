@@ -76,7 +76,8 @@ public class BonAchatController {
     // par defaut, contrairement au POST generique qui exige tous les champs.
     @PostMapping("/emettre-reliquat")
     public ResponseEntity<BonAchat> emettreDepuisRendu(@RequestBody EmettreReliquatRequest request) {
-        BonAchat bon = bonAchatService.emettreDepuisRendu(request.getNomClient(), request.getTelephoneClient(), request.getMontant());
+        BonAchat bon = bonAchatService.emettreDepuisRendu(request.getNomClient(), request.getTelephoneClient(),
+                request.getMontant(), request.getNumeroTicketOrigine());
         return ResponseEntity.status(HttpStatus.CREATED).body(bon);
     }
 
@@ -99,5 +100,6 @@ public class BonAchatController {
         private String nomClient;
         private String telephoneClient;
         private BigDecimal montant;
+        private String numeroTicketOrigine;
     }
 }

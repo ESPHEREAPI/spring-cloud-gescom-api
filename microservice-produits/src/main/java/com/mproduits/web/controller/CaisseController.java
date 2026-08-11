@@ -82,6 +82,8 @@ public class CaisseController {
     BarcodeService barcodeService;
     @Autowired
     BoutiqueAccessGuard boutiqueAccessGuard;
+    @Autowired
+    com.mproduits.security.TenantContext tenantContext;
 
     @GetMapping("/top-articles/{boutiqueid}")
     @Operation(summary = "Articles populaires",
@@ -1363,6 +1365,16 @@ public class CaisseController {
         boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
         List<UserDTO> caissiers= barcodeService.listeCaissiers(boutiqueid);
             return ResponseEntity.ok(caissiers);
+     }
+
+     // Variante compagnie entiere - pour un admin/gerant qui n'est rattache a
+     // aucune boutique precise (boutiqueid absent/0 dans sa session), pour
+     // qui /allcaissier/{boutiqueid} renvoie toujours une liste vide (voir
+     // Historique Caisse, selecteur "Caissier").
+     @GetMapping("/allcaissier-compagnie")
+     public ResponseEntity<List<UserDTO>> allCaissierCompagnie(){
+        List<UserDTO> caissiers = barcodeService.listeCaissiersCompagnie(tenantContext.currentCompagnieId());
+        return ResponseEntity.ok(caissiers);
      }
      
      

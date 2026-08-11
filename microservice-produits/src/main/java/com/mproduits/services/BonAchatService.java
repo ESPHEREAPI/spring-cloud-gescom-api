@@ -177,7 +177,7 @@ public class BonAchatService {
     // avoir reutilisable. Le nom du client est obligatoire pour que le bon
     // reste reclamable si le ticket est perdu ; le telephone est optionnel
     // mais sert a retrouver/reutiliser une fiche client existante.
-    public BonAchat emettreDepuisRendu(String nomClient, String telephoneClient, BigDecimal montant) {
+    public BonAchat emettreDepuisRendu(String nomClient, String telephoneClient, BigDecimal montant, String numeroTicketOrigine) {
         if (nomClient == null || nomClient.isBlank()) {
             throw new BadRequestException("Le nom du client est requis pour émettre un bon d'achat");
         }
@@ -205,6 +205,7 @@ public class BonAchatService {
         bon.setDateExpiration(Date.from(Instant.now().plus(dureeValiditeReliquatJours(compagnieId), ChronoUnit.DAYS)));
         bon.setActif(true);
         bon.setClientBonAchat(client);
+        bon.setNumeroTicketOrigine(numeroTicketOrigine);
         return bonAchatRepository.save(bon);
     }
 

@@ -26,6 +26,12 @@ public class VenteDto {
     // d'achat). Si absent/vide, on retombe sur typePaiement/montantNet
     // (compatibilite avec les clients qui n'envoient encore qu'un seul mode).
     private List<PaiementDto> paiements;
+    // Montant des bons d'achat emis en remplacement d'un rendu de monnaie
+    // pour cette vente (voir BonAchat.numeroTicketOrigine) - aucune espece
+    // n'est sortie du tiroir pour ce montant, contrairement a un rendu
+    // classique. Utilise par Historique Caisse pour corriger le total
+    // "especes reellement en caisse".
+    private BigDecimal montantBonEmis;
     BigDecimal montantTotal, montantRecu, monnaieRendue, montantNet;
     private ClientDto client;
     BigDecimal remise;

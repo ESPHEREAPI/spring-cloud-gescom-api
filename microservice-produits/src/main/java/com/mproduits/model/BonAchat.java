@@ -52,4 +52,15 @@ public class BonAchat implements Serializable {
     @Temporal(TemporalType.TIMESTAMP)
     private Date dateImpression;
 
+    // Numero de ticket de la vente qui a genere ce bon (emis a la place d'un
+    // rendu de monnaie en especes - voir BonAchatService.emettreDepuisRendu).
+    // Correlation par ticket plutot que par FK vers Vente : la vente est
+    // encore en attente de synchronisation offline au moment ou ce bon est
+    // emis (voir vente.component.ts), elle n'a donc pas encore d'id serveur.
+    // Sert a exclure ce montant du "cash reellement sorti" dans le
+    // recapitulatif Historique Caisse (aucune espece n'a quitte le tiroir
+    // pour cette part de monnaie rendue).
+    @Column(name = "numero_ticket_origine")
+    private String numeroTicketOrigine;
+
 }

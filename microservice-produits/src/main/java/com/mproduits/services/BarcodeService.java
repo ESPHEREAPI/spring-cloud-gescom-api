@@ -352,6 +352,18 @@ public class BarcodeService {
                 .toList();
     }
 
+    /**
+     * Liste tous les caissiers actifs de la compagnie courante, toutes
+     * boutiques confondues - pour un admin/gerant sans boutique precise
+     * assignee (voir Historique Caisse, ecran de selection du caissier).
+     */
+    @Transactional(readOnly = true)
+    public List<UserDTO> listeCaissiersCompagnie(Long compagnieId) {
+        return personneRepositories.findActiveUserByProfilAndCompagnieId(PROFIL_CAISSE, compagnieId).stream()
+                .map(this::createUserDTO)
+                .toList();
+    }
+
     // ==================== Méthodes privées ====================
     /**
      * Charge les valeurs d'un PrixArticles vers ProduitDto

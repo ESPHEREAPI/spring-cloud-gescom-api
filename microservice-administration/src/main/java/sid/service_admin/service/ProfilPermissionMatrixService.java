@@ -111,6 +111,39 @@ public class ProfilPermissionMatrixService {
         return profilPermissionsRepository.findMenusVisiblesByProfil(profilId);
     }
 
+    /** true si ce profil a deja au moins une permission accordee (configuree manuellement ou deja semee). */
+    @Transactional(readOnly = true)
+    public boolean aDejaDesPermissions(Profil profil) {
+        return !profilPermissionsRepository.findByProfil(profil).isEmpty();
+    }
+
+    /**
+     * Accorde d'un coup un ensemble de menus/actions par defaut a un profil -
+     * utilise a la creation d'une compagnie (voir
+     * UserService#seedProfilsParDefautPourCompagnie) pour qu'un profil
+     * fraichement cree ne soit pas totalement vide dans la sidebar tant
+     * qu'un administrateur n'a pas configure la matrice manuellement (voir
+     * ecran Permission). Idempotent : ignore les couples deja accordes, et
+     * ignore silencieusement un code menu inconnu (ne doit jamais faire
+     * echouer la creation de la compagnie).
+     */
+    @Transactional
+    public void seedPermissionsParDefaut(Profil profil, List<String> menuCodes, List<sid.service_admin.enums.OperationType> actions) {
+        for (String code : menuCodes) {
+            Menu menu = menuRepository.findByCode(code);
+            if (menu == null) {
+                continue;
+            }
+            for (sid.service_admin.enums.OperationType action : actions) {
+                Permission permission = permissionRepository.findByMenu_IdAndOperationType(menu.getId(), action)
+                        .orElseGet(() -> permissionRepository.save(new Permission(menu, action)));
+                if (!profilPermissionsRepository.existsByProfilAndPermission(profil, permission)) {
+                    profilPermissionsRepository.save(new ProfilPermissions(profil, permission));
+                }
+            }
+        }
+    }
+
     /**
      * Catalogue complet Module -> Menu, independant de tout profil : vue de
      * reference pour un administrateur (ecran "Module Securite"), pas une

@@ -51,6 +51,7 @@ public class SuperAdminBootstrap implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         seedHierarchyRoles();
         seedProfilsPourCompagniesExistantes();
+        userService.seedPermissionsManquantesPourProfilsExistants();
 
         if (personneRepository.findByUserName(superAdminUsername).isPresent()) {
             return;

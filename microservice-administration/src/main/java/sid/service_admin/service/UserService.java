@@ -446,6 +446,54 @@ public class UserService implements Serializable {
      * Appele a la creation d'une compagnie (CompagnieService) et en
      * rattrapage au demarrage pour les compagnies existantes (SuperAdminBootstrap).
      */
+    // Menus par defaut par profil (codes reels seedes par InitiationDb - voir
+    // ProfilPermissionMatrixService#seedPermissionsParDefaut). Sans ceci, un
+    // profil fraichement cree n'a AUCUN menu visible tant qu'un administrateur
+    // n'a pas configure manuellement l'ecran Permission - decouvert en
+    // production avec un compte Caissier dont la sidebar etait entierement
+    // vide (seul le Dashboard, qui echappe a ce controle, restait visible).
+    private static final java.util.Map<String, java.util.List<String>> MENUS_PAR_DEFAUT_PAR_PROFIL = java.util.Map.of(
+            "ADMIN", java.util.List.of(
+                    // vente
+                    "Vente Articles", "Vente Art./CodeBare", "Historique Caisse", "Controle Caisse", "Mode Paiement", "Bon D Achat",
+                    // facturation
+                    "Client", "Devise Client", "Facture", "Rapport", "Versement",
+                    // stock
+                    "Produits", "Transfert Stock", "Dashboard Transfert", "Fournisseur", "Verouillage Stock",
+                    "Pointe de Vente", "Commande Fournisseur", "Inventaire", "Mise a jour du Stock", "Destockage", "Static Stock", "Code Bare",
+                    // comptabilite
+                    "Type Resource", "Ressource", "Historique vente", "Controle Vente", "Marge Caisse",
+                    "Compte Client", "Charge", "Marge", "Type depense", "Element Ressource/Depense",
+                    // administration
+                    "Configuration", "Option Entreprise", "Recond. session anterieur",
+                    // parametrage
+                    "Annee", "Employeur", "Entreprise", "Boutique", "Categorie Produit", "Specifique Produit",
+                    "Ville", "Magasin", "Service", "Type client", "Zone Vente",
+                    // securite
+                    "Module Securite", "Utilisateurs", "Roles", "Profil",
+                    // photocophie
+                    "Photocopie/Saisir", "Historique Photocopie"),
+            "CAISSIER", java.util.List.of(
+                    "Vente Articles", "Vente Art./CodeBare", "Historique Caisse", "Controle Caisse", "Mode Paiement", "Bon D Achat"),
+            "COMMERCIAL", java.util.List.of(
+                    "Client", "Devise Client", "Commande Fournisseur", "Produits", "Fournisseur"),
+            "COMPTABLE", java.util.List.of(
+                    "Client", "Facture", "Rapport", "Versement",
+                    "Type Resource", "Ressource", "Historique vente", "Controle Vente", "Marge Caisse",
+                    "Compte Client", "Charge", "Marge", "Type depense", "Element Ressource/Depense"),
+            "USER", java.util.List.of());
+
+    // PRINT est exclu : la colonne MySQL operation_type est un ENUM natif cree
+    // avant l'ajout de cette valeur a l'enum Java, l'insertion echoue en base
+    // ("Data truncated for column 'operation_type'") - constate au demarrage
+    // local avant push. Les 4 actions restantes suffisent a rendre un menu
+    // visible et pleinement utilisable.
+    private static final java.util.List<sid.service_admin.enums.OperationType> ACTIONS_PAR_DEFAUT = java.util.List.of(
+            sid.service_admin.enums.OperationType.READ,
+            sid.service_admin.enums.OperationType.WRITE,
+            sid.service_admin.enums.OperationType.UPDATE,
+            sid.service_admin.enums.OperationType.DELETE);
+
     @Transactional
     public void seedProfilsParDefautPourCompagnie(Compagnie compagnie) {
         if (compagnie == null || compagnie.getId() == null
@@ -464,8 +512,37 @@ public class UserService implements Serializable {
                     profil.setStatut("ACTIF");
                     profil.setAddDate(new java.util.Date());
                     profil.setCompagnie(compagnie);
-                    profilRepository.save(profil);
+                    Profil saved = profilRepository.save(profil);
+
+                    java.util.List<String> menusParDefaut = MENUS_PAR_DEFAUT_PAR_PROFIL.getOrDefault(
+                            codeEtDescription[0], java.util.List.of());
+                    if (!menusParDefaut.isEmpty()) {
+                        profilPermissionMatrixService.seedPermissionsParDefaut(saved, menusParDefaut, ACTIONS_PAR_DEFAUT);
+                    }
                 });
+    }
+
+    /**
+     * Rattrapage pour les profils DEJA existants (compagnies creees avant ce
+     * fix) qui n'ont encore aucune permission configuree - c'est exactement
+     * le trou qui laissait un utilisateur Caissier avec une sidebar
+     * entierement vide. N'ecrase jamais une configuration deja faite
+     * manuellement (via l'ecran Permission) : ne seme que les profils dont
+     * la matrice est totalement vide. Appele au demarrage, voir
+     * SuperAdminBootstrap.
+     */
+    @Transactional
+    public void seedPermissionsManquantesPourProfilsExistants() {
+        profilRepository.findAll().forEach(profil -> {
+            if (profilPermissionMatrixService.aDejaDesPermissions(profil)) {
+                return;
+            }
+            java.util.List<String> menusParDefaut = MENUS_PAR_DEFAUT_PAR_PROFIL.getOrDefault(
+                    profil.getCode(), java.util.List.of());
+            if (!menusParDefaut.isEmpty()) {
+                profilPermissionMatrixService.seedPermissionsParDefaut(profil, menusParDefaut, ACTIONS_PAR_DEFAUT);
+            }
+        });
     }
 
     /**

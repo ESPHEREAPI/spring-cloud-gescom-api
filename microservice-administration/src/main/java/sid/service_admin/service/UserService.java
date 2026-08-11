@@ -204,6 +204,7 @@ public class UserService implements Serializable {
                 Profil profil = profilRepository.findById(userCreateDTO.getProfilid())
                         .orElseThrow(() -> new ResourceNotFoundException("Profil non trouve : " + userCreateDTO.getProfilid()));
                 user.setProfilid(profil);
+                verifierBoutiqueRequisePourProfil(profil, userCreateDTO.getBoutique());
             }
             if (compagnie != null) {
                 user.setCompagnie(compagnie);
@@ -229,6 +230,39 @@ public class UserService implements Serializable {
         userDTO.setMessageEcheck("Email Or UserName  is already in use.." + userCreateDTO.getEmail());
         return userDTO;
 
+    }
+
+    // L'ecran Utilisateurs > Attribution des Modules/Menus edite les tables
+    // historiques Usermodule/Usermenu (grant par utilisateur). Depuis que les
+    // droits d'un utilisateur avec Profil sont calcules depuis la matrice
+    // Profil x Menu x Action (voir SecuriteService.getModuleByUser /
+    // getMenusbyModuleForUser, ProfilPermissionMatrixService), ces tables ne
+    // sont plus la source de verite pour ces comptes : retirer un menu ici
+    // cherche une ligne Usermenu qui n'a jamais existe (ResourceNotFoundException),
+    // et en ajouter un n'a aucun effet sur les menus reellement affiches. On
+    // bloque donc cet ecran pour un utilisateur avec Profil, avec un message
+    // qui redirige vers le bon endroit, plutot que de planter silencieusement.
+    private void verifierPasGereParProfil(Personne p) {
+        if (p.getProfilid() != null) {
+            throw new BadRequestException(
+                    "Cet utilisateur a le profil " + p.getProfilid().getCode()
+                    + " : ses droits se gerent depuis l'ecran \"Profil\" (Securite > Profil), pas ici.");
+        }
+    }
+
+    // Un compte Caissier n'agit que sur sa boutique assignee (voir
+    // BoutiqueAccessGuard.verifierBoutiqueUtilisateur cote microservice-produits) :
+    // sans boutique, TOUTES ses operations de caisse/vente sont rejetees en 403,
+    // silencieusement pour l'utilisateur qui l'a cree. On bloque donc ce cas des
+    // la creation/modification plutot que de laisser decouvrir le probleme a
+    // l'usage.
+    private void verifierBoutiqueRequisePourProfil(Profil profil, Boutique boutique) {
+        if (profil == null || profil.getCode() == null) {
+            return;
+        }
+        if ("CAISSIER".equalsIgnoreCase(profil.getCode()) && boutique == null) {
+            throw new BadRequestException("Un compte avec le profil Caissier doit être rattaché à une boutique (Point de Vente).");
+        }
     }
 
     @Transactional
@@ -261,6 +295,7 @@ public class UserService implements Serializable {
                     .orElseThrow(() -> new ResourceNotFoundException("Profil not found with id: " + userUpdateDTO.getProfilid()));
             user.setProfilid(profil);
         }
+        verifierBoutiqueRequisePourProfil(user.getProfilid(), user.getBoutique());
 
         Personne updatedUser = personneRepository.save(user);
         return mapToDTO.mapToDTO(updatedUser);
@@ -297,6 +332,7 @@ public class UserService implements Serializable {
                     .orElseThrow(() -> new ResourceNotFoundException("Profil not found with id: " + userUpdateDTO.getProfilid()));
             user.setProfilid(profil);
         }
+        verifierBoutiqueRequisePourProfil(user.getProfilid(), user.getBoutique());
 
         Personne updatedUser = personneRepository.save(user);
         return mapToDTO.mapToDTO(updatedUser);
@@ -606,10 +642,11 @@ public class UserService implements Serializable {
     }
 
     public void updateModuleByUser(ModuleUserDTO moduleUserDTO) {
-        //on trie sur tous les module qu il a eut avant la modifoication 
+        //on trie sur tous les module qu il a eut avant la modifoication
         Long userid = moduleUserDTO.getUserid();
         Personne p = personneRepository.findById(userid)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userid));
+        verifierPasGereParProfil(p);
         List<Modulesecurite> moduleUsers = (List<Modulesecurite>) securiteService.getModuleByUser(p);
         List<Modulesecurite> modules = moduleUserDTO.getModules().stream()
                 .map(mod -> mapToDTO.mapToDTOModulelDTO(mod))
@@ -645,10 +682,11 @@ public class UserService implements Serializable {
     }
 
     public void updateModuleMenuByUser(MenuUserDTO menuUserDTO) {
-        //on trie sur tous les module qu il a eut avant la modifoication 
+        //on trie sur tous les module qu il a eut avant la modifoication
         Long userid = menuUserDTO.getUserid();
         Personne p = personneRepository.findById(userid)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userid));
+        verifierPasGereParProfil(p);
         Modulesecurite modul = moduleRepository.findById(menuUserDTO.getModuleid())
                 .orElseThrow(() -> new ResourceNotFoundException("Module not found with id: " + menuUserDTO.getModuleid()));
         List<Menu> menusUsers = (List<Menu>) securiteService.getMenusbyModuleForUser(p, modul);

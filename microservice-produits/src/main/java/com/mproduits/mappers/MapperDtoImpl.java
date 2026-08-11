@@ -342,6 +342,22 @@ public class MapperDtoImpl {
         return pvdto;
     }
     
+    // Inventaire "Par depot" - le stock d'un depot pur vit sur Commande, pas
+    // sur PointVente/PrixArticles (voir ServiceCommande.approvisionner).
+    public InventaireDto mapperCommandeByInventaireDto(com.mproduits.model.Commande commande) {
+        InventaireDto dto = new InventaireDto();
+        dto.setId(commande.getId());
+        dto.setDepot(mapperDepot(commande.getMagasinid()));
+        dto.setProduit(mapperProduitDto(commande.getProduit()));
+        dto.setCategorie(commande.getProduit().getCategorie());
+        BigDecimal quantite = commande.getStockFinalTheorie() != null ? commande.getStockFinalTheorie() : BigDecimal.ZERO;
+        BigDecimal prix = commande.getPrixAchat() != null ? commande.getPrixAchat() : BigDecimal.ZERO;
+        dto.setQuantite(quantite);
+        dto.setPrix(prix);
+        dto.setTotal(quantite.multiply(prix));
+        return dto;
+    }
+
     public InventaireDto mapperPointVentByInventaireDtto(PointVente pv) {
         InventaireDto pvdto = new InventaireDto();
         pvdto.setBoutique(pv.getBoutique());

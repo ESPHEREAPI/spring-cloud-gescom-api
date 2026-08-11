@@ -38,6 +38,15 @@ public class InventairesControllers {
      List<InventaireDto> allStockPv=inventairesService.chargeInventaire(boutiqueid, categorieid);
         return ResponseEntity.ok(allStockPv);
     }
+
+    // Inventaire "Par depot" - le scope compagnie est verifie dans
+    // InventairesService.chargeInventaireParDepot (pas de BoutiqueAccessGuard
+    // ici, un depot n'a pas de boutique a verifier).
+    @GetMapping("/inventaires/depot/{depotid}")
+    public ResponseEntity<List<InventaireDto>> listeParDepot(@PathVariable("depotid") Long depotid) {
+        List<InventaireDto> allStock = inventairesService.chargeInventaireParDepot(depotid);
+        return ResponseEntity.ok(allStock);
+    }
     
      @PostMapping("/corrections-stock")
     public ResponseEntity<ApiResponse<Void>> saveCorrections(@RequestBody List<PointVenteDto> pointsVente) {

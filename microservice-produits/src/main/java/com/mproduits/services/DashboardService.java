@@ -11,6 +11,7 @@ import com.mproduits.repositories.PointVenteRepositories;
 import com.mproduits.repositories.PrixArticlesRepositories;
 import com.mproduits.repositories.ProduitRepositories;
 import com.mproduits.repositories.TransfertStockRepository;
+import com.mproduits.repositories.VenteRepositories;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,6 +50,9 @@ public class DashboardService {
 
     @Autowired
     private StockTransfertService stockService;
+
+    @Autowired
+    private VenteRepositories venteRepository;
 
     /**
      * Génère le tableau de bord complet avec tous les KPIs
@@ -304,15 +308,15 @@ public class DashboardService {
             cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH));
             Date dateFin = new Date(cal.getTimeInMillis());
 
-            // Récupérer les transferts du mois pour cette compagnie uniquement
-            List<TransfertStock> transferts = transfertStockRepository
-                    .findByCompagnieIdAndDateTransfertBetween(compagnieId, dateDebut, dateFin);
-
             int entrees = 0;
             int sorties = 0;
             BigDecimal valeurMagasins = BigDecimal.ZERO;
             BigDecimal valeurPointsVente = BigDecimal.ZERO;
 
+            // Transferts entre magasins de la compagnie : une entree cote
+            // depot destinataire, une sortie cote point de vente destinataire.
+            List<TransfertStock> transferts = transfertStockRepository
+                    .findByCompagnieIdAndDateTransfertBetween(compagnieId, dateDebut, dateFin);
             for (TransfertStock t : transferts) {
                 if (stockService.isMagasinDeStock(t.getDestination().getId())) {
                     entrees++;
@@ -321,6 +325,25 @@ public class DashboardService {
                     sorties++;
                     valeurPointsVente = valeurPointsVente.add(t.getValeurEstimation());
                 }
+            }
+
+            // Approvisionnements recus (entrees "reelles" de stock, pas
+            // seulement les transferts internes) - valeur au prix d'achat.
+            List<Object[]> approvisionnements = commandeRepository
+                    .aggregerApprovisionnementParPeriode(compagnieId, dateDebut, dateFin);
+            if (!approvisionnements.isEmpty()) {
+                Object[] ligne = approvisionnements.get(0);
+                entrees += ((Number) ligne[0]).intValue();
+                valeurMagasins = valeurMagasins.add((BigDecimal) ligne[1]);
+            }
+
+            // Ventes realisees (sorties "reelles" de stock) - valeur au prix
+            // de vente net.
+            long nombreVentes = venteRepository.countByCompagnieAndPeriode(compagnieId, dateDebut, dateFin);
+            BigDecimal valeurVentes = venteRepository.sumTotalNetByCompagnieAndPeriode(compagnieId, dateDebut, dateFin);
+            sorties += (int) nombreVentes;
+            if (valeurVentes != null) {
+                valeurPointsVente = valeurPointsVente.add(valeurVentes);
             }
 
             evolution.add(DashboardStockDTO.EvolutionStockDTO.builder()

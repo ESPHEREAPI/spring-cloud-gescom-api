@@ -302,6 +302,15 @@ public interface CommandeRepositories extends JpaRepository<Commande, Long>{
     @Query("SELECT c FROM Commande c WHERE c.entreprise.entreprisePK.compagnieId = :compagnieId ORDER BY c.dateReception DESC")
     List<Commande> findByCompagnieId(@Param("compagnieId") Long compagnieId);
 
+    // Nombre d'approvisionnements recus + valeur d'achat correspondante sur
+    // une periode, pour une compagnie - voir DashboardService (dashboard
+    // transfert stock, graphiques "Evolution"/"Mouvements").
+    @Query("SELECT COUNT(c), COALESCE(SUM(c.quantite * c.prixAchat), 0) FROM Commande c " +
+           "WHERE c.entreprise.entreprisePK.compagnieId = :compagnieId AND c.dateReception BETWEEN :debut AND :fin")
+    List<Object[]> aggregerApprovisionnementParPeriode(@Param("compagnieId") Long compagnieId,
+                                                         @Param("debut") java.util.Date debut,
+                                                         @Param("fin") java.util.Date fin);
+
     @Query("SELECT c FROM Commande c WHERE c.numeroRepartition = :code")
     Commande findByCode(@Param("code") String code);
     
@@ -330,6 +339,10 @@ public interface CommandeRepositories extends JpaRepository<Commande, Long>{
     // qui n'alimentent PointVente que pour le flux point de vente).
     @Query("SELECT c FROM Commande c WHERE c.magasinid.id = :magasinid ORDER BY c.id DESC")
     Page<Commande> findByMagasinIdPage(@Param("magasinid") Long magasinid, Pageable pageable);
+
+    // Pour Inventaire "Par depot" - voir InventairesService.
+    @Query("SELECT c FROM Commande c WHERE c.magasinid.id = :magasinid AND c.entreprise = :entreprise ORDER BY c.id DESC")
+    List<Commande> findByMagasinIdAndEntreprise(@Param("magasinid") Long magasinid, @Param("entreprise") com.mproduits.model.Entreprise entreprise);
 
     @Query("SELECT c FROM Commande c WHERE c.magasinid.id = :magasinid AND c.produit.libelle LIKE %:search% ORDER BY c.id DESC")
     Page<Commande> findByMagasinIdAndProduitLibelleLike(@Param("magasinid") Long magasinid, @Param("search") String search, Pageable pageable);

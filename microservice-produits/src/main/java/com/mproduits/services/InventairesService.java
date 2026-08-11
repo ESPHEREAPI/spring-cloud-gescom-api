@@ -11,11 +11,14 @@ import com.mproduits.model.Boutique;
 import com.mproduits.model.Categories;
 import com.mproduits.model.DetailCommandeEntree;
 import com.mproduits.model.Entreprise;
+import com.mproduits.model.Magasin;
 import com.mproduits.model.PrixArticles;
 import com.mproduits.model.Produit;
 import com.mproduits.repositories.BoutiqueRepositories;
 import com.mproduits.repositories.CategorieRepositories;
+import com.mproduits.repositories.CommandeRepositories;
 import com.mproduits.repositories.EntrepriseRepositories;
+import com.mproduits.repositories.MagasinRepositories;
 import com.mproduits.repositories.PointVenteRepositories;
 import com.mproduits.repositories.PrixAchatRepositories;
 import com.mproduits.repositories.PrixArticlesRepositories;
@@ -47,6 +50,12 @@ public class InventairesService {
       @Autowired
       MapperDtoImpl mapperDto;
 
+      @Autowired
+      MagasinRepositories magasinRepositories;
+
+      @Autowired
+      CommandeRepositories commandeRepositories;
+
     @Autowired
     public InventairesService(BoutiqueRepositories boutiqueRepositories, CategorieRepositories categorieRepositories, EntrepriseRepositories entrepriseRepositories,  PrixArticlesRepositories prixArticlesRepositories, PointVenteRepositories pointVenteRepositories, EntrepriseService entrepriseService, TenantContext tenantContext) {
         this.boutiqueRepositories = boutiqueRepositories;
@@ -77,6 +86,20 @@ public class InventairesService {
         return allStockByPointVente;
         
         
+    }
+
+ // Inventaire "Par depot" : contrairement a une boutique, un depot pur
+ // (magasin sans boutique) n'a pas de PointVente/PrixArticles - son stock
+ // vit sur Commande (voir ServiceCommande.approvisionner). Pas de filtre
+ // categorie ici (l'ecran ne le demande pas pour ce mode).
+ public List<InventaireDto> chargeInventaireParDepot(Long depotid){
+        Magasin depot = magasinRepositories.findByIdAndCompagnie_Id(depotid, tenantContext.currentCompagnieId())
+                .orElseThrow(() -> new EntityNotFoundException("Dépôt non trouvé avec l'ID: " + depotid));
+        Entreprise e = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
+
+        return commandeRepositories.findByMagasinIdAndEntreprise(depotid, e).stream()
+                .map(mapperDto::mapperCommandeByInventaireDto)
+                .collect(Collectors.toList());
     }
 
  public List<InventaireDto> chargeInventaire(Long boutiqueid,Long categorieid){

@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -45,12 +46,14 @@ public class VerrouillageController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<Verrouillage> createVerrouillage(@RequestBody Verrouillage verrouillage) {
         Verrouillage saved = verrouillageService.save(verrouillage);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<Verrouillage> updateVerrouillage(@PathVariable Long id, @RequestBody Verrouillage verrouillage) {
         try {
@@ -61,6 +64,7 @@ public class VerrouillageController {
         }
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteVerrouillage(@PathVariable Long id) {
         try {

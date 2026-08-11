@@ -5,6 +5,7 @@
 package com.mproduits.web.controller;
 
 import com.mproduits.dto.ApiResponse;
+import com.mproduits.dto.CorrectionStockRequestDto;
 import com.mproduits.dto.InventaireDto;
 import com.mproduits.dto.PointVenteDto;
 import com.mproduits.security.BoutiqueAccessGuard;
@@ -13,6 +14,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -48,14 +50,18 @@ public class InventairesControllers {
         return ResponseEntity.ok(allStock);
     }
     
+     // Correction manuelle de stock : operation sensible (peut masquer un
+     // vol/une erreur non tracee), reservee aux comptes ADMIN et desormais
+     // tracee (voir HistoriqueCorrectionStock, motif obligatoire).
+     @PreAuthorize("hasRole('ADMIN')")
      @PostMapping("/corrections-stock")
-    public ResponseEntity<ApiResponse<Void>> saveCorrections(@RequestBody List<PointVenteDto> pointsVente) {
+    public ResponseEntity<ApiResponse<Void>> saveCorrections(@RequestBody CorrectionStockRequestDto request) {
         try {
+            List<PointVenteDto> pointsVente = request.getLignes();
             // Chaque ligne doit porter sur une boutique de la compagnie courante -
             // sans ce controle, un client pourrait corriger le stock d'une autre compagnie.
             pointsVente.forEach(pv -> boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(pv.getBoutique().getId()));
-            // Traitement ici : par exemple, mise à jour des stocks
-            this.inventairesService.saveStockInventaire(pointsVente);
+            this.inventairesService.saveStockInventaire(pointsVente, request.getMotif());
 
             ApiResponse<Void> response = new ApiResponse<>(true, "Corrections enregistrées avec succès", null);
             return ResponseEntity.ok(response);

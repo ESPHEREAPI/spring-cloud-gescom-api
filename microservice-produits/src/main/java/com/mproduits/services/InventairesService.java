@@ -11,6 +11,7 @@ import com.mproduits.model.Boutique;
 import com.mproduits.model.Categories;
 import com.mproduits.model.DetailCommandeEntree;
 import com.mproduits.model.Entreprise;
+import com.mproduits.model.HistoriqueCorrectionStock;
 import com.mproduits.model.Magasin;
 import com.mproduits.model.PrixArticles;
 import com.mproduits.model.Produit;
@@ -18,6 +19,7 @@ import com.mproduits.repositories.BoutiqueRepositories;
 import com.mproduits.repositories.CategorieRepositories;
 import com.mproduits.repositories.CommandeRepositories;
 import com.mproduits.repositories.EntrepriseRepositories;
+import com.mproduits.repositories.HistoriqueCorrectionStockRepository;
 import com.mproduits.repositories.MagasinRepositories;
 import com.mproduits.repositories.PointVenteRepositories;
 import com.mproduits.repositories.PrixAchatRepositories;
@@ -55,6 +57,9 @@ public class InventairesService {
 
       @Autowired
       CommandeRepositories commandeRepositories;
+
+      @Autowired
+      HistoriqueCorrectionStockRepository historiqueCorrectionStockRepository;
 
     @Autowired
     public InventairesService(BoutiqueRepositories boutiqueRepositories, CategorieRepositories categorieRepositories, EntrepriseRepositories entrepriseRepositories,  PrixArticlesRepositories prixArticlesRepositories, PointVenteRepositories pointVenteRepositories, EntrepriseService entrepriseService, TenantContext tenantContext) {
@@ -121,7 +126,10 @@ public class InventairesService {
         
         
     }    
-    public void saveStockInventaire( List<PointVenteDto> allStock){
+    public void saveStockInventaire(List<PointVenteDto> allStock, String motif){
+        if (motif == null || motif.isBlank()) {
+            throw new BadRequestException("Le motif de la correction est obligatoire");
+        }
         allStock.stream()
                 .filter(pv -> pv.getStockFinalTheorie().intValue()!=0)
                 .peek(pv -> {
@@ -130,13 +138,13 @@ public class InventairesService {
                                 + pv.getProduit().getId() + " : " + pv.getStockFinalTheorie() + ")");
                     }
                 })
-                .map(pvc-> saveStock(pvc,pvc.getStockFinalTheorie()))
+                .map(pvc-> saveStock(pvc,pvc.getStockFinalTheorie(), motif))
                 .collect(Collectors.toList());
 
 
     }
-    
-    private PointVenteDto saveStock(PointVenteDto pointVenteDto ,BigDecimal quantite){
+
+    private PointVenteDto saveStock(PointVenteDto pointVenteDto ,BigDecimal quantite, String motif){
             Entreprise e= entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
             Long  boutiqueid=pointVenteDto.getBoutique().getId();
             Optional<Boutique> boutique=boutiqueRepositories.findByIdAndCompagnie_Id(boutiqueid, tenantContext.currentCompagnieId());
@@ -151,17 +159,25 @@ public class InventairesService {
             prixArticles.setPrixVenteTTC(pointVenteDto.getPrix());
                   prixArticlesRepositories.save(prixArticles);
         }
+        BigDecimal ancienneQuantite = prixArticles.getPointVente().getStockFinalTheorie();
         prixArticles.getPointVente().setStockFinalTheorie(quantite);
         prixArticles.getPointVente().setEntreeProduit(quantite);
         prixArticles.getPointVente().setSortiProduit(BigDecimal.ZERO);
         prixArticles.setDatemiseajour(new Date());
       pointVenteRepositories.save(prixArticles.getPointVente());
-//       if (prixArticles.getPrixVenteNet().intValue()!=pointVenteDto.getPrix().intValue()) {
-//            prixArticles.setPrixVenteNet(pointVenteDto.getPrix());
-//                  prixArticlesRepositories.save(prixArticles);
-//        }
+
+      HistoriqueCorrectionStock historique = new HistoriqueCorrectionStock();
+      historique.setProduit(produit);
+      historique.setBoutique(boutique.get());
+      historique.setCompagnie(boutique.get().getCompagnie());
+      historique.setAncienneQuantite(ancienneQuantite != null ? ancienneQuantite : BigDecimal.ZERO);
+      historique.setNouvelleQuantite(quantite);
+      historique.setMotif(motif);
+      historique.setUtilisateur(tenantContext.currentUsername());
+      historique.setDateCorrection(new Date());
+      historiqueCorrectionStockRepository.save(historique);
 
       return pointVenteDto;
-       
+
     }
 }

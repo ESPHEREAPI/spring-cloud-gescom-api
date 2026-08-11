@@ -61,6 +61,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -190,6 +191,9 @@ public class CommandeController implements Serializable {
         return ResponseEntity.ok(commandeRepositories.findByCompagnieId(tenantContext.currentCompagnieId()));
     }
 
+    // Reception de marchandise - operation courante, ouverte au personnel
+    // qui gere les achats/le stock (pas aux caissiers/comptables).
+    @PreAuthorize("hasAnyRole('ADMIN','COMMERCIAL')")
     @PostMapping("/approvisionner")
     public ResponseEntity<CommandeResponseDto> approvisionnerProduit(
             @Validated @RequestBody CommandeRequest request) {

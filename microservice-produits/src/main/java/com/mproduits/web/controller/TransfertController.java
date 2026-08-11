@@ -20,6 +20,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
@@ -64,6 +65,7 @@ public class TransfertController {
      * @param result Résultats de la validation
      * @return TransfertStockResponse avec les détails du transfert effectué
      */
+    @PreAuthorize("hasAnyRole('ADMIN','COMMERCIAL')")
     @PostMapping("/transferer")
     public ResponseEntity<?> effectuerTransfert(
             @Valid @RequestBody TransfertStockRequest requete,

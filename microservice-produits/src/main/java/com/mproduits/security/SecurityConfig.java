@@ -3,6 +3,7 @@ package com.mproduits.security;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -15,9 +16,15 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * defaut. Le CORS reste centralise au niveau du gateway (voir CLAUDE.md) —
  * produits n'est jamais appele directement par le navigateur, donc aucune
  * configuration CORS n'est necessaire ici.
+ *
+ * @EnableMethodSecurity active les @PreAuthorize au niveau methode/controller
+ * - sans cette annotation, tout @PreAuthorize pose ailleurs dans ce module
+ * est silencieusement ignore (c'etait le cas jusqu'ici, voir
+ * PlatformDashboardController qui en avait un, inactif).
  */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Autowired

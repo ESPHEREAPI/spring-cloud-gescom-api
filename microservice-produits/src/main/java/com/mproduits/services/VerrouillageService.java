@@ -50,6 +50,8 @@ public class VerrouillageService {
     public Verrouillage save(Verrouillage verrouillage) {
         Entreprise exerciceActif = entrepriseService.obtenirOuCreerExerciceActif(compagnieCourante());
         verrouillage.setEntreprise(exerciceActif);
+        verrouillage.setUtilisateur(tenantContext.currentUsername());
+        verrouillage.setDateModification(new java.util.Date());
         return verouillaRepository.save(verrouillage);
     }
 
@@ -58,6 +60,8 @@ public class VerrouillageService {
                 .orElseThrow(() -> new RuntimeException("Verrouillage not found with id: " + id));
         verrouillage.setId(id);
         verrouillage.setEntreprise(existant.getEntreprise());
+        verrouillage.setUtilisateur(tenantContext.currentUsername());
+        verrouillage.setDateModification(new java.util.Date());
         return verouillaRepository.save(verrouillage);
     }
 

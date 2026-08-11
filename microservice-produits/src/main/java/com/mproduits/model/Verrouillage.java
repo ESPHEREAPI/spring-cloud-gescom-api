@@ -69,6 +69,29 @@ public class Verrouillage implements Serializable {
     @ManyToOne(optional = false)
     private Entreprise entreprise;
 
+    // Tracabilite (voir tache #61) - qui a pose/modifie ce verrou et quand.
+    @Column(name = "utilisateur")
+    private String utilisateur;
+    @Column(name = "date_modification")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date dateModification;
+
+    public String getUtilisateur() {
+        return utilisateur;
+    }
+
+    public void setUtilisateur(String utilisateur) {
+        this.utilisateur = utilisateur;
+    }
+
+    public Date getDateModification() {
+        return dateModification;
+    }
+
+    public void setDateModification(Date dateModification) {
+        this.dateModification = dateModification;
+    }
+
     public Verrouillage() {
     }
 

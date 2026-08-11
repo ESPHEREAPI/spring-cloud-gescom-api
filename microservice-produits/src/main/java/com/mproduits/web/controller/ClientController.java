@@ -141,7 +141,7 @@ public class ClientController {
     /**
      * DELETE /api/v1/clients/1
      */
-    @PreAuthorize("hasRole('COMPANY_ADMIN')")
+    @PreAuthorize("hasAnyRole('COMPANY_ADMIN','ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteClient(@PathVariable Long id) {
         clientService.delete(id);

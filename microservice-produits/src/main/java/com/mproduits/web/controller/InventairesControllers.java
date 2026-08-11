@@ -53,7 +53,7 @@ public class InventairesControllers {
      // Correction manuelle de stock : operation sensible (peut masquer un
      // vol/une erreur non tracee), reservee aux comptes ADMIN et desormais
      // tracee (voir HistoriqueCorrectionStock, motif obligatoire).
-     @PreAuthorize("hasRole('COMPANY_ADMIN')")
+     @PreAuthorize("hasAnyRole('COMPANY_ADMIN','ADMIN')")
      @PostMapping("/corrections-stock")
     public ResponseEntity<ApiResponse<Void>> saveCorrections(@RequestBody CorrectionStockRequestDto request) {
         try {

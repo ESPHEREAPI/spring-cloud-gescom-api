@@ -19,11 +19,21 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * Copie independante du filtre JWT de microservice-administration : valide
- * le token, recharge le role actuel depuis la base (pas depuis le token, pour
- * qu'une retrogradation prenne effet immediatement), et memorise le
- * compagnieId (claim du token, non rechargeable ici car Personne n'a pas de
- * colonne compagnie dans ce module) en attribut de requete pour le filtre de
- * licence place juste apres dans la chaine.
+ * le token, recharge le role ET le profil actuels depuis la base (pas depuis
+ * le token, pour qu'une retrogradation prenne effet immediatement), et
+ * memorise le compagnieId (claim du token, non rechargeable ici car Personne
+ * n'a pas de colonne compagnie dans ce module) en attribut de requete pour
+ * le filtre de licence place juste apres dans la chaine.
+ *
+ * Deux authorities distinctes sont accordees : ROLE_<code du Role> (simple
+ * etiquette de hierarchie plateforme : SUPER_ADMIN/SYSTEM_ADMIN/
+ * COMPANY_ADMIN/EMPLOYE - jamais ADMIN/CAISSIER/etc, voir Personne.roleid)
+ * et ROLE_<code du Profil> (le vrai metier de l'utilisateur : ADMIN/
+ * CAISSIER/COMMERCIAL/COMPTABLE/USER, voir Personne.profilid) si un profil
+ * est assigne. @PreAuthorize peut donc distinguer un caissier d'un
+ * comptable, tout en gardant COMPANY_ADMIN comme "passe-partout" pour le
+ * createur de la compagnie (qui n'a jamais de profil assigne - voir
+ * AdminAccountService.createCompanyAdmin, cote microservice-administration).
  */
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -60,6 +70,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         List<GrantedAuthority> authorities = new ArrayList<>();
         if (personne.getRoleid() != null) {
             authorities.add(new SimpleGrantedAuthority("ROLE_" + personne.getRoleid().getCode()));
+        }
+        if (personne.getProfilid() != null && personne.getProfilid().getCode() != null) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + personne.getProfilid().getCode()));
         }
 
         UsernamePasswordAuthenticationToken authentication =

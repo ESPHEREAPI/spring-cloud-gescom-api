@@ -46,14 +46,14 @@ public class VerrouillageController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('COMPANY_ADMIN')")
     @PostMapping
     public ResponseEntity<Verrouillage> createVerrouillage(@RequestBody Verrouillage verrouillage) {
         Verrouillage saved = verrouillageService.save(verrouillage);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('COMPANY_ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<Verrouillage> updateVerrouillage(@PathVariable Long id, @RequestBody Verrouillage verrouillage) {
         try {
@@ -64,7 +64,7 @@ public class VerrouillageController {
         }
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('COMPANY_ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteVerrouillage(@PathVariable Long id) {
         try {

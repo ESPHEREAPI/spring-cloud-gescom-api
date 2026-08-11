@@ -193,7 +193,7 @@ public class CommandeController implements Serializable {
 
     // Reception de marchandise - operation courante, ouverte au personnel
     // qui gere les achats/le stock (pas aux caissiers/comptables).
-    @PreAuthorize("hasAnyRole('ADMIN','COMMERCIAL')")
+    @PreAuthorize("hasAnyRole('COMPANY_ADMIN','EMPLOYE')")
     @PostMapping("/approvisionner")
     public ResponseEntity<CommandeResponseDto> approvisionnerProduit(
             @Validated @RequestBody CommandeRequest request) {

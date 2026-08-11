@@ -77,7 +77,7 @@ public class FactureController {
      * @param request Données de la facture
      * @return Facture créée
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'COMPTABLE')")
+    @PreAuthorize("hasAnyRole('COMPANY_ADMIN', 'EMPLOYE')")
     @PostMapping
     @Operation(summary = "Créer une facture",
                description = "Crée une nouvelle facture directement (sans passer par un devis)")
@@ -112,7 +112,7 @@ public class FactureController {
      * @param request Données de modification
      * @return Facture modifiée
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'COMPTABLE')")
+    @PreAuthorize("hasAnyRole('COMPANY_ADMIN', 'EMPLOYE')")
     @PutMapping("/{id}")
     @Operation(summary = "Modifier une facture",
                description = "Modifie une facture en brouillon")
@@ -133,7 +133,7 @@ public class FactureController {
      * @param request Données de validation
      * @return Facture validée
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'COMPTABLE')")
+    @PreAuthorize("hasAnyRole('COMPANY_ADMIN', 'EMPLOYE')")
     @PostMapping("/{id}/valider")
     @Operation(summary = "Valider une facture",
                description = "Valide une facture brouillon et effectue la sortie de stock")
@@ -154,7 +154,7 @@ public class FactureController {
      * @param request Données d'annulation
      * @return Facture annulée
      */
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('COMPANY_ADMIN')")
     @PostMapping("/{id}/annuler")
     @Operation(summary = "Annuler une facture",
                description = "Annule une facture et réintègre le stock")

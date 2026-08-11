@@ -86,7 +86,7 @@ public class VersementController {
      * @param request Données du versement
      * @return Versement créé
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'COMPTABLE', 'CAISSIER')")
+    @PreAuthorize("hasAnyRole('COMPANY_ADMIN', 'EMPLOYE')")
     @PostMapping
     @Operation(summary = "Créer un versement",
                description = "Enregistre un nouveau paiement pour une facture")
@@ -102,7 +102,7 @@ public class VersementController {
      * @param request Données des versements
      * @return Liste des versements créés
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'COMPTABLE', 'CAISSIER')")
+    @PreAuthorize("hasAnyRole('COMPANY_ADMIN', 'EMPLOYE')")
     @PostMapping("/multiple")
     @Operation(summary = "Créer plusieurs versements",
                description = "Enregistre plusieurs paiements pour une facture")
@@ -122,7 +122,7 @@ public class VersementController {
      * @param request Données de validation
      * @return Versement validé
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'COMPTABLE', 'CAISSIER')")
+    @PreAuthorize("hasAnyRole('COMPANY_ADMIN', 'EMPLOYE')")
     @PostMapping("/{id}/valider")
     @Operation(summary = "Valider un versement",
                description = "Valide un versement et met à jour la facture")
@@ -142,7 +142,7 @@ public class VersementController {
      * @param request Données d'annulation
      * @return Versement annulé
      */
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('COMPANY_ADMIN')")
     @PostMapping("/{id}/annuler")
     @Operation(summary = "Annuler un versement",
                description = "Annule un versement et met à jour la facture")

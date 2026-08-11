@@ -67,7 +67,7 @@ public class TransfertController {
      * @param result Résultats de la validation
      * @return TransfertStockResponse avec les détails du transfert effectué
      */
-    @PreAuthorize("hasAnyRole('ADMIN','COMMERCIAL')")
+    @PreAuthorize("hasAnyRole('COMPANY_ADMIN','EMPLOYE')")
     @PostMapping("/transferer")
     public ResponseEntity<?> effectuerTransfert(
             @Valid @RequestBody TransfertStockRequest requete,

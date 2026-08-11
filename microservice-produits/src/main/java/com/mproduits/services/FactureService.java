@@ -88,11 +88,14 @@ public class FactureService {
     public FactureResponse creerFacture(FactureCreateRequest request,String username) {
         log.info("Création d'une nouvelle facture pour le client ID: {}", request.getClientId());
         
-        // 1. Validation du client
-        Client client = clientRepository.findById(request.getClientId())
+        // 1. Validation du client - scope compagnie obligatoire, sinon un
+        // client d'une autre compagnie pourrait etre rattache a cette facture
+        // (le guard controller est fail-open si boutiqueid est absent).
+        Long compagnieId = tenantContext.currentCompagnieId();
+        Client client = clientRepository.findByIdAndCompagnie_Id(request.getClientId(), compagnieId)
                 .orElseThrow(() -> new ResourceNotFoundException("Client introuvable avec l'ID: " + request.getClientId()));
-        Boutique boutique=boutiqueRepositories.findById(request.getBoutiqueid())
-                .orElseThrow(() -> new ResourceNotFoundException("boutique introuvable avec l'ID: " + request.getClientId()));
+        Boutique boutique = boutiqueRepositories.findByIdAndCompagnie_Id(request.getBoutiqueid(), compagnieId)
+                .orElseThrow(() -> new ResourceNotFoundException("boutique introuvable avec l'ID: " + request.getBoutiqueid()));
         
         // 2. Création de la facture
         Facture facture = Facture.builder()
@@ -155,8 +158,8 @@ public class FactureService {
     public FactureResponse convertirDevisEnFacture(DevisToFactureRequest request,String username) {
         log.info("Conversion du devis ID: {} en facture", request.getDevisId());
         
-        // 1. Validation du devis
-        Devis devis = devisRepository.findById(request.getDevisId())
+        // 1. Validation du devis - scope compagnie
+        Devis devis = devisRepository.findByIdAndBoutique_Compagnie_Id(request.getDevisId(), tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new ResourceNotFoundException("Devis introuvable avec l'ID: " + request.getDevisId()));
         
         if (!devis.isPeutEtreConverti()) {
@@ -246,10 +249,10 @@ public class FactureService {
     public FactureResponse validerFacture(FactureValidationRequest request,String username) {
         log.info("Validation de la facture ID: {}", request.getFactureId());
         
-        // 1. Récupération de la facture
-        Facture facture = factureRepository.findById(request.getFactureId())
+        // 1. Récupération de la facture - scope compagnie
+        Facture facture = factureRepository.findByIdAndClient_Compagnie_Id(request.getFactureId(), tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new ResourceNotFoundException("Facture introuvable avec l'ID: " + request.getFactureId()));
-        
+
         // 2. Vérification du statut
         if (!facture.isPeutEtreValidee()) {
             throw new ErrorResponse("La facture ne peut pas être validée. Statut actuel: " + facture.getStatut());
@@ -302,10 +305,10 @@ public class FactureService {
     public FactureResponse annulerFacture(FactureAnnulationRequest request,String username) {
         log.info("Annulation de la facture ID: {}", request.getFactureId());
         
-        // 1. Récupération de la facture
-        Facture facture = factureRepository.findById(request.getFactureId())
+        // 1. Récupération de la facture - scope compagnie
+        Facture facture = factureRepository.findByIdAndClient_Compagnie_Id(request.getFactureId(), tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new ResourceNotFoundException("Facture introuvable avec l'ID: " + request.getFactureId()));
-        
+
         // 2. Vérification du statut
         if (!facture.isPeutEtreAnnulee()) {
             throw new ErrorResponse("La facture ne peut pas être annulée. Statut actuel: " + facture.getStatut());
@@ -351,9 +354,9 @@ public class FactureService {
     public FactureResponse modifierFacture(FactureUpdateRequest request,String username) {
         log.info("Modification de la facture ID: {}", request.getId());
         
-        Facture facture = factureRepository.findById(request.getId())
+        Facture facture = factureRepository.findByIdAndClient_Compagnie_Id(request.getId(), tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new ResourceNotFoundException("Facture introuvable avec l'ID: " + request.getId()));
-        
+
         if (!facture.isModifiable()) {
             throw new ErrorResponse("La facture ne peut plus être modifiée. Statut: " + facture.getStatut());
         }
@@ -408,7 +411,7 @@ public class FactureService {
      */
     @Transactional(readOnly = true)
     public FactureResponse getFacture(Long id) {
-        Facture facture = factureRepository.findById(id)
+        Facture facture = factureRepository.findByIdAndClient_Compagnie_Id(id, tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new ResourceNotFoundException("Facture introuvable avec l'ID: " + id));
         return mapToResponse(facture);
     }
@@ -418,7 +421,7 @@ public class FactureService {
      */
     @Transactional(readOnly = true)
     public FactureResponse getFactureParNumero(String numeroFacture) {
-        Facture facture = factureRepository.findByNumeroFacture(numeroFacture)
+        Facture facture = factureRepository.findByNumeroFactureAndClient_Compagnie_Id(numeroFacture, tenantContext.currentCompagnieId())
                 .orElseThrow(() -> new ResourceNotFoundException("Facture introuvable avec le numéro: " + numeroFacture));
         return mapToResponse(facture);
     }
@@ -429,13 +432,14 @@ public class FactureService {
     @Transactional(readOnly = true)
     public Page<FactureSummary> listerFactures(FactureSearchCriteria criteria) {
         Pageable pageable = createPageable(criteria);
-        
-        // Utilisation de specifications pour filtrage dynamique
+
+        // Utilisation de specifications pour filtrage dynamique - compagnieId
+        // toujours derive du JWT (TenantContext), jamais du criteria client.
         Page<Facture> factures = factureRepository.findAll(
-                FactureSpecifications.withCriteria(criteria), 
+                FactureSpecifications.withCriteria(criteria, tenantContext.currentCompagnieId()),
                 pageable
         );
-        
+
         return factures.map(this::mapToSummary);
     }
 
@@ -455,14 +459,14 @@ public class FactureService {
      */
     @Transactional(readOnly = true)
     public FactureStatistiques getStatistiques(Date dateDebut, Date dateFin) {
-        return factureRepositoryCustom.calculerStatistiques(dateDebut, dateFin);
+        return factureRepositoryCustom.calculerStatistiques(dateDebut, dateFin, tenantContext.currentCompagnieId());
     }
 
-    
+
   @Transactional(readOnly = true)
     public FactureStatistiques getStatistiques() {
-        return factureRepositoryCustom.calculerStatistiques();
-    }  
+        return factureRepositoryCustom.calculerStatistiques(tenantContext.currentCompagnieId());
+    }
     // ========== MÉTHODES PRIVÉES ==========
 
     /**

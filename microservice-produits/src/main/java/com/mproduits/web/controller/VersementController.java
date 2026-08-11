@@ -15,6 +15,7 @@ import com.mproduits.dto.VersementSummary;
 import com.mproduits.dto.VersementValidationRequest;
 import com.mproduits.enums.ModePaiement;
 
+import com.mproduits.security.TenantContext;
 import com.mproduits.services.VersementService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -27,6 +28,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import org.springframework.web.bind.annotation.*;
 
@@ -76,6 +78,7 @@ import org.springframework.http.HttpHeaders;
 public class VersementController {
 
     private final VersementService versementService;
+    private final TenantContext tenantContext;
 
     /**
      * Crée un nouveau versement pour une facture
@@ -83,13 +86,13 @@ public class VersementController {
      * @param request Données du versement
      * @return Versement créé
      */
+    @PreAuthorize("hasAnyRole('ADMIN', 'COMPTABLE', 'CAISSIER')")
     @PostMapping
- 
     @Operation(summary = "Créer un versement",
                description = "Enregistre un nouveau paiement pour une facture")
     public ResponseEntity<VersementResponse> creerVersement(@Valid @RequestBody VersementCreateRequest request) {
         log.info("Création d'un versement pour la facture ID: {}", request.getFactureId());
-        VersementResponse response = versementService.creerVersement(request,request.getUsername());
+        VersementResponse response = versementService.creerVersement(request, tenantContext.currentUsername());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -99,15 +102,15 @@ public class VersementController {
      * @param request Données des versements
      * @return Liste des versements créés
      */
+    @PreAuthorize("hasAnyRole('ADMIN', 'COMPTABLE', 'CAISSIER')")
     @PostMapping("/multiple")
-
     @Operation(summary = "Créer plusieurs versements",
                description = "Enregistre plusieurs paiements pour une facture")
     public ResponseEntity<List<VersementResponse>> creerVersementsMultiples(
             @Valid @RequestBody VersementMultipleRequest request) {
         log.info("Création de {} versements pour la facture ID: {}", 
                 request.getVersements().size(), request.getFactureId());
-        List<VersementResponse> response = versementService.creerVersementsMultiples(request,request.getUsername());
+        List<VersementResponse> response = versementService.creerVersementsMultiples(request, tenantContext.currentUsername());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -119,8 +122,8 @@ public class VersementController {
      * @param request Données de validation
      * @return Versement validé
      */
+    @PreAuthorize("hasAnyRole('ADMIN', 'COMPTABLE', 'CAISSIER')")
     @PostMapping("/{id}/valider")
-   
     @Operation(summary = "Valider un versement",
                description = "Valide un versement et met à jour la facture")
     public ResponseEntity<VersementResponse> validerVersement(
@@ -128,7 +131,7 @@ public class VersementController {
             @Valid @RequestBody VersementValidationRequest request) {
         log.info("Validation du versement ID: {}", id);
         request.setVersementId(id);
-        VersementResponse response = versementService.validerVersement(request,request.getUsername());
+        VersementResponse response = versementService.validerVersement(request, tenantContext.currentUsername());
         return ResponseEntity.ok(response);
     }
 
@@ -139,8 +142,8 @@ public class VersementController {
      * @param request Données d'annulation
      * @return Versement annulé
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{id}/annuler")
- 
     @Operation(summary = "Annuler un versement",
                description = "Annule un versement et met à jour la facture")
     public ResponseEntity<VersementResponse> annulerVersement(
@@ -148,7 +151,7 @@ public class VersementController {
             @Valid @RequestBody VersementAnnulationRequest request) {
         log.info("Annulation du versement ID: {}", id);
         request.setVersementId(id);
-        VersementResponse response = versementService.annulerVersement(request);
+        VersementResponse response = versementService.annulerVersement(request, tenantContext.currentUsername());
         return ResponseEntity.ok(response);
     }
 
@@ -309,11 +312,11 @@ public class VersementController {
                description = "Télécharge le reçu de paiement en PDF")
     public ResponseEntity<byte[]> telechargerRecuPaiement(@PathVariable Long id) {
         log.info("Téléchargement du reçu de paiement pour le versement ID: {}", id);
-        // Implémentation du téléchargement PDF
-        // (Code de génération PDF omis pour la brièveté)
+        byte[] pdf = versementService.genererRecuPdf(id);
         return ResponseEntity.ok()
                 .header("Content-Disposition", "attachment; filename=recu-" + id + ".pdf")
-                .body(new byte[0]); // Remplacer par le PDF réel
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 
     /**

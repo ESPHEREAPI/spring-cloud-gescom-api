@@ -14,6 +14,7 @@ import com.mproduits.dto.ProduitDto;
 import com.mproduits.enums.StatutFacture;
 
 import com.mproduits.security.BoutiqueAccessGuard;
+import com.mproduits.security.TenantContext;
 import com.mproduits.services.FactureService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -25,6 +26,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
@@ -67,6 +69,7 @@ public class FactureController {
 
     private final FactureService factureService;
     private final BoutiqueAccessGuard boutiqueAccessGuard;
+    private final TenantContext tenantContext;
 
     /**
      * Crée une nouvelle facture (création directe)
@@ -74,14 +77,14 @@ public class FactureController {
      * @param request Données de la facture
      * @return Facture créée
      */
+    @PreAuthorize("hasAnyRole('ADMIN', 'COMPTABLE')")
     @PostMapping
-    //@PreAuthorize("hasAnyRole('GESTIONNAIRE', 'ADMIN')")
-    @Operation(summary = "Créer une facture", 
+    @Operation(summary = "Créer une facture",
                description = "Crée une nouvelle facture directement (sans passer par un devis)")
     public ResponseEntity<FactureResponse> creerFacture(@Valid @RequestBody FactureCreateRequest request) {
         boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(request.getBoutiqueid());
         log.info("Création d'une nouvelle facture pour le client ID: {}", request.getClientId());
-        FactureResponse response = factureService.creerFacture(request,request.getUsername());
+        FactureResponse response = factureService.creerFacture(request, tenantContext.currentUsername());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -98,7 +101,7 @@ public class FactureController {
     public ResponseEntity<FactureResponse> convertirDevisEnFacture(
             @Valid @RequestBody DevisToFactureRequest request) {
         log.info("Conversion du devis ID: {} en facture", request.getDevisId());
-        FactureResponse response = factureService.convertirDevisEnFacture(request,request.getUsername());
+        FactureResponse response = factureService.convertirDevisEnFacture(request, tenantContext.currentUsername());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -109,8 +112,8 @@ public class FactureController {
      * @param request Données de modification
      * @return Facture modifiée
      */
+    @PreAuthorize("hasAnyRole('ADMIN', 'COMPTABLE')")
     @PutMapping("/{id}")
- 
     @Operation(summary = "Modifier une facture",
                description = "Modifie une facture en brouillon")
     public ResponseEntity<FactureResponse> modifierFacture(
@@ -118,7 +121,7 @@ public class FactureController {
             @Valid @RequestBody FactureUpdateRequest request) {
         log.info("Modification de la facture ID: {}", id);
         request.setId(id);
-        FactureResponse response = factureService.modifierFacture(request,request.getUsername());
+        FactureResponse response = factureService.modifierFacture(request, tenantContext.currentUsername());
         return ResponseEntity.ok(response);
     }
 
@@ -130,8 +133,8 @@ public class FactureController {
      * @param request Données de validation
      * @return Facture validée
      */
+    @PreAuthorize("hasAnyRole('ADMIN', 'COMPTABLE')")
     @PostMapping("/{id}/valider")
-  
     @Operation(summary = "Valider une facture",
                description = "Valide une facture brouillon et effectue la sortie de stock")
     public ResponseEntity<FactureResponse> validerFacture(
@@ -139,7 +142,7 @@ public class FactureController {
             @Valid @RequestBody FactureValidationRequest request) {
         log.info("Validation de la facture ID: {}", id);
         request.setFactureId(id);
-        FactureResponse response = factureService.validerFacture(request,request.getUsername());
+        FactureResponse response = factureService.validerFacture(request, tenantContext.currentUsername());
         return ResponseEntity.ok(response);
     }
 
@@ -151,8 +154,8 @@ public class FactureController {
      * @param request Données d'annulation
      * @return Facture annulée
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{id}/annuler")
-
     @Operation(summary = "Annuler une facture",
                description = "Annule une facture et réintègre le stock")
     public ResponseEntity<FactureResponse> annulerFacture(
@@ -160,7 +163,7 @@ public class FactureController {
             @Valid @RequestBody FactureAnnulationRequest request) {
         log.info("Annulation de la facture ID: {}", id);
         request.setFactureId(id);
-        FactureResponse response = factureService.annulerFacture(request,request.getUsername());
+        FactureResponse response = factureService.annulerFacture(request, tenantContext.currentUsername());
         return ResponseEntity.ok(response);
     }
 

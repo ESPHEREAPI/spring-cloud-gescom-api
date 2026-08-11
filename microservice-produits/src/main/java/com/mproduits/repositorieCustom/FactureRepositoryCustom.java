@@ -9,6 +9,6 @@ package com.mproduits.repositorieCustom;
  * @author USER01
  */
 public interface FactureRepositoryCustom {
-     com.mproduits.dto.FactureStatistiques calculerStatistiques(java.util.Date dateDebut, java.util.Date dateFin);
-      com.mproduits.dto.FactureStatistiques calculerStatistiques();
+     com.mproduits.dto.FactureStatistiques calculerStatistiques(java.util.Date dateDebut, java.util.Date dateFin, Long compagnieId);
+      com.mproduits.dto.FactureStatistiques calculerStatistiques(Long compagnieId);
 }

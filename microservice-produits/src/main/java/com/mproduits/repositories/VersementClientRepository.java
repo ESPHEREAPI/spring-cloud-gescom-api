@@ -253,6 +253,16 @@ public interface VersementClientRepository extends JpaRepository<VersementClient
            "JOIN FETCH v.client c " +
            "WHERE v.id = :id")
     Optional<VersementClient> findByIdWithFactureAndClient(@Param("id") Long id);
+
+    // Variante scopee compagnie (defense en profondeur - genererRecu n'est
+    // aujourd'hui atteignable qu'apres un scope deja verifie en amont par
+    // VersementService.genererRecuPaiement, mais garde inutile de faire
+    // reposer la securite sur l'ordre d'appel).
+    @Query("SELECT v FROM VersementClient v " +
+           "JOIN FETCH v.facture f " +
+           "JOIN FETCH v.client c " +
+           "WHERE v.id = :id AND c.compagnie.id = :compagnieId")
+    Optional<VersementClient> findByIdAndCompagnieIdWithFactureAndClient(@Param("id") Long id, @Param("compagnieId") Long compagnieId);
     
     /**
      * Récupérer les versements non validés (si vous avez un statut)

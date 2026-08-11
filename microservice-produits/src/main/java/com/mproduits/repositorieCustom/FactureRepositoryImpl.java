@@ -27,11 +27,11 @@ public class FactureRepositoryImpl implements FactureRepositoryCustom{
     private EntityManager em;
     @Override
     @Transactional(readOnly = true)
-    public FactureStatistiques calculerStatistiques(Date dateDebut, Date dateFin) {
+    public FactureStatistiques calculerStatistiques(Date dateDebut, Date dateFin, Long compagnieId) {
         // JPQL agrégé (sans constructor expression) -> renvoie Object[]
- 
+
             String jpql = """
-            SELECT 
+            SELECT
                 COUNT(f),
                 SUM(CASE WHEN f.statut = 'BROUILLON' THEN 1 ELSE 0 END),
                 SUM(CASE WHEN f.statut = 'NON_PAYEE' THEN 1 ELSE 0 END),
@@ -46,13 +46,14 @@ public class FactureRepositoryImpl implements FactureRepositoryCustom{
                 COALESCE(SUM(CASE WHEN f.statut = 'EN_RETARD' THEN f.soldeRestant ELSE 0 END), 0),
                 CASE WHEN SUM(f.totalTtc) > 0 THEN (SUM(f.montantPaye) * 1.0 / SUM(f.totalTtc) * 100.0) ELSE 0 END
             FROM Facture f
-            WHERE f.dateFacture BETWEEN :debut AND :fin
+            WHERE f.dateFacture BETWEEN :debut AND :fin AND f.client.compagnie.id = :compagnieId
         """;
-            
-            
+
+
         Query q = em.createQuery(jpql);
         q.setParameter("debut", dateDebut);
         q.setParameter("fin", dateFin);
+        q.setParameter("compagnieId", compagnieId);
 
         Object single = q.getSingleResult(); // renvoie Object[] avec les agrégats
         Object[] row = (single instanceof Object[] arr) ? arr : new Object[] { single };
@@ -76,10 +77,11 @@ public class FactureRepositoryImpl implements FactureRepositoryCustom{
         Double tauxRecouvrement = toDouble(row[12]);
 
         // Calcul du délai moyen en Java : on récupère les factures payées (datePaiementComplet not null)
-        String q2 = "SELECT f FROM Facture f WHERE f.dateFacture BETWEEN :debut AND :fin";
+        String q2 = "SELECT f FROM Facture f WHERE f.dateFacture BETWEEN :debut AND :fin AND f.client.compagnie.id = :compagnieId";
         List<Facture> factures = em.createQuery(q2, Facture.class)
                 .setParameter("debut", dateDebut)
                 .setParameter("fin", dateFin)
+                .setParameter("compagnieId", compagnieId)
                 .getResultList();
 
         // calcul moyenne jours entre dateFacture et datePaiementComplet
@@ -142,11 +144,11 @@ public class FactureRepositoryImpl implements FactureRepositoryCustom{
 
     @Override
     @Transactional(readOnly = true)
-    public FactureStatistiques calculerStatistiques() {
+    public FactureStatistiques calculerStatistiques(Long compagnieId) {
         // JPQL agrégé (sans constructor expression) -> renvoie Object[]
- 
+
             String jpql = """
-            SELECT 
+            SELECT
                 COUNT(f),
                 SUM(CASE WHEN f.statut = 'BROUILLON' THEN 1 ELSE 0 END),
                 SUM(CASE WHEN f.statut = 'NON_PAYEE' THEN 1 ELSE 0 END),
@@ -160,14 +162,13 @@ public class FactureRepositoryImpl implements FactureRepositoryCustom{
                 COALESCE(SUM(f.soldeRestant), 0),
                 COALESCE(SUM(CASE WHEN f.statut = 'EN_RETARD' THEN f.soldeRestant ELSE 0 END), 0),
                 CASE WHEN SUM(f.totalTtc) > 0 THEN (SUM(f.montantPaye) * 1.0 / SUM(f.totalTtc) * 100.0) ELSE 0 END
-            FROM Facture f order by f.dateFacture ASC
-           
+            FROM Facture f WHERE f.client.compagnie.id = :compagnieId order by f.dateFacture ASC
+
         """;
-            
-            
+
+
         Query q = em.createQuery(jpql);
-       // q.setParameter("debut", dateDebut);
-       // q.setParameter("fin", dateFin);
+        q.setParameter("compagnieId", compagnieId);
 
         Object single = q.getSingleResult(); // renvoie Object[] avec les agrégats
         Object[] row = (single instanceof Object[] arr) ? arr : new Object[] { single };
@@ -191,10 +192,9 @@ public class FactureRepositoryImpl implements FactureRepositoryCustom{
         Double tauxRecouvrement = toDouble(row[12]);
 
         // Calcul du délai moyen en Java : on récupère les factures payées (datePaiementComplet not null)
-        String q2 = "SELECT f FROM Facture f order by f.dateFacture ASC" ;
+        String q2 = "SELECT f FROM Facture f WHERE f.client.compagnie.id = :compagnieId order by f.dateFacture ASC";
         List<Facture> factures = em.createQuery(q2, Facture.class)
-               // .setParameter("debut", dateDebut)
-               // .setParameter("fin", dateFin)
+                .setParameter("compagnieId", compagnieId)
                 .getResultList();
 
         // calcul moyenne jours entre dateFacture et datePaiementComplet

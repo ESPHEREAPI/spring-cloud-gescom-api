@@ -4,6 +4,7 @@ import com.mproduits.dto.DevisDTO;
 import com.mproduits.mappers.DevisMapper;
 import com.mproduits.model.Devis;
 import com.mproduits.security.BoutiqueAccessGuard;
+import com.mproduits.security.TenantContext;
 import com.mproduits.services.DevisService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -81,6 +82,7 @@ public class DevisController {
     private final DevisService devisService;
     private final DevisMapper mapper;
     private final BoutiqueAccessGuard boutiqueAccessGuard;
+    private final TenantContext tenantContext;
 
     // ================================================================
     // SECTION 1: CRÉATION ET MODIFICATION
@@ -131,7 +133,7 @@ public class DevisController {
 
         try {
             boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(dto.getBoutiqueid());
-            Devis devis = devisService.creerDevis(dto, username,dto.getBoutiqueid(),dto.getAnneeid());
+            Devis devis = devisService.creerDevis(dto, tenantContext.currentUsername(), dto.getBoutiqueid(), dto.getAnneeid());
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -182,7 +184,7 @@ public class DevisController {
         log.info("PUT /api/v1/devis/{} - User: {}", id, username);
 
         try {
-            Devis devis = devisService.modifierDevis(id, dto, username);
+            Devis devis = devisService.modifierDevis(id, dto, tenantContext.currentUsername());
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -222,7 +224,7 @@ public class DevisController {
         log.info("POST /api/v1/devis/{}/dupliquer - User: {}", id, username);
 
         try {
-            Devis nouveauDevis = devisService.dupliquerDevis(id, username);
+            Devis nouveauDevis = devisService.dupliquerDevis(id, tenantContext.currentUsername());
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -636,7 +638,7 @@ public class DevisController {
 
         try {
             String motif = body.getOrDefault("motif", "Refusé par le client");
-            DevisDTO devis = devisService.refuserDevis(id, motif);
+            DevisDTO devis = devisService.refuserDevis(id, motif, tenantContext.currentUsername());
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -682,7 +684,7 @@ public class DevisController {
 
         try {
             String motif = body.getOrDefault("motif", "Annulé");
-            DevisDTO devis = devisService.annulerDevis(id, motif, username);
+            DevisDTO devis = devisService.annulerDevis(id, motif, tenantContext.currentUsername());
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);

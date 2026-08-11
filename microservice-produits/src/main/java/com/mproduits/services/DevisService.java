@@ -342,7 +342,7 @@ public class DevisService {
         log.info("DUPLICATION DEVIS - ID source: {}", devisId);
 
         try {
-            Devis devisSource = devisRepo.findById(devisId)
+            Devis devisSource = devisRepo.findByIdAndBoutique_Compagnie_Id(devisId, tenantContext.currentCompagnieId())
                     .orElseThrow(() -> new DevisException("Devis non trouvé: " + devisId));
 
             // Créer nouveau devis
@@ -426,7 +426,7 @@ public class DevisService {
         log.info("═══════════════════════════════════════");
 
         try {
-            Devis devis = devisRepo.findById(devisId)
+            Devis devis = devisRepo.findByIdAndBoutique_Compagnie_Id(devisId, tenantContext.currentCompagnieId())
                     .orElseThrow(() -> new DevisException("Devis non trouvé: " + devisId));
 
             // Vérifications
@@ -486,11 +486,11 @@ public class DevisService {
      * @param motif Motif du refus
      * @return DevisDTO refusé
      */
-    public DevisDTO refuserDevis(Long devisId, String motif) {
+    public DevisDTO refuserDevis(Long devisId, String motif, String username) {
         log.info("REFUS DEVIS - ID: {}", devisId);
 
         try {
-            Devis devis = devisRepo.findById(devisId)
+            Devis devis = devisRepo.findByIdAndBoutique_Compagnie_Id(devisId, tenantContext.currentCompagnieId())
                     .orElseThrow(() -> new DevisException("Devis non trouvé: " + devisId));
 
             if (devis.getStatut() != StatutDevis.EN_ATTENTE) {
@@ -499,6 +499,8 @@ public class DevisService {
 
             devis.setStatut(StatutDevis.REFUSE);
             devis.setMotifRefus(motif);
+            devis.setUsernameUpdate(username);
+            devis.setDateModification(new Date());
 
             devis = devisRepo.save(devis);
 
@@ -531,7 +533,7 @@ public class DevisService {
         log.info("ANNULATION DEVIS - ID: {}", devisId);
 
         try {
-            Devis devis = devisRepo.findById(devisId)
+            Devis devis = devisRepo.findByIdAndBoutique_Compagnie_Id(devisId, tenantContext.currentCompagnieId())
                     .orElseThrow(() -> new DevisException("Devis non trouvé: " + devisId));
 
             // Ne peut pas annuler si déjà converti
@@ -614,7 +616,7 @@ public class DevisService {
     @Transactional(readOnly = true)
     public Optional<Devis> findById(Long id) {
         log.debug("Recherche devis ID: {}", id);
-        return devisRepo.findById(id);
+        return devisRepo.findByIdAndBoutique_Compagnie_Id(id, tenantContext.currentCompagnieId());
     }
 
     /**
@@ -623,7 +625,7 @@ public class DevisService {
     @Transactional(readOnly = true)
     public Optional<Devis> findByNumero(String numeroDevis) {
         log.debug("Recherche devis numéro: {}", numeroDevis);
-        return devisRepo.findByNumeroDevis(numeroDevis);
+        return devisRepo.findByNumeroDevisAndBoutique_Compagnie_Id(numeroDevis, tenantContext.currentCompagnieId());
     }
 
     /**
@@ -643,7 +645,7 @@ public class DevisService {
         log.debug("Récupération devis paginés - Page: {}, Taille: {}",
                 pageable.getPageNumber(), pageable.getPageSize());
 
-        return devisRepo.findAll(pageable)
+        return devisRepo.findByBoutique_Compagnie_Id(tenantContext.currentCompagnieId(), pageable)
                 .map(mapper::toDto);
     }
 
@@ -693,7 +695,7 @@ public class DevisService {
     @Transactional(readOnly = true)
     public List<DevisDTO> findByPeriode(Date dateDebut, Date dateFin) {
         log.debug("Recherche devis entre {} et {}", dateDebut, dateFin);
-        return devisRepo.findByDateDevisBetween(dateDebut, dateFin).stream()
+        return devisRepo.findByCompagnieIdAndDateDevisBetween(tenantContext.currentCompagnieId(), dateDebut, dateFin).stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
     }

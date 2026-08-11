@@ -12,10 +12,16 @@ import java.util.List;
 
 public class FactureSpecifications {
 
-    public static Specification<Facture> withCriteria(FactureSearchCriteria criteria) {
+    // compagnieId est TOUJOURS fourni par le serveur (TenantContext), jamais
+    // par le client - avant ce fix, seul criteria.getBoutiqueid() (jamais
+    // renseigne par /factures/search) limitait le scope, donc /factures et
+    // /factures/search renvoyaient les factures de TOUTES les compagnies.
+    public static Specification<Facture> withCriteria(FactureSearchCriteria criteria, Long compagnieId) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            
+
+            predicates.add(cb.equal(root.get("client").get("compagnie").get("id"), compagnieId));
+
             // Filtre par boutique ID
             if (criteria.getBoutiqueid() != null) {
                 predicates.add(cb.equal(root.get("boutique").get("id"), criteria.getBoutiqueid()));

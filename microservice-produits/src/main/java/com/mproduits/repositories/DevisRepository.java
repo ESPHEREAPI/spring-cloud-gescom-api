@@ -76,6 +76,21 @@ public interface DevisRepository  extends JpaRepository<Devis, Long>{
      */
     Optional<Devis> findByNumeroDevis(String numeroDevis);
 
+    // Lookups scopes compagnie (via Devis.boutique.compagnie) - a utiliser a
+    // la place de findById()/findByNumeroDevis() partout ou l'id/numero
+    // vient d'une requete client (sinon IDOR : lecture/action cross-tenant).
+    Optional<Devis> findByIdAndBoutique_Compagnie_Id(Long id, Long compagnieId);
+
+    Optional<Devis> findByNumeroDevisAndBoutique_Compagnie_Id(String numeroDevis, Long compagnieId);
+
+    org.springframework.data.domain.Page<Devis> findByBoutique_Compagnie_Id(Long compagnieId, org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT d FROM Devis d WHERE d.boutique.compagnie.id = :compagnieId AND d.dateDevis BETWEEN :dateDebut AND :dateFin " +
+           "ORDER BY d.dateDevis DESC")
+    List<Devis> findByCompagnieIdAndDateDevisBetween(@Param("compagnieId") Long compagnieId,
+                                                       @Param("dateDebut") Date dateDebut,
+                                                       @Param("dateFin") Date dateFin);
+
     /**
      * Récupère tous les devis d'un client spécifique
      * Triés par date décroissante (plus récents en premier)

@@ -339,7 +339,7 @@ public class VersementService {
     }
 
     @Transactional
-    public VersementResponse annulerVersement(VersementAnnulationRequest request) {
+    public VersementResponse annulerVersement(VersementAnnulationRequest request, String username) {
         log.info("Annulation du versement ID: {}", request.getVersementId());
 
         // 1. Récupération du versement
@@ -355,7 +355,7 @@ public class VersementService {
         versement.setStatut("ANNULE");
         versement.setDateAnnulation(new Date());
         versement.setMotifAnnulation(request.getMotifAnnulation());
-        versement.setUsernameAnnulation(request.getUsername());
+        versement.setUsernameAnnulation(username);
         
         versement = versementRepository.save(versement);
 
@@ -483,6 +483,22 @@ public class VersementService {
         }
         
         return recuPaiementService.genererRecu(versement.getId());
+    }
+
+    /**
+     * Genere le reçu de paiement en PDF telechargeable (voir
+     * VersementController#telechargerRecuPaiement).
+     */
+    @Transactional(readOnly = true)
+    public byte[] genererRecuPdf(Long versementId) {
+        VersementClient versement = versementRepository.findByIdAndClient_Compagnie_Id(versementId, compagnieCourante())
+                .orElseThrow(() -> new ResourceNotFoundException("Versement introuvable avec l'ID: " + versementId));
+
+        if (!"VALIDE".equals(versement.getStatut())) {
+            throw new ErrorResponse("Le reçu ne peut être généré que pour les versements validés");
+        }
+
+        return recuPaiementService.genererRecuPdf(versement.getId());
     }
 
     // ========== MÉTHODES PRIVÉES ==========

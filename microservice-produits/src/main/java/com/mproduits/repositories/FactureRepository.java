@@ -141,4 +141,28 @@ public interface FactureRepository extends JpaRepository<Facture, Long>, JpaSpec
            "f.statut NOT IN ('PAYEE', 'ANNULEE') " +
            "ORDER BY f.dateEcheance ASC")
     List<Facture> findFacturesImpayeesByClient(@Param("clientId") Long clientId);
+
+    /**
+     * Solde consolide (total facture / total paye / reste a payer) par
+     * client de la compagnie, trie du plus gros reste-a-payer au plus
+     * petit - "clients a haute redevance" pour le recouvrement (ecran
+     * Compte Client). Object[] = [clientId, nom, code, telephone,
+     * totalFacture, totalPaye, soldeRestant, nombreFactures].
+     */
+    @Query("SELECT f.client.id, f.client.nom, f.client.code, f.client.telephone, " +
+           "COALESCE(SUM(f.totalTtc),0), COALESCE(SUM(f.montantPaye),0), COALESCE(SUM(f.soldeRestant),0), COUNT(f) " +
+           "FROM Facture f WHERE f.client.compagnie.id = :compagnieId " +
+           "GROUP BY f.client.id, f.client.nom, f.client.code, f.client.telephone " +
+           "ORDER BY SUM(f.soldeRestant) DESC")
+    List<Object[]> aggregerSoldesParClient(@Param("compagnieId") Long compagnieId);
+
+    /**
+     * Meme agregation, pour un seul client (ecran Compte Client - vue
+     * detail d'un client precis).
+     */
+    @Query("SELECT f.client.id, f.client.nom, f.client.code, f.client.telephone, " +
+           "COALESCE(SUM(f.totalTtc),0), COALESCE(SUM(f.montantPaye),0), COALESCE(SUM(f.soldeRestant),0), COUNT(f) " +
+           "FROM Facture f WHERE f.client.id = :clientId AND f.client.compagnie.id = :compagnieId " +
+           "GROUP BY f.client.id, f.client.nom, f.client.code, f.client.telephone")
+    List<Object[]> aggregerSoldeParClient(@Param("clientId") Long clientId, @Param("compagnieId") Long compagnieId);
 }

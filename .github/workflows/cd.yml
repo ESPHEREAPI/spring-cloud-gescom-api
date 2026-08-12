@@ -36,6 +36,16 @@ jobs:
             git -C web/easycompro-gescom/AdminLTE-3_2_0-angular/adminlte-angular-app rev-parse HEAD
             docker compose build --no-cache frontend
             docker compose up -d --build
+            # docker compose up -d --build ne recree un conteneur que si SON
+            # PROPRE build a change. Le gateway lit sa config CORS une seule
+            # fois au demarrage depuis config-server, qui sert cloud-config-gescom
+            # (un depot externe, distinct du code du gateway) - si seul ce depot
+            # a change, le conteneur gateway (image identique) n a jamais
+            # redemarre et continue de servir une config CORS perimee
+            # indefiniment. On force donc son redemarrage (et celui de
+            # config-server, source de cette config) a chaque deploiement,
+            # inconditionnellement.
+            docker compose restart config-server gateway
           '
 
       - name: Verifier que les services sont en sante

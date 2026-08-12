@@ -4,6 +4,8 @@ import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.*;
 import com.itextpdf.text.pdf.draw.LineSeparator;
 import com.mproduits.dto.RecuPaiementDTO;
+import com.mproduits.model.Devis;
+import com.mproduits.model.DevisItem;
 import com.mproduits.model.Entreprise;
 import com.mproduits.model.Facture;
 import com.mproduits.model.FactureItem;
@@ -164,6 +166,188 @@ public class PDFGeneratorProfessionnel {
             log.error("Erreur lors de la génération du PDF du reçu", e);
             throw new RuntimeException("Erreur lors de la génération du PDF du reçu: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Génère le PDF professionnel d'un devis, dans le meme style que la
+     * facture. Aucun endpoint ne generait ce PDF auparavant - le bouton
+     * "Telecharger PDF" du frontend (devis-list) appelait une route
+     * inexistante cote backend (500/404 selon le point d'entree).
+     */
+    public byte[] genererDevisPDF(Devis devis) {
+        log.info("Génération du PDF professionnel pour le devis: {}", devis.getNumeroDevis());
+        this.entreprise = getEntrepriseConfig();
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            Document document = new Document(PageSize.A4, 40, 40, 40, 40);
+            PdfWriter writer = PdfWriter.getInstance(document, baos);
+            writer.setPageEvent(new PageNumberEvent(entreprise));
+
+            document.open();
+
+            addDevisHeader(document, devis);
+            document.add(new Paragraph("\n"));
+
+            addDevisLignesTable(document, devis);
+            document.add(new Paragraph("\n"));
+
+            addDevisTotaux(document, devis);
+            document.add(new Paragraph("\n"));
+
+            if (devis.getConditions() != null && !devis.getConditions().isEmpty()) {
+                Paragraph condTitle = new Paragraph("Conditions", FONT_LABEL);
+                condTitle.setSpacingBefore(10);
+                document.add(condTitle);
+                document.add(new Paragraph(devis.getConditions(), FONT_NORMAL));
+            }
+
+            if (devis.getRemarques() != null && !devis.getRemarques().isEmpty()) {
+                Paragraph remTitle = new Paragraph("Remarques", FONT_LABEL);
+                remTitle.setSpacingBefore(10);
+                document.add(remTitle);
+                document.add(new Paragraph(devis.getRemarques(), FONT_NORMAL));
+            }
+
+            addSignatureZone(document);
+            addMentionsLegales(document);
+
+            document.close();
+            return baos.toByteArray();
+
+        } catch (Exception e) {
+            log.error("Erreur lors de la génération du PDF du devis", e);
+            throw new RuntimeException("Erreur lors de la génération du PDF du devis: " + e.getMessage(), e);
+        }
+    }
+
+    private void addDevisHeader(Document document, Devis devis) throws DocumentException {
+        PdfPTable mainTable = new PdfPTable(2);
+        mainTable.setWidthPercentage(100);
+        mainTable.setWidths(new float[]{1.2f, 1});
+
+        // ========== COLONNE GAUCHE : ENTREPRISE ==========
+        PdfPCell entrepriseCell = new PdfPCell();
+        entrepriseCell.setBorder(Rectangle.NO_BORDER);
+        entrepriseCell.setPaddingRight(10);
+
+        Paragraph companyName = new Paragraph(entreprise.getCompagnie().getNom(), FONT_COMPANY);
+        companyName.setSpacingAfter(5);
+        entrepriseCell.addElement(companyName);
+
+        entrepriseCell.addElement(new Paragraph("Tél: " + entreprise.getCompagnie().getTel(), FONT_NORMAL));
+        if (entreprise.getCompagnie().getEmail() != null) {
+            entrepriseCell.addElement(new Paragraph("Email: " + entreprise.getCompagnie().getEmail(), FONT_NORMAL));
+        }
+        entrepriseCell.addElement(new Paragraph(" ", FONT_SMALL));
+        entrepriseCell.addElement(new Paragraph("RCCM: " + entreprise.getCompagnie().getRccm(), FONT_SMALL));
+        entrepriseCell.addElement(new Paragraph("NIU: " + entreprise.getCompagnie().getNui(), FONT_SMALL));
+
+        mainTable.addCell(entrepriseCell);
+
+        // ========== COLONNE DROITE : TITRE, NUMERO, CLIENT ==========
+        PdfPCell rightCell = new PdfPCell();
+        rightCell.setBorder(Rectangle.NO_BORDER);
+        rightCell.setPaddingLeft(10);
+
+        Paragraph devisTitle = new Paragraph("DEVIS", FONT_TITLE);
+        devisTitle.setAlignment(Element.ALIGN_RIGHT);
+        devisTitle.setSpacingAfter(5);
+        rightCell.addElement(devisTitle);
+
+        PdfPTable numeroTable = new PdfPTable(1);
+        numeroTable.setWidthPercentage(100);
+        numeroTable.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        PdfPCell numeroCell = new PdfPCell(new Phrase(devis.getNumeroDevis(), FONT_BOLD));
+        numeroCell.setBackgroundColor(COLOR_GRAY_LIGHT);
+        numeroCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        numeroCell.setPadding(8);
+        numeroCell.setBorderColor(COLOR_PRIMARY);
+        numeroCell.setBorderWidth(2);
+        numeroTable.addCell(numeroCell);
+        rightCell.addElement(numeroTable);
+
+        rightCell.addElement(new Paragraph("\n", FONT_SMALL));
+
+        addKeyValue(rightCell, "Date d'émission:", devis.getDateDevis().toString());
+        if (devis.getDateExpiration() != null) {
+            addKeyValue(rightCell, "Valable jusqu'au:", devis.getDateExpiration().toString());
+        }
+        addKeyValue(rightCell, "Statut:", devis.getStatut().getLibelle());
+
+        rightCell.addElement(new Paragraph("\n", FONT_SMALL));
+
+        PdfPTable clientTable = new PdfPTable(1);
+        clientTable.setWidthPercentage(100);
+        PdfPCell clientCell = new PdfPCell();
+        clientCell.setBackgroundColor(COLOR_GRAY_LIGHT);
+        clientCell.setPadding(8);
+        clientCell.setBorderColor(COLOR_SECONDARY);
+        clientCell.setBorderWidth(1);
+
+        Paragraph clientTitle = new Paragraph("ADRESSÉ À", FONT_LABEL);
+        clientTitle.setSpacingAfter(5);
+        clientCell.addElement(clientTitle);
+
+        clientCell.addElement(new Paragraph(devis.getClient().getNom(), FONT_BOLD));
+        if (devis.getClient().getAdresse() != null) {
+            clientCell.addElement(new Paragraph(devis.getClient().getAdresse(), FONT_NORMAL));
+        }
+        if (devis.getClient().getTelephone() != null) {
+            clientCell.addElement(new Paragraph("Tél: " + devis.getClient().getTelephone(), FONT_NORMAL));
+        }
+        if (devis.getClient().getEmail() != null) {
+            clientCell.addElement(new Paragraph("Email: " + devis.getClient().getEmail(), FONT_NORMAL));
+        }
+
+        clientTable.addCell(clientCell);
+        rightCell.addElement(clientTable);
+
+        mainTable.addCell(rightCell);
+        document.add(mainTable);
+
+        LineSeparator line = new LineSeparator(2, 100, COLOR_PRIMARY, Element.ALIGN_CENTER, -2);
+        document.add(new Chunk(line));
+    }
+
+    private void addDevisLignesTable(Document document, Devis devis) throws DocumentException {
+        PdfPTable table = new PdfPTable(6);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{0.5f, 3f, 1f, 1.2f, 1f, 1.5f});
+        table.setSpacingBefore(10);
+
+        String[] headers = {"N°", "Désignation", "Qté", "P.U. HT", "TVA %", "Total TTC"};
+        for (String header : headers) {
+            PdfPCell cell = new PdfPCell(new Phrase(header, FONT_HEADER));
+            cell.setBackgroundColor(COLOR_PRIMARY);
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            cell.setPadding(8);
+            cell.setBorderColor(BaseColor.WHITE);
+            table.addCell(cell);
+        }
+
+        int numero = 1;
+        for (DevisItem ligne : devis.getItems()) {
+            addTableCellCenter(table, String.valueOf(numero++), FONT_NORMAL);
+            addTableCellLeft(table, ligne.getProduitLibelle(), FONT_NORMAL);
+            addTableCellCenter(table, String.valueOf(ligne.getQuantite()), FONT_NORMAL);
+            addTableCellRight(table, formatMontant(ligne.getPrixUnitaire().doubleValue()), FONT_NORMAL);
+            addTableCellCenter(table, ligne.getTauxTVA() + "%", FONT_NORMAL);
+            addTableCellRight(table, formatMontant(ligne.getMontantTTC().doubleValue()), FONT_BOLD);
+        }
+
+        document.add(table);
+    }
+
+    private void addDevisTotaux(Document document, Devis devis) throws DocumentException {
+        PdfPTable table = new PdfPTable(2);
+        table.setWidthPercentage(45);
+        table.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        table.setSpacingBefore(10);
+
+        addTotalRow(table, "Total HT", formatMontant(devis.getMontantHT().doubleValue()) + " XAF", false);
+        addTotalRow(table, "TVA", formatMontant(devis.getTotalTVA().doubleValue()) + " XAF", false);
+        addTotalRow(table, "TOTAL TTC", formatMontant(devis.getTotal().doubleValue()) + " XAF", true);
+
+        document.add(table);
     }
 
     private void addRecuHeader(Document document, RecuPaiementDTO recu) throws DocumentException {

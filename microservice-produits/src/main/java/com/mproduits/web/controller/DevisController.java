@@ -18,8 +18,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -275,6 +279,28 @@ public class DevisController {
                         "success", false,
                         "message", "Devis non trouvé: " + id
                 )));
+    }
+
+    /**
+     * Télécharge le PDF du devis.
+     * GET /microservice-produits/devis/{id}/pdf
+     */
+    @GetMapping("/{id}/pdf")
+    @Operation(summary = "Télécharger le PDF du devis")
+    public ResponseEntity<Resource> genererPDF(@PathVariable Long id) {
+        log.info("GET /api/v1/devis/{}/pdf", id);
+
+        Devis devis = devisService.findById(id)
+                .orElseThrow(() -> new com.mproduits.exceptions.ResourceNotFoundException("Devis non trouvé: " + id));
+        byte[] pdf = devisService.genererPDF(id);
+        ByteArrayResource resource = new ByteArrayResource(pdf);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=" + devis.getNumeroDevis() + ".pdf")
+                .contentType(MediaType.APPLICATION_PDF)
+                .contentLength(pdf.length)
+                .body(resource);
     }
 
     /**

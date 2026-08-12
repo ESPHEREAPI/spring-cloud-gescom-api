@@ -64,6 +64,7 @@ public class DevisService {
     private final  DevisSequenceRepository sequenceRepo;
     private final DevisMapper mapper;
     private final TenantContext tenantContext;
+    private final com.mproduits.utiles.PDFGeneratorProfessionnel pdfGeneratorProfessionnel;
 
     // Constantes métier
     private static final int VALIDITE_DEFAUT_JOURS = 30;
@@ -626,6 +627,17 @@ public class DevisService {
     public Optional<Devis> findById(Long id) {
         log.debug("Recherche devis ID: {}", id);
         return devisRepo.findByIdAndBoutique_Compagnie_Id(id, tenantContext.currentCompagnieId());
+    }
+
+    /**
+     * Génère le PDF du devis (aucun endpoint n'existait auparavant - voir
+     * PDFGeneratorProfessionnel.genererDevisPDF).
+     */
+    @Transactional(readOnly = true)
+    public byte[] genererPDF(Long id) {
+        Devis devis = findById(id)
+                .orElseThrow(() -> new DevisException("Devis non trouvé: " + id));
+        return pdfGeneratorProfessionnel.genererDevisPDF(devis);
     }
 
     /**

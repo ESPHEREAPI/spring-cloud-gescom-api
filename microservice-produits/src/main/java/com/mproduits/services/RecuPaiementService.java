@@ -48,6 +48,7 @@ public class RecuPaiementService {
     private final NumeroGeneratorService numeroGeneratorService;
     private final NotificationService notificationService;
     private final com.mproduits.security.TenantContext tenantContext;
+    private final com.mproduits.utiles.PDFGeneratorProfessionnel pdfGeneratorProfessionnel;
     
     private static final String ENTREPRISE_NOM = "Votre Entreprise";
     private static final String ENTREPRISE_ADRESSE = "123 Rue Example, Ville";
@@ -337,75 +338,15 @@ public class RecuPaiementService {
     /**
      * Génère le reçu de paiement au format PDF telechargeable (voir
      * VersementController#telechargerRecuPaiement - renvoyait auparavant un
-     * fichier vide, jamais implémenté).
+     * fichier vide, jamais implémenté). Delegue a PDFGeneratorProfessionnel
+     * pour un rendu coherent avec la facture (en-tete entreprise reel,
+     * tableaux bordes) plutot que la mise en page en Paragraph brut
+     * utilisee auparavant, avec des coordonnees d'entreprise en dur
+     * ("Votre Entreprise", etc.) jamais remplacees par les vraies donnees.
      */
     public byte[] genererRecuPdf(Long versementId) {
         RecuPaiementDTO recu = genererRecu(versementId);
-        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd/MM/yyyy");
-        java.text.DecimalFormat df = new java.text.DecimalFormat("#,##0.00",
-                DecimalFormatSymbols.getInstance(Locale.FRENCH));
-
-        Document document = new Document(com.itextpdf.text.PageSize.A5, 30, 30, 30, 30);
-        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-        try {
-            PdfWriter.getInstance(document, baos);
-            document.open();
-
-            Font titleFont = new Font(Font.FontFamily.HELVETICA, 16, Font.BOLD);
-            Font subFont = new Font(Font.FontFamily.HELVETICA, 10, Font.NORMAL);
-            Font boldFont = new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD);
-            Font normalFont = new Font(Font.FontFamily.HELVETICA, 10, Font.NORMAL);
-
-            Paragraph titre = new Paragraph("REÇU DE PAIEMENT", titleFont);
-            titre.setAlignment(Element.ALIGN_CENTER);
-            document.add(titre);
-
-            Paragraph entreprise = new Paragraph(ENTREPRISE_NOM + "\n" + ENTREPRISE_ADRESSE
-                    + "\nTél: " + ENTREPRISE_TEL, subFont);
-            entreprise.setAlignment(Element.ALIGN_CENTER);
-            entreprise.setSpacingBefore(4);
-            document.add(entreprise);
-            document.add(new Paragraph(" "));
-
-            document.add(new Paragraph("Reçu N° : " + recu.getNumeroRecu(), boldFont));
-            document.add(new Paragraph("Date : " + sdf.format(recu.getDateEmission()), normalFont));
-            document.add(new Paragraph(" "));
-
-            document.add(new Paragraph("Client : " + recu.getClientNom(), normalFont));
-            if (recu.getClientTelephone() != null) {
-                document.add(new Paragraph("Tél : " + recu.getClientTelephone(), normalFont));
-            }
-            document.add(new Paragraph(" "));
-
-            document.add(new Paragraph("Facture N° : " + recu.getFactureNumero(), normalFont));
-            document.add(new Paragraph("Date versement : " + sdf.format(recu.getDateVersement()), normalFont));
-            document.add(new Paragraph("Mode de paiement : " + recu.getModePaiement(), normalFont));
-            if (recu.getReferencePaiement() != null) {
-                document.add(new Paragraph("Référence : " + recu.getReferencePaiement(), normalFont));
-            }
-            document.add(new Paragraph(" "));
-
-            Paragraph montant = new Paragraph("MONTANT VERSÉ : " + df.format(recu.getMontant()) + " FCFA", boldFont);
-            document.add(montant);
-            document.add(new Paragraph("En lettres : " + recu.getMontantEnLettres(), normalFont));
-
-            if (recu.getFactureSoldeRestant() != null) {
-                document.add(new Paragraph(" "));
-                document.add(new Paragraph("Total facture : " + df.format(recu.getFactureTotalTtc()) + " FCFA", normalFont));
-                document.add(new Paragraph("Solde restant : " + df.format(recu.getFactureSoldeRestant()) + " FCFA", normalFont));
-            }
-
-            Paragraph footer = new Paragraph("Merci pour votre confiance",
-                    new Font(Font.FontFamily.HELVETICA, 8, Font.ITALIC));
-            footer.setAlignment(Element.ALIGN_CENTER);
-            footer.setSpacingBefore(20);
-            document.add(footer);
-
-            document.close();
-        } catch (DocumentException e) {
-            throw new ErrorResponse("Erreur lors de la génération du reçu PDF: " + e.getMessage());
-        }
-        return baos.toByteArray();
+        return pdfGeneratorProfessionnel.genererRecuPaiementPDF(recu);
     }
 
     // ========================================================================

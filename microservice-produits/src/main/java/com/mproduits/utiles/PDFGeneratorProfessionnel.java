@@ -3,6 +3,7 @@ package com.mproduits.utiles;
 import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.*;
 import com.itextpdf.text.pdf.draw.LineSeparator;
+import com.mproduits.dto.RecuPaiementDTO;
 import com.mproduits.model.Entreprise;
 import com.mproduits.model.Facture;
 import com.mproduits.model.FactureItem;
@@ -17,6 +18,7 @@ import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
+import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
 
 /**
@@ -120,6 +122,200 @@ public class PDFGeneratorProfessionnel {
             log.error("Erreur lors de la génération du PDF", e);
             throw new RuntimeException("Erreur lors de la génération du PDF: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Génère le PDF professionnel d'un reçu de paiement (versement client),
+     * dans le meme style que la facture (en-tete entreprise reel, tableaux
+     * bordes, zone signature) - remplace l'ancienne version en Paragraph
+     * brut de RecuPaiementService qui utilisait en plus des constantes
+     * d'entreprise en dur ("Votre Entreprise", email placeholder, etc.).
+     */
+    public byte[] genererRecuPaiementPDF(RecuPaiementDTO recu) {
+        log.info("Génération du PDF professionnel du reçu: {}", recu.getNumeroRecu());
+        this.entreprise = getEntrepriseConfig();
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            Document document = new Document(PageSize.A4, 40, 40, 40, 40);
+            PdfWriter writer = PdfWriter.getInstance(document, baos);
+            writer.setPageEvent(new PageNumberEvent(entreprise));
+
+            document.open();
+
+            addRecuHeader(document, recu);
+            document.add(new Paragraph("\n"));
+
+            addRecuPaiementDetails(document, recu);
+            document.add(new Paragraph("\n"));
+
+            addRecuMontant(document, recu);
+
+            if (recu.getFactureSoldeRestant() != null) {
+                document.add(new Paragraph("\n"));
+                addRecuSolde(document, recu);
+            }
+
+            addSignatureZone(document);
+            addMentionsLegales(document);
+
+            document.close();
+            return baos.toByteArray();
+
+        } catch (Exception e) {
+            log.error("Erreur lors de la génération du PDF du reçu", e);
+            throw new RuntimeException("Erreur lors de la génération du PDF du reçu: " + e.getMessage(), e);
+        }
+    }
+
+    private void addRecuHeader(Document document, RecuPaiementDTO recu) throws DocumentException {
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+
+        PdfPTable mainTable = new PdfPTable(2);
+        mainTable.setWidthPercentage(100);
+        mainTable.setWidths(new float[]{1.2f, 1});
+
+        // ========== COLONNE GAUCHE : ENTREPRISE ==========
+        PdfPCell entrepriseCell = new PdfPCell();
+        entrepriseCell.setBorder(Rectangle.NO_BORDER);
+        entrepriseCell.setPaddingRight(10);
+
+        Paragraph companyName = new Paragraph(entreprise.getCompagnie().getNom(), FONT_COMPANY);
+        companyName.setSpacingAfter(5);
+        entrepriseCell.addElement(companyName);
+
+        entrepriseCell.addElement(new Paragraph("Tél: " + entreprise.getCompagnie().getTel(), FONT_NORMAL));
+        if (entreprise.getCompagnie().getEmail() != null) {
+            entrepriseCell.addElement(new Paragraph("Email: " + entreprise.getCompagnie().getEmail(), FONT_NORMAL));
+        }
+        entrepriseCell.addElement(new Paragraph(" ", FONT_SMALL));
+        entrepriseCell.addElement(new Paragraph("RCCM: " + entreprise.getCompagnie().getRccm(), FONT_SMALL));
+        entrepriseCell.addElement(new Paragraph("NIU: " + entreprise.getCompagnie().getNui(), FONT_SMALL));
+
+        mainTable.addCell(entrepriseCell);
+
+        // ========== COLONNE DROITE : TITRE, NUMERO, CLIENT ==========
+        PdfPCell rightCell = new PdfPCell();
+        rightCell.setBorder(Rectangle.NO_BORDER);
+        rightCell.setPaddingLeft(10);
+
+        Paragraph titre = new Paragraph("REÇU DE PAIEMENT", FONT_TITLE);
+        titre.setAlignment(Element.ALIGN_RIGHT);
+        titre.setSpacingAfter(5);
+        rightCell.addElement(titre);
+
+        PdfPTable numeroTable = new PdfPTable(1);
+        numeroTable.setWidthPercentage(100);
+        numeroTable.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        PdfPCell numeroCell = new PdfPCell(new Phrase(recu.getNumeroRecu(), FONT_BOLD));
+        numeroCell.setBackgroundColor(COLOR_GRAY_LIGHT);
+        numeroCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        numeroCell.setPadding(8);
+        numeroCell.setBorderColor(COLOR_PRIMARY);
+        numeroCell.setBorderWidth(2);
+        numeroTable.addCell(numeroCell);
+        rightCell.addElement(numeroTable);
+
+        rightCell.addElement(new Paragraph("\n", FONT_SMALL));
+        addKeyValue(rightCell, "Date:", sdf.format(recu.getDateEmission()));
+
+        rightCell.addElement(new Paragraph("\n", FONT_SMALL));
+
+        PdfPTable clientTable = new PdfPTable(1);
+        clientTable.setWidthPercentage(100);
+        PdfPCell clientCell = new PdfPCell();
+        clientCell.setBackgroundColor(COLOR_GRAY_LIGHT);
+        clientCell.setPadding(8);
+        clientCell.setBorderColor(COLOR_SECONDARY);
+        clientCell.setBorderWidth(1);
+
+        Paragraph clientTitle = new Paragraph("REÇU DE", FONT_LABEL);
+        clientTitle.setSpacingAfter(5);
+        clientCell.addElement(clientTitle);
+
+        clientCell.addElement(new Paragraph(recu.getClientNom(), FONT_BOLD));
+        if (recu.getClientAdresse() != null) {
+            clientCell.addElement(new Paragraph(recu.getClientAdresse(), FONT_NORMAL));
+        }
+        if (recu.getClientTelephone() != null) {
+            clientCell.addElement(new Paragraph("Tél: " + recu.getClientTelephone(), FONT_NORMAL));
+        }
+
+        clientTable.addCell(clientCell);
+        rightCell.addElement(clientTable);
+
+        mainTable.addCell(rightCell);
+        document.add(mainTable);
+
+        LineSeparator line = new LineSeparator(2, 100, COLOR_PRIMARY, Element.ALIGN_CENTER, -2);
+        document.add(new Chunk(line));
+    }
+
+    private void addRecuPaiementDetails(Document document, RecuPaiementDTO recu) throws DocumentException {
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+
+        PdfPTable table = new PdfPTable(2);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{1.3f, 2f});
+        table.setSpacingBefore(10);
+
+        String[][] lignes = {
+            {"Facture N°", recu.getFactureNumero()},
+            {"Date de versement", sdf.format(recu.getDateVersement())},
+            {"Mode de paiement", recu.getModePaiement()},
+            {"Référence", recu.getReferencePaiement() != null ? recu.getReferencePaiement() : "-"}
+        };
+
+        for (String[] ligne : lignes) {
+            PdfPCell labelCell = new PdfPCell(new Phrase(ligne[0], FONT_LABEL));
+            labelCell.setPadding(6);
+            labelCell.setBackgroundColor(COLOR_GRAY_LIGHT);
+            labelCell.setBorderColor(BaseColor.WHITE);
+            table.addCell(labelCell);
+
+            PdfPCell valueCell = new PdfPCell(new Phrase(ligne[1], FONT_NORMAL));
+            valueCell.setPadding(6);
+            valueCell.setBorderColor(COLOR_GRAY_LIGHT);
+            table.addCell(valueCell);
+        }
+
+        document.add(table);
+    }
+
+    private void addRecuMontant(Document document, RecuPaiementDTO recu) throws DocumentException {
+        PdfPTable table = new PdfPTable(1);
+        table.setWidthPercentage(100);
+        table.setSpacingBefore(10);
+
+        PdfPCell cell = new PdfPCell();
+        cell.setBackgroundColor(COLOR_GRAY_LIGHT);
+        cell.setBorderColor(COLOR_PRIMARY);
+        cell.setBorderWidth(2);
+        cell.setPadding(12);
+
+        Font fontMontant = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16, COLOR_PRIMARY);
+        Paragraph montant = new Paragraph(
+                "MONTANT VERSÉ : " + formatMontant(recu.getMontant().doubleValue()) + " XAF", fontMontant);
+        montant.setAlignment(Element.ALIGN_CENTER);
+        cell.addElement(montant);
+
+        Paragraph lettres = new Paragraph(recu.getMontantEnLettres(), FONT_SMALL);
+        lettres.setAlignment(Element.ALIGN_CENTER);
+        lettres.setSpacingBefore(5);
+        cell.addElement(lettres);
+
+        table.addCell(cell);
+        document.add(table);
+    }
+
+    private void addRecuSolde(Document document, RecuPaiementDTO recu) throws DocumentException {
+        PdfPTable table = new PdfPTable(2);
+        table.setWidthPercentage(60);
+        table.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        table.setSpacingBefore(5);
+
+        addTotalRow(table, "Total facture", formatMontant(recu.getFactureTotalTtc().doubleValue()) + " XAF", false);
+        addTotalRow(table, "SOLDE RESTANT", formatMontant(recu.getFactureSoldeRestant().doubleValue()) + " XAF", true);
+
+        document.add(table);
     }
 
     /**

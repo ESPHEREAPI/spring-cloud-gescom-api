@@ -5,6 +5,7 @@ import com.mproduits.dto.ControleVenteDTO;
 import com.mproduits.dto.ControleVente;
 import com.mproduits.dto.ControleVenteSummaryDTO;
 import com.mproduits.enums.StatutVente;
+import com.mproduits.enums.TypeMois;
 import com.mproduits.exceptions.BadRequestException;
 import com.mproduits.exceptions.ResourceNotFoundException;
 import com.mproduits.model.Entreprise;
@@ -87,6 +88,29 @@ public class ControleVenteService {
     }
 
     /**
+     * Mois demande pour l'annee de l'entreprise, cree a la volee s'il n'existe
+     * pas encore. Contrairement a PhotocopieService/ServiceCommande, ce
+     * service doit pouvoir consulter un mois sans activite Photocopie/Commande
+     * prealable (ex: seulement des Ressource/Vente) - le faire echouer avec
+     * une ResourceNotFoundException (mappee en 500 par le GlobalExceptionHandler,
+     * pas en 404) cassait l'ecran Controle Vente des qu'aucun autre module
+     * n'avait encore materialise le Mois du mois courant.
+     */
+    @Transactional
+    protected Mois moisDeLAnnee(Entreprise entreprise, int numero) {
+        return moisRepository.findOneByAnneeAndNumero(entreprise.getAnnee().getId(), numero)
+                .orElseGet(() -> {
+                    Mois nouveau = new Mois();
+                    nouveau.setAnnee(entreprise.getAnnee());
+                    nouveau.setNumero(numero);
+                    String libelle = TypeMois.values()[numero - 1].name();
+                    nouveau.setCode(libelle);
+                    nouveau.setMois(libelle);
+                    return moisRepository.save(nouveau);
+                });
+    }
+
+    /**
      * Génère le contrôle des ventes pour un mois donné. Consolide toutes les
      * opérations par jour.
      *
@@ -99,12 +123,11 @@ public class ControleVenteService {
     public List<ControleVenteDTO> generateControleVentes(Long moisId, int anneeid, Long boutiqueid) {
         log.info("Génération du contrôle des ventes - Mois: {}, Entreprise: {}", moisId, anneeid);
 
-        // Récupération et validation du mois
-        Mois mois = moisRepository.findOneByAnneeAndNumero(anneeid,moisId.intValue())
-                .orElseThrow(() -> new ResourceNotFoundException("Mois non trouvé avec l'ID : " + moisId));
-
         // Récupération et validation de l'entreprise (scopée à la compagnie courante)
         Entreprise entreprise = entrepriseDeLAnnee(anneeid);
+
+        // Récupération (ou création) du mois demandé
+        Mois mois = moisDeLAnnee(entreprise, moisId.intValue());
 
         // Récupération de toutes les opérations pour ce mois/cette boutique
         ControleVenteData data = collectAllDatesWithOperations(mois, entreprise, boutiqueid);
@@ -239,9 +262,8 @@ public class ControleVenteService {
     public ControleVenteSummaryDTO getSummary(Long moisId, Long boutiqueid, int anneeid) {
         log.info("Génération du résumé - Mois: {}, Entreprise: {}", moisId, anneeid);
 
-        Mois mois = moisRepository.findOneByAnneeAndNumero(anneeid, moisId.intValue())
-                .orElseThrow(() -> new ResourceNotFoundException("Mois non trouvé avec l'ID : " + moisId));
         Entreprise entreprise = entrepriseDeLAnnee(anneeid);
+        Mois mois = moisDeLAnnee(entreprise, moisId.intValue());
 
         ControleVenteData data = collectAllDatesWithOperations(mois, entreprise, boutiqueid);
 

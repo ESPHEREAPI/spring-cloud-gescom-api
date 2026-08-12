@@ -4,7 +4,6 @@ package com.mproduits.services;
 import com.entreprise.recette.dto.PhotocopieSummaryDTO;
 import com.mproduits.dto.PhotocopieDTO;
 import com.mproduits.enums.TypeMois;
-import com.mproduits.exceptions.MetierException;
 import com.mproduits.exceptions.ResourceNotFoundException;
 import com.mproduits.mappers.PhotocopieMapper;
 import com.mproduits.model.Boutique;
@@ -83,7 +82,12 @@ public class PhotocopieService {
                         "username non trouvée avec l'ID : " + dto.getUsername()));
 
         int mois =IdleDate.getMonth(new Date());
-        Mois moisexist=moisRepositories.findOneByAnneeAndNumero(entreprise.getAnnee().getId(), mois).orElseThrow(() -> new MetierException("mois n existe pas"));
+        // orElse(null), pas orElseThrow : le mois courant n'a souvent encore
+        // aucune ligne (premier jour du mois, aucune activite Photocopie/
+        // Commande prealable) - c'est un cas normal a auto-creer ci-dessous,
+        // pas une erreur (l'ancien orElseThrow empechait toute creation de
+        // photocopie tant qu'aucun Mois n'existait deja pour ce mois/annee).
+        Mois moisexist=moisRepositories.findOneByAnneeAndNumero(entreprise.getAnnee().getId(), mois).orElse(null);
         if (moisexist==null ||  moisexist.getId()==null) {
             moisexist=new Mois();
             moisexist.setAnnee(entreprise.getAnnee());

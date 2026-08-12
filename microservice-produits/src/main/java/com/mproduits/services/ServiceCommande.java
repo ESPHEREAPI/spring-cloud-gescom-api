@@ -279,10 +279,15 @@ public class ServiceCommande implements IServiceCommande {
 
         Optional<Mois> mois = moisRepositories.findOneByAnneeAndNumero(anneeActuelle, moisActuel);
         if (mois.isEmpty()) {
+            // Le mois cree doit correspondre au mois reellement demande
+            // (moisActuel), pas etre fige sur avril - sinon toute commande
+            // passee un mois sans Mois pre-existant se retrouvait rattachee
+            // a avril quel que soit le mois reel.
+            String libelle = TypeMois.values()[moisActuel - 1].name();
             Mois new_mois=new Mois();
-            new_mois.setCode(TypeMois.AVRIL.name());
-            new_mois.setMois(TypeMois.AVRIL.toString());
-            new_mois.setNumero(4);
+            new_mois.setCode(libelle);
+            new_mois.setMois(libelle);
+            new_mois.setNumero(moisActuel);
             new_mois.setAnnee(an);
            return moisRepositories.save(new_mois);
         }

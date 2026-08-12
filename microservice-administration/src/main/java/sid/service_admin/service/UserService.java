@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,6 +71,7 @@ import sid.service_admin.security.TenantContext;
 @Service
 @Data
 @AllArgsConstructor
+@Slf4j
 public class UserService implements Serializable {
 
 //    @Autowired
@@ -363,9 +365,16 @@ public class UserService implements Serializable {
         Personne user = null;
         // Login insensible a la casse : "Jdupont" et "jdupont" doivent aboutir au
         // meme compte. Le mot de passe, lui, reste verifie tel quel plus bas.
-        Optional<Personne> userEntite = personneRepository.findByUserNameIgnoreCase(loginRequest.getUserName());
+        //
+        // Liste, pas Optional : userName n'a aucune contrainte d'unicite en
+        // base (verification-puis-creation non atomique dans createUser) - si
+        // un doublon existe, on ne devine pas lequel choisir, on essaie le
+        // mot de passe fourni contre chaque candidat et on authentifie celui
+        // qui correspond. Empeche un doublon de donnees de rendre TOUT le
+        // monde partageant ce login incapable de se connecter (500 brut).
+        List<Personne> candidats = personneRepository.findAllByUserNameIgnoreCase(loginRequest.getUserName());
 
-        if (userEntite.isPresent() == Boolean.FALSE) {
+        if (candidats.isEmpty()) {
             userDTO = new UserDTO();
             userDTO.setEcheck_connection(Boolean.TRUE);
             userDTO.setMessageEcheck("User not Exist : " + loginRequest.getUserName());
@@ -373,19 +382,33 @@ public class UserService implements Serializable {
             return userDTO;
 
         }
-        user = userEntite.get();
-        boolean passwordMatches;
-        String storedHash = user.getPassword();
-        if (storedHash != null && storedHash.startsWith("$2")) {
-            // hash BCrypt (deja migre)
-            passwordMatches = passwordEncoder.matches(loginRequest.getPassWord(), storedHash);
-        } else {
-            // ancien hash SHA-256 non sale : verifie avec l'ancien algorithme, puis
-            // migre transparement vers BCrypt si le mot de passe est correct
-            passwordMatches = storedHash != null && storedHash.equals(Crypto.sha256(loginRequest.getPassWord()));
-            if (passwordMatches) {
-                user.setPassword(passwordEncoder.encode(loginRequest.getPassWord()));
-                personneRepository.save(user);
+        if (candidats.size() > 1) {
+            log.warn("Plusieurs comptes ({}) partagent le login '{}' - contrainte d'unicite manquante en base, a nettoyer.",
+                    candidats.size(), loginRequest.getUserName());
+        }
+
+        boolean passwordMatches = false;
+        for (Personne candidat : candidats) {
+            String storedHash = candidat.getPassword();
+            boolean matches;
+            boolean migrateToBcrypt = false;
+            if (storedHash != null && storedHash.startsWith("$2")) {
+                // hash BCrypt (deja migre)
+                matches = passwordEncoder.matches(loginRequest.getPassWord(), storedHash);
+            } else {
+                // ancien hash SHA-256 non sale : verifie avec l'ancien algorithme, puis
+                // migre transparement vers BCrypt si le mot de passe est correct
+                matches = storedHash != null && storedHash.equals(Crypto.sha256(loginRequest.getPassWord()));
+                migrateToBcrypt = matches;
+            }
+            if (matches) {
+                user = candidat;
+                passwordMatches = true;
+                if (migrateToBcrypt) {
+                    user.setPassword(passwordEncoder.encode(loginRequest.getPassWord()));
+                    personneRepository.save(user);
+                }
+                break;
             }
         }
 

@@ -11,6 +11,7 @@ package sid.service_admin.controller;
 import jakarta.servlet.http.HttpSession;
 import java.util.Date;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,6 +37,7 @@ import sid.service_admin.service.UserService;
 import sid.service_admin.utils.IdleDate;
 
 @RestController
+@Slf4j
 //@RequestMapping("/api")
 //@CrossOrigin(origins = "*")
 //@CrossOrigin(origins = "http://localhost:4200")
@@ -78,11 +80,25 @@ public class AuthController {
        
         Mois mois = moisRepositories.findOneByAnneeAndNumero(dateCurent, nombre);
         if (user.getCompagnieId() != null) {
-            Entreprise e = entrepriseRepositories.findByEntreprisePK_CompagnieIdAndActif(user.getCompagnieId(), Boolean.TRUE);
-            if (e != null) {
-                userSessionDTO.setAnneeid(e.getAnnee().getId());
-                session.setAttribute("entreprise", e);
+            // Liste, pas un seul resultat : rien n'empeche deux exercices
+            // d'annees differentes d'etre actif=true pour la meme compagnie
+            // (voir EntreprisePK - la cle primaire n'empeche que le doublon
+            // sur la MEME annee). Un doublon ici plantait le login de TOUS
+            // les utilisateurs de la compagnie concernee (500 brut), pas
+            // seulement celui qui l'a cause - on prend le plus recent.
+            List<Entreprise> exercicesActifs = entrepriseRepositories
+                    .findAllByEntreprisePK_CompagnieIdAndActif(user.getCompagnieId(), Boolean.TRUE);
+            if (exercicesActifs.size() > 1) {
+                log.warn("Compagnie {} a {} exercices actifs simultanement (attendu : 1 max) - a nettoyer.",
+                        user.getCompagnieId(), exercicesActifs.size());
             }
+            exercicesActifs.stream()
+                    .max(java.util.Comparator.comparing(Entreprise::getDateCreation,
+                            java.util.Comparator.nullsFirst(java.util.Comparator.naturalOrder())))
+                    .ifPresent(e -> {
+                        userSessionDTO.setAnneeid(e.getAnnee().getId());
+                        session.setAttribute("entreprise", e);
+                    });
         }
         session.setAttribute("mois", mois);
         return ResponseEntity.ok(userSessionDTO);

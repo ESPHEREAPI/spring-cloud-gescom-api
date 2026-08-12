@@ -120,30 +120,39 @@ public class Devis implements Serializable {
      * Montant total HT (Hors Taxes)
      */
     @Column(name = "montant_ht", precision = 12, scale = 2)
+    @Builder.Default
     private BigDecimal montantHT = BigDecimal.ZERO;
 
     /**
      * Montant total des remises
      */
     @Column(name = "total_remise", precision = 12, scale = 2)
+    @Builder.Default
     private BigDecimal totalRemise = BigDecimal.ZERO;
 
     /**
      * Taux de TVA appliqué (en pourcentage)
      */
     @Column(name = "taux_tva", precision = 5, scale = 2)
+    @Builder.Default
     private BigDecimal tauxTVA = BigDecimal.ZERO;
 
     /**
      * Montant total de la TVA
      */
     @Column(name = "total_tva", precision = 12, scale = 2)
+    @Builder.Default
     private BigDecimal totalTVA = BigDecimal.ZERO;
 
     /**
      * Montant total TTC (Toutes Taxes Comprises)
      */
+    // NOT NULL en base : sans @Builder.Default, le builder Lombok ignore
+    // l'initialiseur de champ ci-dessus et envoie null pour tout appel du
+    // builder qui ne pose pas .total(...) explicitement (voir bug
+    // dupliquerDevis - DevisService.java).
     @Column(name = "total_ttc", precision = 12, scale = 2, nullable = false)
+    @Builder.Default
     private BigDecimal total = BigDecimal.ZERO;
 
     /**

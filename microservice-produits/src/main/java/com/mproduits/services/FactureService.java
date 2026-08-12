@@ -184,9 +184,10 @@ public class FactureService {
         LocalDate dateEcheance = LocalDate.now().plusDays(facture.getDelaiPaiementJours());
         facture.setDateEcheance(Date.from(dateEcheance.atStartOfDay(ZoneId.systemDefault()).toInstant()));
         
-        // 4. Sauvegarde initiale
-        facture = factureRepository.save(facture);
+        // 4. Sauvegarde initiale - numeroFacture est NOT NULL en base, doit
+        // etre pose avant le premier save() (sinon l'INSERT echoue).
         facture.setNumeroFacture(numeroGeneratorService.genererNumeroFacture());
+        facture = factureRepository.save(facture);
         
         // 5. Copie des articles du devis (si pas de modification demandée)
         if (request.getItems() != null && !request.getItems().isEmpty()) {

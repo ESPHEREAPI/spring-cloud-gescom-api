@@ -350,6 +350,7 @@ public class DevisService {
                     .numeroDevis(genererNumeroDevis())
                     .dateDevis(new Date())
                     .client(devisSource.getClient())
+                    .boutique(devisSource.getBoutique())
                     .statut(StatutDevis.EN_ATTENTE)
                     .usernameCreate(username)
                     .dateCreation(new Date())
@@ -358,6 +359,14 @@ public class DevisService {
                     .remarques(devisSource.getRemarques())
                     .conditions(devisSource.getConditions())
                     .validiteJours(VALIDITE_DEFAUT_JOURS)
+                    // Memes articles copies plus bas => memes totaux que la
+                    // source. Sans les poser ici, le builder Lombok (pas de
+                    // @Builder.Default sur ces champs) enverrait null pour
+                    // total (total_ttc), NOT NULL en base.
+                    .montantHT(devisSource.getMontantHT())
+                    .totalRemise(devisSource.getTotalRemise())
+                    .totalTVA(devisSource.getTotalTVA())
+                    .total(devisSource.getTotal())
                     .items(new ArrayList<>())
                     .build();
 

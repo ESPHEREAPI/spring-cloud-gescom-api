@@ -1,12 +1,18 @@
 package com.mproduits.services;
 
+import com.mproduits.dto.RessourceConsolideeDTO;
+import com.mproduits.enums.StatutVente;
 import com.mproduits.exceptions.BadRequestException;
 import com.mproduits.model.Boutique;
 import com.mproduits.model.Ressource;
 import com.mproduits.model.TypeResource;
+import com.mproduits.model.Vente;
+import com.mproduits.model.VersementClient;
 import com.mproduits.repositories.BoutiqueRepositories;
 import com.mproduits.repositories.RessourceRepositories;
 import com.mproduits.repositories.TypeResourceRepositories;
+import com.mproduits.repositories.VenteRepositories;
+import com.mproduits.repositories.VersementClientRepository;
 import com.mproduits.security.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +31,8 @@ public class RessourceService {
     private final RessourceRepositories repository;
     private final BoutiqueRepositories boutiqueRepositories;
     private final TypeResourceRepositories typeResourceRepositories;
+    private final VenteRepositories venteRepositories;
+    private final VersementClientRepository versementClientRepository;
     private final TenantContext tenantContext;
 
     private Long compagnieCourante() {
@@ -50,6 +58,42 @@ public class RessourceService {
     public BigDecimal sumByBoutiqueAndPeriode(Long boutiqueId, LocalDate debut, LocalDate fin) {
         verifierBoutique(boutiqueId);
         return repository.sumByBoutiqueAndPeriode(boutiqueId, debut, fin);
+    }
+
+    /**
+     * Ressources d'une boutique sur une periode, consolidees : ressources
+     * manuelles + caisse (ventes TERMINEE) + versements clients (VALIDE) -
+     * ces deux derniers sont des types de ressource "systeme" reflechis
+     * automatiquement, jamais ressaisis a la main par l'utilisateur.
+     */
+    @Transactional(readOnly = true)
+    public RessourceConsolideeDTO getConsolide(Long boutiqueId, LocalDate debut, LocalDate fin) {
+        verifierBoutique(boutiqueId);
+
+        List<Ressource> ressourcesManuelles = repository.findByBoutiqueAndPeriode(boutiqueId, debut, fin);
+        BigDecimal totalManuelles = ressourcesManuelles.stream()
+                .map(Ressource::getMontant)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalCaisse = venteRepositories.findByBoutiqueAndPeriode(boutiqueId, debut, fin).stream()
+                .filter(v -> v.getStatut() == StatutVente.TERMINEE)
+                .map(Vente::getTotalBrut)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalVersement = versementClientRepository.findByBoutiqueAndPeriode(boutiqueId, debut, fin).stream()
+                .filter(v -> "VALIDE".equals(v.getStatut()))
+                .map(VersementClient::getMontant)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal total = totalManuelles.add(totalCaisse).add(totalVersement);
+
+        return RessourceConsolideeDTO.builder()
+                .ressourcesManuelles(ressourcesManuelles)
+                .totalRessourcesManuelles(totalManuelles)
+                .totalCaisse(totalCaisse)
+                .totalVersementClient(totalVersement)
+                .total(total)
+                .build();
     }
 
     private Boutique verifierBoutique(Long boutiqueId) {

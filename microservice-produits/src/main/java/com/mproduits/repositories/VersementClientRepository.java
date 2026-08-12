@@ -17,6 +17,7 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.*;
 import java.math.BigDecimal;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -371,5 +372,12 @@ List<VersementClient> listeClientVersementByDateVersement(@Param("boutiqueid")Lo
 
 @Query("SELECT vcl FROM VersementClient vcl WHERE vcl.facture.boutique.id IN :boutiqueIds and YEAR(vcl.dateVersement)= :anneeid and MONTH(vcl.dateVersement) = :mois")
 List<VersementClient> listeClientVersementByDateVersementBoutiques(@Param("boutiqueIds") List<Long> boutiqueIds,@Param("anneeid") int anneeid,@Param("mois") int mois);
+
+// Versement client en tant que "ressource" reflete automatiquement
+// (ecrans Ressource/Marge/Element Ressource-Depense) - periode arbitraire,
+// a filtrer par statut VALIDE cote appelant (seul l'argent reellement
+// encaisse doit compter comme une ressource).
+@Query("SELECT vcl FROM VersementClient vcl WHERE vcl.facture.boutique.id = :boutiqueId AND DATE(vcl.dateVersement) BETWEEN :debut AND :fin")
+List<VersementClient> findByBoutiqueAndPeriode(@Param("boutiqueId") Long boutiqueId, @Param("debut") LocalDate debut, @Param("fin") LocalDate fin);
         
 }

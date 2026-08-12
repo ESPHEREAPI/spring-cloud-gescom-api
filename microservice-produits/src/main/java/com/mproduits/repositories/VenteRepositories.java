@@ -9,6 +9,7 @@ import com.mproduits.model.Annee;
 import com.mproduits.model.Entreprise;
 import com.mproduits.model.Vente;
 import feign.Param;
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -88,6 +89,12 @@ public interface VenteRepositories extends JpaRepository<Vente, Long>, JpaSpecif
     // vente de Comptabilite, distinct de l'Historique Caisse mono-boutique).
     @Query("SELECT v FROM Vente v WHERE DATE(v.dateVente)= :datevente and v.entreprise.annee.id= :anneeid and v.boutique.id IN :boutiqueIds")
     public List<Vente> allVentesByDateBoutiques(@Param("datevente") Date datevente, @Param("anneeid") int anneeid,@Param("boutiqueIds") List<Long> boutiqueIds);
+
+    // Caisse en tant que "ressource" reflete automatiquement (ecrans
+    // Ressource/Marge/Element Ressource-Depense) - periode arbitraire (pas
+    // limite au mois), a filtrer par StatutVente.TERMINEE cote appelant.
+    @Query("SELECT v FROM Vente v WHERE v.boutique.id = :boutiqueId AND DATE(v.dateVente) BETWEEN :debut AND :fin")
+    List<Vente> findByBoutiqueAndPeriode(@Param("boutiqueId") Long boutiqueId, @Param("debut") LocalDate debut, @Param("fin") LocalDate fin);
 
     @Query("SELECT DISTINCT(v.entreprise.annee) FROM Vente v where v.boutique.id= :boutiqueid")
     public List<Annee> listeVenteByAnnee(@Param("boutiqueid") Long boutiqueid);

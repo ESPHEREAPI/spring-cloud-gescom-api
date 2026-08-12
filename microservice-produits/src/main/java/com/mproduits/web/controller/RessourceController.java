@@ -1,5 +1,6 @@
 package com.mproduits.web.controller;
 
+import com.mproduits.dto.RessourceConsolideeDTO;
 import com.mproduits.model.Ressource;
 import com.mproduits.security.BoutiqueAccessGuard;
 import com.mproduits.services.RessourceService;
@@ -38,6 +39,17 @@ public class RessourceController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin) {
         boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
         return ResponseEntity.ok(service.findByBoutiqueAndPeriode(boutiqueid, debut, fin));
+    }
+
+    // Ressources manuelles + caisse (ventes) + versements clients,
+    // consolidees a l'affichage - voir RessourceService.getConsolide.
+    @GetMapping("/consolide")
+    public ResponseEntity<RessourceConsolideeDTO> getConsolide(
+            @RequestParam Long boutiqueid,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate debut,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin) {
+        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+        return ResponseEntity.ok(service.getConsolide(boutiqueid, debut, fin));
     }
 
     @PostMapping

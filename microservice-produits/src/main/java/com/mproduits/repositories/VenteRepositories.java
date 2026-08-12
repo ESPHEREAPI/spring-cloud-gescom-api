@@ -84,8 +84,16 @@ public interface VenteRepositories extends JpaRepository<Vente, Long>, JpaSpecif
     @Query("SELECT v FROM Vente v WHERE DATE(v.dateVente)= :datevente and v.entreprise.annee.id= :anneeid and v.boutique.id= :boutiqueid")
     public List<Vente> allVentesByDate(@Param("datevente") Date datevente, @Param("anneeid") int anneeid,@Param("boutiqueid") long boutiqueid);
 
+    // Vue consolidee une/plusieurs/toutes les boutiques (ecran Historique
+    // vente de Comptabilite, distinct de l'Historique Caisse mono-boutique).
+    @Query("SELECT v FROM Vente v WHERE DATE(v.dateVente)= :datevente and v.entreprise.annee.id= :anneeid and v.boutique.id IN :boutiqueIds")
+    public List<Vente> allVentesByDateBoutiques(@Param("datevente") Date datevente, @Param("anneeid") int anneeid,@Param("boutiqueIds") List<Long> boutiqueIds);
+
     @Query("SELECT DISTINCT(v.entreprise.annee) FROM Vente v where v.boutique.id= :boutiqueid")
     public List<Annee> listeVenteByAnnee(@Param("boutiqueid") Long boutiqueid);
+
+    @Query("SELECT DISTINCT(v.entreprise.annee) FROM Vente v where v.boutique.id IN :boutiqueIds")
+    public List<Annee> listeVenteByAnneeBoutiques(@Param("boutiqueIds") List<Long> boutiqueIds);
 
     @Query("SELECT DISTINCT DATE(v.dateVente) FROM Vente v WHERE v.entreprise.annee.id= :annee  and v.boutique.id= :boutiqueid ")
     public List<Date> listeDateVenteByAnnee(@Param("annee") Long annee,@Param("boutiqueid") Long boutiqueid);

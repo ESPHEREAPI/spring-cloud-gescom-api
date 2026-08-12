@@ -206,6 +206,9 @@ public class MapperDtoImpl {
         venteDto.setMontantTotal(vente.getTotalBrut());
         venteDto.setNumeroTicket(vente.getNumeroTicket());
         venteDto.setRemise(vente.getTotalRemise());
+        if (vente.getBoutique() != null) {
+            venteDto.setBoutiqueid(vente.getBoutique().getId());
+        }
 
         // Gestion paiement (une vente peut avoir plusieurs lignes de paiement -
         // paiement mixte especes+mobile money+bon d'achat)

@@ -89,6 +89,33 @@ public class HistoriqueCaisseController {
         }
     }
 
+    // Ecran "Historique vente" (Comptabilite) : vue consolidee une/
+    // plusieurs/toutes les boutiques - distinct de "{datevente}/historique"
+    // ci-dessus, qui reste mono-boutique pour l'ecran Historique Caisse
+    // (Vente). boutiqueIds absent/vide = toute la compagnie courante.
+    @GetMapping("/historique-vente/annees")
+    public ResponseEntity<List<Annee>> historiqueVenteAnnees(
+            @RequestParam(value = "boutiqueIds", required = false) List<Long> boutiqueIds) {
+        boutiqueAccessGuard.verifierBoutiquesUtilisateur(boutiqueIds);
+        return ResponseEntity.ok(historiqueCaisseService.listeAnneeByVenteBoutiques(boutiqueIds));
+    }
+
+    @GetMapping("/historique-vente")
+    public ResponseEntity<?> historiqueVente(
+            @RequestParam("datevente") String datevente,
+            @RequestParam("anneeId") int anneeid,
+            @RequestParam(value = "boutiqueIds", required = false) List<Long> boutiqueIds) {
+        boutiqueAccessGuard.verifierBoutiquesUtilisateur(boutiqueIds);
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            Date parsedDate = sdf.parse(datevente);
+            List<VenteDto> allventes = historiqueCaisseService.allVenteByBoutiques(parsedDate, anneeid, boutiqueIds);
+            return ResponseEntity.ok(allventes);
+        } catch (ParseException e) {
+            return ResponseEntity.badRequest().body("Format de date invalide. Format attendu: yyyy-MM-dd");
+        }
+    }
+
 //    @GetMapping("/marge-journalier")
 //    public ResponseEntity<List<MargeVenteDto>> margeJournaliere(@RequestParam("datevente") String datevente, @RequestParam("anneeId") Long anneeid) {
 //        try {

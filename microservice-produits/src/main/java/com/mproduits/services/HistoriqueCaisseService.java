@@ -72,6 +72,14 @@ public class HistoriqueCaisseService {
     }
 
     /**
+     * Années de vente pour une/plusieurs/toutes les boutiques de la
+     * compagnie courante (utilise par Historique vente).
+     */
+    public List<Annee> listeAnneeByVenteBoutiques(List<Long> boutiqueIds) {
+        return venteRepositories.listeVenteByAnneeBoutiques(resolveBoutiqueIds(boutiqueIds));
+    }
+
+    /**
      * Récupère les dates de vente pour un vendeur et une année
      */
     public List<Date> listeDateVente(int anneeid, String vendeur,Long boutiqueid) {
@@ -95,8 +103,9 @@ public class HistoriqueCaisseService {
     /**
      * Une boutique, plusieurs, ou aucune (= toute la compagnie courante,
      * resolue ici en la liste de toutes ses boutiques) - pour les vues de
-     * supervision multi-boutique (Marge Caisse). BoutiqueAccessGuard.
-     * verifierBoutiquesUtilisateur() est cense avoir deja valide la demande.
+     * supervision multi-boutique (Marge Caisse, Historique vente).
+     * BoutiqueAccessGuard.verifierBoutiquesUtilisateur() est cense avoir
+     * deja valide la demande.
      */
     private List<Long> resolveBoutiqueIds(List<Long> boutiqueIds) {
         if (boutiqueIds != null && !boutiqueIds.isEmpty()) {
@@ -129,6 +138,21 @@ public class HistoriqueCaisseService {
         List<com.mproduits.model.Vente> ventes = (vendeur == null || vendeur.isBlank())
                 ? venteRepositories.allVentesByDate(datevente, anneid, boutiqueid)
                 : venteRepositories.allVentesByUsersDate(datevente, vendeur, anneid, boutiqueid);
+
+        return ventes.stream()
+                .filter(ve -> ve.getStatut() == StatutVente.TERMINEE)
+                .map(mapperDtoImpl::mapperVentByVenteDto)
+                .toList();
+    }
+
+    /**
+     * Récupère toutes les ventes d'une date donnée, pour une/plusieurs/
+     * toutes les boutiques de la compagnie courante (Historique vente,
+     * ecran Comptabilite distinct de l'Historique Caisse mono-boutique).
+     */
+    public List<VenteDto> allVenteByBoutiques(Date datevente, int anneid, List<Long> boutiqueIds) {
+        List<com.mproduits.model.Vente> ventes = venteRepositories.allVentesByDateBoutiques(
+                datevente, anneid, resolveBoutiqueIds(boutiqueIds));
 
         return ventes.stream()
                 .filter(ve -> ve.getStatut() == StatutVente.TERMINEE)

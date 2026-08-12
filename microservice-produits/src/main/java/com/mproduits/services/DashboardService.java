@@ -297,15 +297,31 @@ public class DashboardService {
     private List<DashboardStockDTO.EvolutionStockDTO> obtenirEvolutionStock(Long compagnieId) {
         List<DashboardStockDTO.EvolutionStockDTO> evolution = new ArrayList<>();
 
-        // Générer des données pour les 12 derniers mois
-        Calendar cal = Calendar.getInstance();
+        // Générer des données pour les 12 derniers mois. Chaque fenêtre doit
+        // couvrir le mois entier (du 1er au dernier jour) : repartir de
+        // Calendar.getInstance() sans remettre DAY_OF_MONTH au 1er faisait
+        // demarrer chaque fenetre au jour-du-mois courant (ex. le 11) et
+        // laissait les mouvements des jours 1 a 10 de CHAQUE mois hors de
+        // toute fenetre - jamais comptabilises, d'ou des graphiques a zero
+        // malgre des transferts/ventes reels sur cette periode.
+        Calendar debutMoisCourant = Calendar.getInstance();
+        debutMoisCourant.set(Calendar.DAY_OF_MONTH, 1);
         for (int i = 11; i >= 0; i--) {
+            Calendar cal = (Calendar) debutMoisCourant.clone();
             cal.add(Calendar.MONTH, -i);
             String mois = String.format("%tB %tY", cal, cal);
 
             // Calculer les valeurs pour ce mois
+            cal.set(Calendar.HOUR_OF_DAY, 0);
+            cal.set(Calendar.MINUTE, 0);
+            cal.set(Calendar.SECOND, 0);
+            cal.set(Calendar.MILLISECOND, 0);
             Date dateDebut = new Date(cal.getTimeInMillis());
             cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH));
+            cal.set(Calendar.HOUR_OF_DAY, 23);
+            cal.set(Calendar.MINUTE, 59);
+            cal.set(Calendar.SECOND, 59);
+            cal.set(Calendar.MILLISECOND, 999);
             Date dateFin = new Date(cal.getTimeInMillis());
 
             int entrees = 0;
@@ -318,12 +334,13 @@ public class DashboardService {
             List<TransfertStock> transferts = transfertStockRepository
                     .findByCompagnieIdAndDateTransfertBetween(compagnieId, dateDebut, dateFin);
             for (TransfertStock t : transferts) {
+                BigDecimal valeur = t.getValeurEstimation() != null ? t.getValeurEstimation() : BigDecimal.ZERO;
                 if (stockService.isMagasinDeStock(t.getDestination().getId())) {
                     entrees++;
-                    valeurMagasins = valeurMagasins.add(t.getValeurEstimation());
+                    valeurMagasins = valeurMagasins.add(valeur);
                 } else {
                     sorties++;
-                    valeurPointsVente = valeurPointsVente.add(t.getValeurEstimation());
+                    valeurPointsVente = valeurPointsVente.add(valeur);
                 }
             }
 
@@ -354,8 +371,6 @@ public class DashboardService {
                     .nombreEntrees(entrees)
                     .nombreSorties(sorties)
                     .build());
-
-            cal = Calendar.getInstance();
         }
 
         return evolution;

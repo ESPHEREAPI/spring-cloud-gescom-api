@@ -123,7 +123,7 @@ public class DevisController {
     })
     public ResponseEntity<Map<String, Object>> creerDevis(
             @Valid @RequestBody DevisDTO dto,
-            @RequestHeader("X-Username") @Parameter(description = "Nom d'utilisateur") String username) {
+            @RequestHeader(value = "X-Username", required = false) @Parameter(description = "Nom d'utilisateur (deprecated, ignore - trace via JWT)") String username) {
 
         log.info("┌─────────────────────────────────────");
         log.info("│ POST /api/v1/devis");
@@ -179,7 +179,7 @@ public class DevisController {
     public ResponseEntity<Map<String, Object>> modifierDevis(
             @PathVariable Long id,
             @Valid @RequestBody DevisDTO dto,
-            @RequestHeader("X-Username") String username) {
+            @RequestHeader(value = "X-Username", required = false) String username) {
 
         log.info("PUT /api/v1/devis/{} - User: {}", id, username);
 
@@ -219,7 +219,7 @@ public class DevisController {
     })
     public ResponseEntity<Map<String, Object>> dupliquerDevis(
             @PathVariable Long id,
-            @RequestHeader("X-Username") String username) {
+            @RequestHeader(value = "X-Username", required = false) String username) {
 
         log.info("POST /api/v1/devis/{}/dupliquer - User: {}", id, username);
 
@@ -678,7 +678,7 @@ public class DevisController {
     public ResponseEntity<Map<String, Object>> annulerDevis(
             @PathVariable Long id,
             @RequestBody Map<String, String> body,
-            @RequestHeader("X-Username") String username) {
+            @RequestHeader(value = "X-Username", required = false) String username) {
 
         log.info("PUT /api/v1/devis/{}/annuler - User: {}", id, username);
 

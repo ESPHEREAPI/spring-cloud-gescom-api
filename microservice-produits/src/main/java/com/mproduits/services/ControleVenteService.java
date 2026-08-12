@@ -117,9 +117,17 @@ public class ControleVenteService {
      * une ResourceNotFoundException (mappee en 500 par le GlobalExceptionHandler,
      * pas en 404) cassait l'ecran Controle Vente des qu'aucun autre module
      * n'avait encore materialise le Mois du mois courant.
+     *
+     * Pas de @Transactional ici : cette methode n'est appelee qu'en
+     * auto-invocation (this.moisDeLAnnee(...)) depuis generateControleVentes/
+     * getSummary, qui ne passe PAS par le proxy Spring AOP - une annotation
+     * ici serait silencieusement ignoree et la methode continuerait a
+     * s'executer dans la transaction (readOnly) de l'appelant, faisant
+     * echouer le save() avec "Connection is read-only". Le save() ne
+     * fonctionne que parce que generateControleVentes/getSummary sont
+     * eux-memes annotes @Transactional (non readOnly) ci-dessous.
      */
-    @Transactional
-    protected Mois moisDeLAnnee(Entreprise entreprise, int numero) {
+    private Mois moisDeLAnnee(Entreprise entreprise, int numero) {
         return moisRepository.findOneByAnneeAndNumero(entreprise.getAnnee().getId(), numero)
                 .orElseGet(() -> {
                     Mois nouveau = new Mois();
@@ -142,6 +150,7 @@ public class ControleVenteService {
      * @return Liste des contrôles de vente par jour
      * @throws ResourceNotFoundException Si le mois ou l'entreprise n'existe pas
      */
+    @Transactional
     public List<ControleVenteDTO> generateControleVentes(Long moisId, int anneeid, List<Long> boutiqueIds) {
         log.info("Génération du contrôle des ventes - Mois: {}, Entreprise: {}", moisId, anneeid);
 
@@ -281,6 +290,7 @@ public class ControleVenteService {
      * @return Le résumé du mois
      * @throws ResourceNotFoundException Si le mois ou l'entreprise n'existe pas
      */
+    @Transactional
     public ControleVenteSummaryDTO getSummary(Long moisId, List<Long> boutiqueIds, int anneeid) {
         log.info("Génération du résumé - Mois: {}, Entreprise: {}", moisId, anneeid);
 
@@ -360,6 +370,7 @@ public class ControleVenteService {
      * @param dateFin Date de fin (optionnel)
      * @return Liste des contrôles de vente filtrés
      */
+    @Transactional
     public List<ControleVenteDTO> generateControleVentesForPeriod(
             Long moisId, List<Long> boutiqueIds, int anneeid, LocalDate dateDebut, LocalDate dateFin) {
 

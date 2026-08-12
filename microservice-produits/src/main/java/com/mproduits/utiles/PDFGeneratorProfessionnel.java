@@ -155,7 +155,7 @@ public class PDFGeneratorProfessionnel {
 
         // Forme juridique et capital
         Paragraph juridique = new Paragraph(
-               "ETS"+ " - Capital: " + entreprise.getCapital()==null ? "10 000 000 XFA":entreprise.getCapital(),
+                "ETS - Capital: " + (entreprise.getCapital() != null ? entreprise.getCapital() : "10 000 000 XFA"),
                 FONT_SMALL);
         juridique.setSpacingAfter(3);
         entrepriseCell.addElement(juridique);
@@ -170,7 +170,9 @@ public class PDFGeneratorProfessionnel {
 //        if (entrepriseConfig.getTelephoneSecondaire() != null) {
 //            entrepriseCell.addElement(new Paragraph("     " + entrepriseConfig.getTelephoneSecondaire(), FONT_NORMAL));
 //        }
-        entrepriseCell.addElement(new Paragraph("Email: " + entreprise.getCompagnie().getEmail(), FONT_NORMAL));
+        if (entreprise.getCompagnie().getEmail() != null) {
+            entrepriseCell.addElement(new Paragraph("Email: " + entreprise.getCompagnie().getEmail(), FONT_NORMAL));
+        }
         if (entreprise.getSiteWeb() != null) {
             entrepriseCell.addElement(new Paragraph("Web: " + entreprise.getSiteWeb(), FONT_NORMAL));
         }

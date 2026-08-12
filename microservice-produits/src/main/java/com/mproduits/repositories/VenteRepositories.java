@@ -70,6 +70,9 @@ public interface VenteRepositories extends JpaRepository<Vente, Long>, JpaSpecif
      @Query("SELECT  v FROM Vente v WHERE v.entreprise.annee.id= :annee and v.boutique.id= :boutiqueid and MONTH(v.dateVente) = :mois ")
     public List<Vente> listeAllVenteByBoutique(@Param("annee") int annee,@Param("boutiqueid") Long boutiqueid,@Param("mois")int mois);
 
+    @Query("SELECT v FROM Vente v WHERE v.entreprise.annee.id= :annee and v.boutique.id IN :boutiqueIds and MONTH(v.dateVente) = :mois ")
+    public List<Vente> listeAllVenteByBoutiques(@Param("annee") int annee,@Param("boutiqueIds") List<Long> boutiqueIds,@Param("mois")int mois);
+
     @Query("SELECT v FROM Vente v WHERE v.vendeur.userName= :vendeur and DATE(v.dateVente)= :dateVente and v.boutique.id= :boutiqueid  ")
     public Vente findByVendeurAndDateVente(String vendeur, Date dateVente,@Param("boutiqueid") Long boutiqueid);
 
@@ -86,6 +89,9 @@ public interface VenteRepositories extends JpaRepository<Vente, Long>, JpaSpecif
 
     @Query("SELECT DISTINCT DATE(v.dateVente) FROM Vente v WHERE v.entreprise.annee.id= :annee  and v.boutique.id= :boutiqueid ")
     public List<Date> listeDateVenteByAnnee(@Param("annee") Long annee,@Param("boutiqueid") Long boutiqueid);
+
+    @Query("SELECT DISTINCT DATE(v.dateVente) FROM Vente v WHERE v.entreprise.annee.id= :annee  and v.boutique.id IN :boutiqueIds ")
+    public List<Date> listeDateVenteByAnneeBoutiques(@Param("annee") Long annee,@Param("boutiqueIds") List<Long> boutiqueIds);
 
     @Query("SELECT v FROM Vente v "
             + "WHERE (COALESCE(:search, '') = '' OR LOWER(v.numeroTicket) LIKE LOWER(CONCAT('%', :search, '%')) "

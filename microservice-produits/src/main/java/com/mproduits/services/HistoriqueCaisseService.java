@@ -6,6 +6,7 @@ import com.mproduits.enums.StatutVente;
 import com.mproduits.exceptions.BadRequestException;
 import com.mproduits.mappers.MapperDtoImpl;
 import com.mproduits.model.Annee;
+import com.mproduits.model.Boutique;
 import com.mproduits.model.PrixAchat;
 import com.mproduits.model.Produit;
 import com.mproduits.repositories.BoutiqueRepositories;
@@ -23,6 +24,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Service de gestion de l'historique de caisse
@@ -91,6 +93,33 @@ public class HistoriqueCaisseService {
     }
 
     /**
+     * Une boutique, plusieurs, ou aucune (= toute la compagnie courante,
+     * resolue ici en la liste de toutes ses boutiques) - pour les vues de
+     * supervision multi-boutique (Marge Caisse). BoutiqueAccessGuard.
+     * verifierBoutiquesUtilisateur() est cense avoir deja valide la demande.
+     */
+    private List<Long> resolveBoutiqueIds(List<Long> boutiqueIds) {
+        if (boutiqueIds != null && !boutiqueIds.isEmpty()) {
+            return boutiqueIds;
+        }
+        Long compagnieId = tenantContext.currentCompagnieId();
+        if (compagnieId == null) {
+            throw new BadRequestException("Aucune compagnie associee a ce compte");
+        }
+        return boutiqueRepositories.findByCompagnie_Id(compagnieId).stream()
+                .map(Boutique::getId)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Récupère les dates de vente par année, pour une/plusieurs/toutes les
+     * boutiques de la compagnie courante (utilise par Marge Caisse).
+     */
+    public List<Date> listeDateVenteByAnneeBoutiques(Long anneeid, List<Long> boutiqueIds) {
+        return venteRepositories.listeDateVenteByAnneeBoutiques(anneeid, resolveBoutiqueIds(boutiqueIds));
+    }
+
+    /**
      * Récupère toutes les ventes d'un vendeur pour une date donnée
      */
     public List<VenteDto> allVenteByVendeurByDate(Date datevente, int anneid, String vendeur,Long boutiqueid) {
@@ -119,10 +148,34 @@ public class HistoriqueCaisseService {
     }
 
     /**
+     * Calcule la marge journalière pour une/plusieurs/toutes les boutiques
+     * de la compagnie courante.
+     */
+    public List<MargeVenteDto> margeJournaliere(Date vente, int anneeid, List<Long> boutiqueIds) {
+        return ligneVenteRepositories.listeProduitVendueJournalierBoutiques(vente, anneeid, resolveBoutiqueIds(boutiqueIds))
+                .stream()
+                .filter(lgv -> lgv.getVente().getStatut() == StatutVente.TERMINEE)
+                .map(lv -> mapperDtoImpl.mapperMargeByLigneVente(lv, vente))
+                .toList();
+    }
+
+    /**
      * Calcule la marge mensuelle
      */
     public List<MargeVenteDto> margeMensuel(Date debut, Date fin, int anneeid,Long boutiqueid) {
         return ligneVenteRepositories.listeProduitVendueMensuelle(debut, fin, anneeid, boutiqueid)
+                .stream()
+                .filter(lgv -> lgv.getVente().getStatut() == StatutVente.TERMINEE)
+                .map(lv -> mapperDtoImpl.mapperMargeByLigneVente(lv, debut, fin))
+                .toList();
+    }
+
+    /**
+     * Calcule la marge mensuelle pour une/plusieurs/toutes les boutiques de
+     * la compagnie courante.
+     */
+    public List<MargeVenteDto> margeMensuel(Date debut, Date fin, int anneeid, List<Long> boutiqueIds) {
+        return ligneVenteRepositories.listeProduitVendueMensuelleBoutiques(debut, fin, anneeid, resolveBoutiqueIds(boutiqueIds))
                 .stream()
                 .filter(lgv -> lgv.getVente().getStatut() == StatutVente.TERMINEE)
                 .map(lv -> mapperDtoImpl.mapperMargeByLigneVente(lv, debut, fin))

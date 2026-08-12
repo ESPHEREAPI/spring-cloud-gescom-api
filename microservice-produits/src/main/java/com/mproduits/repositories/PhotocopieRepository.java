@@ -263,6 +263,9 @@ public interface PhotocopieRepository extends JpaRepository<Photocopie, Long>,
     
      @Query("SELECT p FROM Photocopie p WHERE p.entreprise.annee.id = :anneeid AND p.boutique.id= :boutiqueid  AND p.isDeleted = false and MONTH(p.dateReception) = :mois ORDER BY p.dateReception ")
     List<Photocopie> listePhotocopieByBoutiqueByAnnee(@Param("anneeid") int anneeid, @Param("boutiqueid") Long boutiqueid,@Param("mois") int mois);
+
+    @Query("SELECT p FROM Photocopie p WHERE p.entreprise.annee.id = :anneeid AND p.boutique.id IN :boutiqueIds AND p.isDeleted = false and MONTH(p.dateReception) = :mois ORDER BY p.dateReception ")
+    List<Photocopie> listePhotocopieByBoutiquesByAnnee(@Param("anneeid") int anneeid, @Param("boutiqueIds") List<Long> boutiqueIds,@Param("mois") int mois);
     
     
     /**

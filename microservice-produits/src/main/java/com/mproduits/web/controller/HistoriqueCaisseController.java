@@ -103,24 +103,40 @@ public class HistoriqueCaisseController {
 //        }
 //        return null;
 //    }
+    // Boutiques concernees en query params (absent/vide = toute la
+    // compagnie courante) - utilise par l'ecran Marge Caisse, qui doit
+    // pouvoir consulter une boutique, plusieurs, ou la compagnie entiere.
     @GetMapping("/marge-journalier")
     public ResponseEntity<?> margeJournaliere(
             @RequestParam("dateVente") String dateVente,
             @RequestParam("anneeId") int anneeid,
-             @RequestParam("boutiqueid") Long boutiqueid) {
-        boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
+            @RequestParam(value = "boutiqueIds", required = false) List<Long> boutiqueIds) {
+        boutiqueAccessGuard.verifierBoutiquesUtilisateur(boutiqueIds);
         try {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
             Date parsedDate = sdf.parse(dateVente);
-            
-            List<MargeVenteDto> allventes = historiqueCaisseService.margeJournaliere(parsedDate, anneeid,boutiqueid);
+
+            List<MargeVenteDto> allventes = historiqueCaisseService.margeJournaliere(parsedDate, anneeid, boutiqueIds);
             return ResponseEntity.ok(allventes);
-            
+
         } catch (ParseException e) {
             return ResponseEntity.badRequest().body("Format de date invalide. Format attendu: yyyy-MM-dd");
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Erreur lors du chargement des marges: " + e.getMessage());
         }
+    }
+
+    // Liste des dates de vente pour une/plusieurs/toutes les boutiques -
+    // utilise par l'ecran Marge Caisse pour peupler le selecteur de dates
+    // (distinct de /all-dates/{anneeId}/{boutiqueid}, garde tel quel pour
+    // l'ecran Historique Caisse qui reste mono-boutique).
+    @GetMapping("/marge-dates")
+    public ResponseEntity<List<Date>> margeDates(
+            @RequestParam("anneeId") Long anneeId,
+            @RequestParam(value = "boutiqueIds", required = false) List<Long> boutiqueIds) {
+        boutiqueAccessGuard.verifierBoutiquesUtilisateur(boutiqueIds);
+        List<Date> allDates = historiqueCaisseService.listeDateVenteByAnneeBoutiques(anneeId, boutiqueIds);
+        return ResponseEntity.ok(allDates);
     }
 //
 //    @GetMapping("/marge-mensuel")
@@ -144,14 +160,14 @@ public class HistoriqueCaisseController {
             @RequestParam("debut") String debut,
             @RequestParam("fin") String fin,
             @RequestParam("anneeId") int anneeId,
-            @RequestParam("boutiqueid") Long boutiqueid) {
-        boutiqueAccessGuard.verifierBoutiqueUtilisateur(boutiqueid);
+            @RequestParam(value = "boutiqueIds", required = false) List<Long> boutiqueIds) {
+        boutiqueAccessGuard.verifierBoutiquesUtilisateur(boutiqueIds);
         try {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
             Date parsedDebut = sdf.parse(debut);
             Date parsedFin = sdf.parse(fin);
 
-            List<MargeVenteDto> allventes = historiqueCaisseService.margeMensuel(parsedDebut, parsedFin, anneeId,boutiqueid);
+            List<MargeVenteDto> allventes = historiqueCaisseService.margeMensuel(parsedDebut, parsedFin, anneeId, boutiqueIds);
             return ResponseEntity.ok(allventes);
 
         } catch (ParseException e) {

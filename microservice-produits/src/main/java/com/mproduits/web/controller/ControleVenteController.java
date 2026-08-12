@@ -63,14 +63,16 @@ public class ControleVenteController {
             @Parameter(description = "ID du mois", required = true)
             @RequestParam Long moisId,
             @Parameter(description = "ID de l'entreprise", required = true)
-            @RequestParam int anneeid,  @RequestParam Long  boutiqueid) {
-        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+            @RequestParam int anneeid,
+            @Parameter(description = "Boutiques concernees (absent/vide = toute la compagnie)")
+            @RequestParam(required = false) List<Long> boutiqueIds) {
+        boutiqueAccessGuard.verifierBoutiquesUtilisateur(boutiqueIds);
 
-        log.info("Requête de génération du contrôle des ventes - Mois: {}, Entreprise: {}",
-                moisId, anneeid,boutiqueid);
+        log.info("Requête de génération du contrôle des ventes - Mois: {}, Entreprise: {}, Boutiques: {}",
+                moisId, anneeid, boutiqueIds);
 
         List<ControleVenteDTO> controles = controleVenteService.generateControleVentes(
-                moisId, anneeid,boutiqueid);
+                moisId, anneeid, boutiqueIds);
 
         return ResponseEntity.ok(controles);
     }
@@ -100,20 +102,21 @@ public class ControleVenteController {
             @RequestParam Long moisId,
             @Parameter(description = "ID de l'entreprise", required = true)
             @RequestParam int anneeid,
-            @RequestParam Long boutiqueid,
+            @Parameter(description = "Boutiques concernees (absent/vide = toute la compagnie)")
+            @RequestParam(required = false) List<Long> boutiqueIds,
             @Parameter(description = "Date de début")
-            @RequestParam(required = false) 
+            @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateDebut,
             @Parameter(description = "Date de fin")
-            @RequestParam(required = false) 
+            @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFin) {
-        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+        boutiqueAccessGuard.verifierBoutiquesUtilisateur(boutiqueIds);
 
         log.info("Requête de génération du contrôle pour période - Mois: {}, Période: {} - {}",
                 moisId, dateDebut, dateFin);
 
         List<ControleVenteDTO> controles = controleVenteService.generateControleVentesForPeriod(
-                moisId,boutiqueid ,anneeid, dateDebut, dateFin);
+                moisId, boutiqueIds, anneeid, dateDebut, dateFin);
 
         return ResponseEntity.ok(controles);
     }
@@ -141,14 +144,15 @@ public class ControleVenteController {
             @Parameter(description = "ID du mois", required = true)
             @RequestParam Long moisId,
             @Parameter(description = "ID de l'entreprise", required = true)
-            @RequestParam int anneeid, 
-            @RequestParam Long boutiqueid) {
-        boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
+            @RequestParam int anneeid,
+            @Parameter(description = "Boutiques concernees (absent/vide = toute la compagnie)")
+            @RequestParam(required = false) List<Long> boutiqueIds) {
+        boutiqueAccessGuard.verifierBoutiquesUtilisateur(boutiqueIds);
 
         log.info("Requête de résumé du contrôle des ventes - Mois: {}, Entreprise: {}",
                 moisId, anneeid);
 
-        ControleVenteSummaryDTO summary = controleVenteService.getSummary(moisId, boutiqueid, anneeid);
+        ControleVenteSummaryDTO summary = controleVenteService.getSummary(moisId, boutiqueIds, anneeid);
 
         return ResponseEntity.ok(summary);
     }

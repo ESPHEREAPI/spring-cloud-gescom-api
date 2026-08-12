@@ -25,7 +25,13 @@ public interface LigneVenteRepositories extends JpaRepository<LigneVente, Long> 
     @Query("SELECT l FROM LigneVente l WHERE  DATE(l.vente.dateVente)= :dateVente and l.vente.entreprise.annee.id= :anneeid and l.vente.boutique.id= :boutiqueid")
     List<LigneVente> listeProduitVendueJournalier(@Param("dateVente") Date dateVente, @Param("anneeid") int anneeid , @Param("boutiqueid") Long boutiqueid);
 
+    @Query("SELECT l FROM LigneVente l WHERE  DATE(l.vente.dateVente)= :dateVente and l.vente.entreprise.annee.id= :anneeid and l.vente.boutique.id IN :boutiqueIds")
+    List<LigneVente> listeProduitVendueJournalierBoutiques(@Param("dateVente") Date dateVente, @Param("anneeid") int anneeid , @Param("boutiqueIds") List<Long> boutiqueIds);
+
     @Query("SELECT l FROM LigneVente l WHERE  DATE(l.vente.dateVente) BETWEEN  :debut and :fin and  l.vente.entreprise.annee.id= :anneeid and l.vente.boutique.id= :boutiqueid ")
     List<LigneVente> listeProduitVendueMensuelle(@Param("debut") Date debut, @Param("fin") Date fin, @Param("anneeid") int anneeid, @Param("boutiqueid") Long boutiqueid);
+
+    @Query("SELECT l FROM LigneVente l WHERE  DATE(l.vente.dateVente) BETWEEN  :debut and :fin and  l.vente.entreprise.annee.id= :anneeid and l.vente.boutique.id IN :boutiqueIds ")
+    List<LigneVente> listeProduitVendueMensuelleBoutiques(@Param("debut") Date debut, @Param("fin") Date fin, @Param("anneeid") int anneeid, @Param("boutiqueIds") List<Long> boutiqueIds);
      Optional<LigneVente> findByVenteAndProduit(Vente vente, Produit produit);
 }

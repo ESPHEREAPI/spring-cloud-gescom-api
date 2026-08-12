@@ -18,6 +18,9 @@ public interface RessourceRepositories extends JpaRepository<Ressource, Long> {
     @Query("SELECT r FROM Ressource r WHERE r.boutique.id = :boutiqueId AND r.dateRessource BETWEEN :debut AND :fin ORDER BY r.dateRessource DESC")
     List<Ressource> findByBoutiqueAndPeriode(@Param("boutiqueId") Long boutiqueId, @Param("debut") LocalDate debut, @Param("fin") LocalDate fin);
 
+    @Query("SELECT r FROM Ressource r WHERE r.boutique.id IN :boutiqueIds AND r.dateRessource BETWEEN :debut AND :fin ORDER BY r.dateRessource DESC")
+    List<Ressource> findByBoutiquesAndPeriode(@Param("boutiqueIds") List<Long> boutiqueIds, @Param("debut") LocalDate debut, @Param("fin") LocalDate fin);
+
     @Query("SELECT COALESCE(SUM(r.montant), 0) FROM Ressource r WHERE r.boutique.id = :boutiqueId AND r.dateRessource = :date")
     BigDecimal sumByBoutiqueAndDate(@Param("boutiqueId") Long boutiqueId, @Param("date") LocalDate date);
 

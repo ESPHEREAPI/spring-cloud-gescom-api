@@ -8,12 +8,14 @@ import com.mproduits.enums.StatutVente;
 import com.mproduits.enums.TypeMois;
 import com.mproduits.exceptions.BadRequestException;
 import com.mproduits.exceptions.ResourceNotFoundException;
+import com.mproduits.model.Boutique;
 import com.mproduits.model.Entreprise;
 import com.mproduits.model.Mois;
 import com.mproduits.model.Photocopie;
 import com.mproduits.model.Ressource;
 import com.mproduits.model.Vente;
 import com.mproduits.model.VersementClient;
+import com.mproduits.repositories.BoutiqueRepositories;
 import com.mproduits.repositories.EntrepriseRepository;
 import com.mproduits.repositories.LigneVenteRepositories;
 import com.mproduits.repositories.MoisRepositories;
@@ -57,7 +59,27 @@ public class ControleVenteService {
     private final MoisRepositories moisRepository;
     private final EntrepriseRepository entrepriseRepository;
     private final RessourceRepositories ressourceRepository;
+    private final BoutiqueRepositories boutiqueRepository;
     private final TenantContext tenantContext;
+
+    /**
+     * Une boutique, plusieurs boutiques, ou aucune (= toute la compagnie
+     * courante, resolue ici en la liste de toutes ses boutiques). Un
+     * BoutiqueAccessGuard.verifierBoutiquesUtilisateur() est cense avoir
+     * deja valide la demande avant d'arriver ici.
+     */
+    private List<Long> resolveBoutiqueIds(List<Long> boutiqueIds) {
+        if (boutiqueIds != null && !boutiqueIds.isEmpty()) {
+            return boutiqueIds;
+        }
+        Long compagnieId = tenantContext.currentCompagnieId();
+        if (compagnieId == null) {
+            throw new BadRequestException("Aucune compagnie associee a ce compte");
+        }
+        return boutiqueRepository.findByCompagnie_Id(compagnieId).stream()
+                .map(Boutique::getId)
+                .collect(Collectors.toList());
+    }
 
     /**
      * Toutes les opérations d'un mois donné, consolidées en mémoire pour un
@@ -116,11 +138,11 @@ public class ControleVenteService {
      *
      * @param moisId L'identifiant du mois
      * @param anneeid L'année de l'exercice
-     * @param boutiqueid La boutique concernée
+     * @param boutiqueIds Les boutiques concernées (vide/null = toute la compagnie)
      * @return Liste des contrôles de vente par jour
      * @throws ResourceNotFoundException Si le mois ou l'entreprise n'existe pas
      */
-    public List<ControleVenteDTO> generateControleVentes(Long moisId, int anneeid, Long boutiqueid) {
+    public List<ControleVenteDTO> generateControleVentes(Long moisId, int anneeid, List<Long> boutiqueIds) {
         log.info("Génération du contrôle des ventes - Mois: {}, Entreprise: {}", moisId, anneeid);
 
         // Récupération et validation de l'entreprise (scopée à la compagnie courante)
@@ -129,8 +151,8 @@ public class ControleVenteService {
         // Récupération (ou création) du mois demandé
         Mois mois = moisDeLAnnee(entreprise, moisId.intValue());
 
-        // Récupération de toutes les opérations pour ce mois/cette boutique
-        ControleVenteData data = collectAllDatesWithOperations(mois, entreprise, boutiqueid);
+        // Récupération de toutes les opérations pour ce mois/ces boutiques
+        ControleVenteData data = collectAllDatesWithOperations(mois, entreprise, resolveBoutiqueIds(boutiqueIds));
 
         // Génération des contrôles de vente pour chaque date
         List<ControleVente> controles = data.allDates().stream()
@@ -211,26 +233,26 @@ public class ControleVenteService {
      * @param entreprise L'entreprise
      * @return Toutes les opérations et l'ensemble des dates avec opérations
      */
-    private ControleVenteData collectAllDatesWithOperations(Mois mois, Entreprise entreprise, Long boutiqueid) {
+    private ControleVenteData collectAllDatesWithOperations(Mois mois, Entreprise entreprise, List<Long> boutiqueIds) {
         Set<LocalDate> allDates = new HashSet<>();
 
         // Dates des opérations de caisse
-        List<Vente> caissesDates = venteRepository.listeAllVenteByBoutique(entreprise.getAnnee().getId(), boutiqueid,mois.getNumero());
+        List<Vente> caissesDates = venteRepository.listeAllVenteByBoutiques(entreprise.getAnnee().getId(), boutiqueIds,mois.getNumero());
         allDates.addAll(caissesDates.stream().map(vt -> getLocalDateForDate(vt.getDateVente())).toList());
 
         // Dates des versements (via requête groupée)
-        List<VersementClient> versementDates = versementRepository.listeClientVersementByDateVersement(boutiqueid, entreprise.getAnnee().getId(),mois.getNumero());
+        List<VersementClient> versementDates = versementRepository.listeClientVersementByDateVersementBoutiques(boutiqueIds, entreprise.getAnnee().getId(),mois.getNumero());
         allDates.addAll(versementDates.stream()
                 .map(vcl -> getLocalDateForDate(vcl.getDateVersement())).toList());
 
         // Dates des photocopies
-        List<Photocopie> photocopies = photocopieRepository.listePhotocopieByBoutiqueByAnnee(entreprise.getAnnee().getId(), boutiqueid,mois.getNumero());
+        List<Photocopie> photocopies = photocopieRepository.listePhotocopieByBoutiquesByAnnee(entreprise.getAnnee().getId(), boutiqueIds,mois.getNumero());
         photocopies.forEach(p -> allDates.add(p.getDateReception()));
 
         // Dates des ressources (revenus hors-vente)
         LocalDate debutMois = LocalDate.of(entreprise.getAnnee().getId(), mois.getNumero(), 1);
         LocalDate finMois = debutMois.withDayOfMonth(debutMois.lengthOfMonth());
-        List<Ressource> ressources = ressourceRepository.findByBoutiqueAndPeriode(boutiqueid, debutMois, finMois);
+        List<Ressource> ressources = ressourceRepository.findByBoutiquesAndPeriode(boutiqueIds, debutMois, finMois);
         ressources.forEach(r -> allDates.add(r.getDateRessource()));
 
         log.debug("Collecte de {} dates distinctes avec opérations", allDates.size());
@@ -254,18 +276,18 @@ public class ControleVenteService {
      * recettes.
      *
      * @param moisId L'identifiant du mois
-     * @param boutiqueid La boutique concernée
+     * @param boutiqueIds Les boutiques concernées (vide/null = toute la compagnie)
      * @param anneeid L'année de l'exercice
      * @return Le résumé du mois
      * @throws ResourceNotFoundException Si le mois ou l'entreprise n'existe pas
      */
-    public ControleVenteSummaryDTO getSummary(Long moisId, Long boutiqueid, int anneeid) {
+    public ControleVenteSummaryDTO getSummary(Long moisId, List<Long> boutiqueIds, int anneeid) {
         log.info("Génération du résumé - Mois: {}, Entreprise: {}", moisId, anneeid);
 
         Entreprise entreprise = entrepriseDeLAnnee(anneeid);
         Mois mois = moisDeLAnnee(entreprise, moisId.intValue());
 
-        ControleVenteData data = collectAllDatesWithOperations(mois, entreprise, boutiqueid);
+        ControleVenteData data = collectAllDatesWithOperations(mois, entreprise, resolveBoutiqueIds(boutiqueIds));
 
         // Calcul des totaux mensuels
         BigDecimal totalCaisse = data.caissesDates().stream()
@@ -332,19 +354,19 @@ public class ControleVenteService {
      * Génère le contrôle des ventes entre deux dates.
      *
      * @param moisId L'identifiant du mois
-     * @param boutiqueid La boutique concernée
+     * @param boutiqueIds Les boutiques concernées (vide/null = toute la compagnie)
      * @param anneeid L'année de l'exercice
      * @param dateDebut Date de début (optionnel)
      * @param dateFin Date de fin (optionnel)
      * @return Liste des contrôles de vente filtrés
      */
     public List<ControleVenteDTO> generateControleVentesForPeriod(
-            Long moisId, Long boutiqueid, int anneeid, LocalDate dateDebut, LocalDate dateFin) {
+            Long moisId, List<Long> boutiqueIds, int anneeid, LocalDate dateDebut, LocalDate dateFin) {
 
         log.info("Génération du contrôle pour la période : {} - {}", dateDebut, dateFin);
 
         // Générer tous les contrôles du mois
-        List<ControleVenteDTO> allControles = generateControleVentes(moisId, anneeid, boutiqueid);
+        List<ControleVenteDTO> allControles = generateControleVentes(moisId, anneeid, boutiqueIds);
 
         // Filtrer par période si nécessaire
         if (dateDebut != null && dateFin != null) {

@@ -368,5 +368,8 @@ List<Client> listeClientVersementByCompagnieId(@Param("compagnieId") Long compag
 
 @Query("SELECT vcl FROM VersementClient vcl WHERE vcl.facture.boutique.id= :boutiqueid and YEAR(vcl.dateVersement)= :anneeid and MONTH(vcl.dateVersement) = :mois")
 List<VersementClient> listeClientVersementByDateVersement(@Param("boutiqueid")Long boutiqueid,@Param("anneeid") int anneeid,@Param("mois") int mois);
+
+@Query("SELECT vcl FROM VersementClient vcl WHERE vcl.facture.boutique.id IN :boutiqueIds and YEAR(vcl.dateVersement)= :anneeid and MONTH(vcl.dateVersement) = :mois")
+List<VersementClient> listeClientVersementByDateVersementBoutiques(@Param("boutiqueIds") List<Long> boutiqueIds,@Param("anneeid") int anneeid,@Param("mois") int mois);
         
 }

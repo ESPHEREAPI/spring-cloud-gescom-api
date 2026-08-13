@@ -14,7 +14,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import sid.service_admin.dto.MenuActionsDTO;
+import sid.service_admin.dto.ProfilDTO;
 import sid.service_admin.dto.TogglePermissionRequest;
+import sid.service_admin.mapper.MapperDtoImpl;
 import sid.service_admin.model.Profil;
 import sid.service_admin.service.ProfilPermissionMatrixService;
 
@@ -31,6 +33,7 @@ import sid.service_admin.service.ProfilPermissionMatrixService;
 public class ProfilPermissionController {
 
     private final ProfilPermissionMatrixService matrixService;
+    private final MapperDtoImpl mapToDTO;
 
     @Data
     public static class DupliquerProfilRequest {
@@ -50,8 +53,12 @@ public class ProfilPermissionController {
     }
 
     @PostMapping("/{profilId}/dupliquer")
-    public ResponseEntity<Profil> dupliquer(@PathVariable Long profilId, @RequestBody DupliquerProfilRequest request) {
+    public ResponseEntity<ProfilDTO> dupliquer(@PathVariable Long profilId, @RequestBody DupliquerProfilRequest request) {
+        // Retourne un DTO, jamais l'entite Profil brute : Profil.personneList
+        // est une relation bidirectionnelle (Personne.profilid la reference en
+        // retour) qui fait boucler indefiniment la serialisation Jackson - voir
+        // le meme choix deja fait par UserService.createProfil.
         Profil copie = matrixService.dupliquer(profilId, request.getCode(), request.getDescription());
-        return ResponseEntity.status(HttpStatus.CREATED).body(copie);
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapToDTO.mapToDTOProfil(copie));
     }
 }

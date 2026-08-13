@@ -34,7 +34,7 @@ jobs:
             git submodule update --init --recursive --force
             echo "--- Commit reellement checkout dans le sous-module ---"
             git -C web/easycompro-gescom/AdminLTE-3_2_0-angular/adminlte-angular-app rev-parse HEAD
-            docker compose build --no-cache frontend
+            docker compose build --no-cache frontend microservice-admin
             docker compose up -d --build
             # docker compose up -d --build ne recree un conteneur que si SON
             # PROPRE build a change. Le gateway lit sa config CORS une seule
@@ -46,6 +46,14 @@ jobs:
             # config-server, source de cette config) a chaque deploiement,
             # inconditionnellement.
             docker compose restart config-server gateway
+            # microservice-admin (service-admin) a deja plante une fois avec
+            # une image visiblement perimee malgre un build "reussi" (login
+            # 500 corrige en 5a84df1 toujours reproductible en prod des
+            # heures apres le "redeploiement") - --no-cache ci-dessus force
+            # une image fraiche ; le restart supplementaire ici est une
+            # garantie en plus, au cas ou --build ne recreerait pas le
+            # conteneur pour une raison qui reste a elucider.
+            docker compose restart microservice-admin
           '
 
       - name: Verifier que les services sont en sante

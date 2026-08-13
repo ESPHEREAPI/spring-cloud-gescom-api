@@ -78,7 +78,17 @@ public class AuthController {
         }
         //date = new Date();
        
-        Mois mois = moisRepositories.findOneByAnneeAndNumero(dateCurent, nombre);
+        // Liste, pas un seul resultat : la table mois est partagee avec
+        // microservice-produits, qui a eu (avant correction) plusieurs
+        // chemins de creation racee pour le mois courant - un doublon deja
+        // en base plantait le login de TOUT LE MONDE ici, avant meme
+        // d'atteindre la gestion des exercices actifs ci-dessous.
+        List<Mois> moisCourants = moisRepositories.findAllByAnneeAndNumero(dateCurent, nombre);
+        if (moisCourants.size() > 1) {
+            log.warn("{} lignes Mois pour annee={} numero={} (attendu : 1 max) - a nettoyer.",
+                    moisCourants.size(), dateCurent, nombre);
+        }
+        Mois mois = moisCourants.isEmpty() ? null : moisCourants.get(0);
         if (user.getCompagnieId() != null) {
             // Liste, pas un seul resultat : rien n'empeche deux exercices
             // d'annees differentes d'etre actif=true pour la meme compagnie

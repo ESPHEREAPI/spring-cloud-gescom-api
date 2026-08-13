@@ -29,7 +29,10 @@ import sid.service_admin.enums.OperationType;
  * @author USER01
  */
 @Entity
-@Table(name = "permission", uniqueConstraints = @UniqueConstraint(columnNames = {"menu_id", "operationType"}))
+@Table(name = "permission", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"menu_id", "operationType"}),
+    @UniqueConstraint(columnNames = {"menu_id", "action_id"})
+})
 @Data
 
 @AllArgsConstructor
@@ -47,8 +50,19 @@ public class Permission implements Serializable {
     @Column
     private String description;
 
+    // Conserve tel quel : c'est le seul champ lu/ecrit par le mecanisme
+    // RolePermissions/JwtAuthFilter historique (permissions globales, menu
+    // null). N'est plus utilise pour la matrice Profil x Menu x Action
+    // (menu non-null), qui passe desormais par `action` ci-dessous.
     @Enumerated(EnumType.STRING)
     private OperationType operationType;
+
+    // Remplace operationType pour la matrice Profil x Menu x Action : un
+    // catalogue dynamique (table) plutot qu'un enum Java fige sur une
+    // colonne ENUM MySQL native (source du bug PRINT, voir Action.java).
+    @JoinColumn(name = "action_id")
+    @ManyToOne
+    private Action action;
 
     // Permission sur un menu precis (matrice Role x Menu x Action) - null pour
     // les 4 permissions globales historiques (READ/WRITE/UPDATE/DELETE sans
@@ -68,6 +82,13 @@ public class Permission implements Serializable {
         this.operationType = operationType;
         this.name = menu.getCode() + ":" + operationType.name();
         this.description = operationType.name() + " sur " + menu.getDescription();
+    }
+
+    public Permission(Menu menu, Action action) {
+        this.menu = menu;
+        this.action = action;
+        this.name = menu.getCode() + ":" + action.getCode();
+        this.description = action.getLibelle() + " sur " + menu.getDescription();
     }
      @OneToMany(mappedBy = "permission")
     private Set<RolePermissions> rolePermissionses = new HashSet<>();

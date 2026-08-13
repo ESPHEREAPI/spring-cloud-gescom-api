@@ -124,6 +124,8 @@ public class CaisseController {
         return ResponseEntity.ok(produits);
     }
 
+    @org.springframework.security.access.prepost.PreAuthorize(
+            "hasAuthority('PERM_VENTE_ART_CODEBARE_VALIDER') or hasRole('COMPANY_ADMIN')")
     @PostMapping("/vente/{numerocommande}")
     public ResponseEntity<Long> getByBarcode(@PathVariable(name = "numerocommande") long numerocommande,@RequestBody VenteDto venteDto) {
         boutiqueAccessGuard.verifierBoutiqueUtilisateur(venteDto.getBoutiqueid());

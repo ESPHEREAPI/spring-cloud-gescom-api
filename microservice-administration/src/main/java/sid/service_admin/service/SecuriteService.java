@@ -61,7 +61,7 @@ public class SecuriteService implements ISecurite {
     @Autowired
     MapperDtoImpl mapper;
     @Autowired
-    private ProfilPermissionMatrixService profilPermissionMatrixService;
+    private PersonnePermissionService personnePermissionService;
 
     /**
      * Vérification si l'utilisateur qui est en train de se connecter existe
@@ -87,16 +87,17 @@ public class SecuriteService implements ISecurite {
     }
 
     /**
-     * Récupération des modules d'un user. Un utilisateur avec un Profil (voir
-     * ProfilPermissionMatrixService) voit les modules deduits de sa matrice
-     * Profil x Menu x Action ; sans profil (ex: admin compagnie provisionne
-     * directement via Usermodule a la creation), on garde l'ancien mecanisme
-     * par utilisateur pour ne pas casser les comptes existants.
+     * Récupération des modules d'un user. Un utilisateur avec un Profil voit
+     * les modules deduits de ses droits effectifs (Profil + exceptions
+     * posees pour lui, voir PersonnePermissionService) ; sans profil (ex:
+     * admin compagnie provisionne directement via Usermodule a la creation),
+     * on garde l'ancien mecanisme par utilisateur pour ne pas casser les
+     * comptes existants.
      */
     @Override
     public Collection<Modulesecurite> getModuleByUser(Personne u) {
         if (u.getProfilid() != null) {
-            return profilPermissionMatrixService.getMenusVisibles(u.getProfilid().getId()).stream()
+            return personnePermissionService.getMenusVisibles(u).stream()
                     .map(Menu::getModuleid)
                     .filter(java.util.Objects::nonNull)
                     .distinct()
@@ -161,7 +162,7 @@ public class SecuriteService implements ISecurite {
             return new ArrayList<>();
         }
         if (u.getProfilid() != null) {
-            return profilPermissionMatrixService.getMenusVisibles(u.getProfilid().getId()).stream()
+            return personnePermissionService.getMenusVisibles(u).stream()
                     .filter(menu -> menu.getModuleid() != null && menu.getModuleid().getId().equals(m.getId()))
                     .collect(Collectors.toList());
         }

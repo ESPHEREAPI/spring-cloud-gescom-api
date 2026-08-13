@@ -133,7 +133,7 @@ public class FactureController {
      * @param request Données de validation
      * @return Facture validée
      */
-    @PreAuthorize("hasAnyRole('COMPANY_ADMIN', 'ADMIN', 'COMPTABLE')")
+    @PreAuthorize("hasAuthority('PERM_FACTURE_VALIDER') or hasRole('COMPANY_ADMIN')")
     @PostMapping("/{id}/valider")
     @Operation(summary = "Valider une facture",
                description = "Valide une facture brouillon et effectue la sortie de stock")
@@ -154,7 +154,7 @@ public class FactureController {
      * @param request Données d'annulation
      * @return Facture annulée
      */
-    @PreAuthorize("hasAnyRole('COMPANY_ADMIN', 'ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_FACTURE_ANNULER') or hasRole('COMPANY_ADMIN')")
     @PostMapping("/{id}/annuler")
     @Operation(summary = "Annuler une facture",
                description = "Annule une facture et réintègre le stock")
@@ -316,6 +316,7 @@ public class FactureController {
         return ResponseEntity.ok(response);
     }
     
+    @PreAuthorize("hasAuthority('PERM_FACTURE_IMPRIMER') or hasRole('COMPANY_ADMIN')")
     @GetMapping("/{id}/pdf")
 public ResponseEntity<Resource> genererPDF(@PathVariable Long id) {
     byte[] pdfContent = factureService.genererPDF(id);

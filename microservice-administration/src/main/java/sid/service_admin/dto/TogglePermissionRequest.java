@@ -1,16 +1,16 @@
 package sid.service_admin.dto;
 
 import lombok.Data;
-import sid.service_admin.enums.OperationType;
 
 /**
  * Bascule une case de la matrice Profil x Menu x Action (accorde si absente,
- * retire si presente).
+ * retire si presente). `action` est le code de l'Action (catalogue
+ * dynamique, voir Action.java) - plus l'ancien enum Java OperationType.
  */
 @Data
 public class TogglePermissionRequest {
     private Long profilId;
     private Long menuId;
-    private OperationType action;
+    private String action;
     private boolean granted;
 }

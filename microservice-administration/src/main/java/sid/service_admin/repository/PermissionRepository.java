@@ -20,7 +20,16 @@ public interface PermissionRepository extends JpaRepository<Permission, Long> {
     Optional<Permission> findByName(String name);
     List<Permission> findByOperationType(OperationType operationType);
 
-    // Matrice Role x Menu x Action
+    // Matrice Role x Menu x Action (ancien enum OperationType - conserve pour
+    // compatibilite avec RolePermissions, voir Permission.java)
     Optional<Permission> findByMenu_IdAndOperationType(Long menuId, OperationType operationType);
     List<Permission> findByMenu_Id(Long menuId);
+
+    // Matrice Profil x Menu x Action (nouveau catalogue Action, voir Action.java)
+    Optional<Permission> findByMenu_IdAndAction_Id(Long menuId, Long actionId);
+
+    // Rattrapage au demarrage : permissions de menu deja creees via l'ancien
+    // enum OperationType, jamais encore reliees a une Action (voir
+    // ActionService#seedActionsEtBackfillPermissions).
+    List<Permission> findByMenuIsNotNullAndActionIsNullAndOperationTypeIsNotNull();
 }

@@ -90,6 +90,7 @@ public class UserService implements Serializable {
     private sid.service_admin.repository.CompagnieParametresRepository compagnieParametresRepository;
     private LoginGeneratorService loginGeneratorService;
     private ProfilPermissionMatrixService profilPermissionMatrixService;
+    private sid.service_admin.repository.ActionRepository actionRepository;
     private LicenceService licenceService;
     private TenantContext tenantContext;
 
@@ -542,16 +543,18 @@ public class UserService implements Serializable {
                     "Compte Client", "Charge", "Marge", "Type depense", "Element Ressource/Depense"),
             "USER", java.util.List.of());
 
-    // PRINT est exclu : la colonne MySQL operation_type est un ENUM natif cree
-    // avant l'ajout de cette valeur a l'enum Java, l'insertion echoue en base
-    // ("Data truncated for column 'operation_type'") - constate au demarrage
-    // local avant push. Les 4 actions restantes suffisent a rendre un menu
-    // visible et pleinement utilisable.
-    private static final java.util.List<sid.service_admin.enums.OperationType> ACTIONS_PAR_DEFAUT = java.util.List.of(
-            sid.service_admin.enums.OperationType.READ,
-            sid.service_admin.enums.OperationType.WRITE,
-            sid.service_admin.enums.OperationType.UPDATE,
-            sid.service_admin.enums.OperationType.DELETE);
+    // Actions par defaut a semer pour un profil fraichement cree - resolues
+    // depuis le catalogue Action (table), pas un enum Java fige. PRINT est
+    // desormais inclus : le catalogue Action a remplace l'ancien ENUM MySQL
+    // natif qui empechait son insertion (voir ActionService, Permission.java).
+    private static final java.util.Set<String> CODES_ACTIONS_PAR_DEFAUT =
+            java.util.Set.of("READ", "WRITE", "UPDATE", "DELETE", "PRINT");
+
+    private java.util.List<sid.service_admin.model.Action> actionsParDefaut() {
+        return actionRepository.findAll().stream()
+                .filter(a -> CODES_ACTIONS_PAR_DEFAUT.contains(a.getCode()))
+                .toList();
+    }
 
     @Transactional
     public void seedProfilsParDefautPourCompagnie(Compagnie compagnie) {
@@ -576,7 +579,7 @@ public class UserService implements Serializable {
                     java.util.List<String> menusParDefaut = MENUS_PAR_DEFAUT_PAR_PROFIL.getOrDefault(
                             codeEtDescription[0], java.util.List.of());
                     if (!menusParDefaut.isEmpty()) {
-                        profilPermissionMatrixService.seedPermissionsParDefaut(saved, menusParDefaut, ACTIONS_PAR_DEFAUT);
+                        profilPermissionMatrixService.seedPermissionsParDefaut(saved, menusParDefaut, actionsParDefaut());
                     }
                 });
     }
@@ -599,7 +602,45 @@ public class UserService implements Serializable {
             java.util.List<String> menusParDefaut = MENUS_PAR_DEFAUT_PAR_PROFIL.getOrDefault(
                     profil.getCode(), java.util.List.of());
             if (!menusParDefaut.isEmpty()) {
-                profilPermissionMatrixService.seedPermissionsParDefaut(profil, menusParDefaut, ACTIONS_PAR_DEFAUT);
+                profilPermissionMatrixService.seedPermissionsParDefaut(profil, menusParDefaut, actionsParDefaut());
+            }
+        });
+    }
+
+    // Actions metier (distinctes des READ/WRITE/UPDATE/DELETE/PRINT generiques)
+    // utilisees pour brancher reellement Valider/Annuler/Imprimer une Facture
+    // et Valider une vente Code Barre, cote microservice-produits (voir
+    // JwtAuthFilter/EffectivePermissionService la-bas). Toujours semees et
+    // accordees au demarrage (idempotent, jamais gate sur "profil deja
+    // configure" comme seedPermissionsManquantesPourProfilsExistants) car
+    // sans ce backfill, toutes les compagnies existantes perdraient d'un
+    // coup l'acces a ces boutons deja utilises en production.
+    private static final java.util.Map<String, String> LIBELLES_ACTIONS_METIER = java.util.Map.of(
+            "VALIDER", "Valider",
+            "ANNULER", "Annuler",
+            "IMPRIMER", "Imprimer");
+
+    @Transactional
+    public void seedActionsMetierEtDroitsParDefaut() {
+        LIBELLES_ACTIONS_METIER.forEach((code, libelle) -> {
+            if (actionRepository.findByCode(code).isEmpty()) {
+                actionRepository.save(new sid.service_admin.model.Action(code, libelle));
+            }
+        });
+
+        java.util.List<sid.service_admin.model.Action> actionsFacture = actionRepository.findAll().stream()
+                .filter(a -> java.util.Set.of("VALIDER", "ANNULER", "IMPRIMER").contains(a.getCode()))
+                .toList();
+        java.util.List<sid.service_admin.model.Action> actionsVente = actionRepository.findAll().stream()
+                .filter(a -> "VALIDER".equals(a.getCode()))
+                .toList();
+
+        profilRepository.findAll().forEach(profil -> {
+            if (java.util.Set.of("ADMIN", "COMPTABLE").contains(profil.getCode())) {
+                profilPermissionMatrixService.seedPermissionsParDefaut(profil, java.util.List.of("Facture"), actionsFacture);
+            }
+            if (java.util.Set.of("ADMIN", "CAISSIER").contains(profil.getCode())) {
+                profilPermissionMatrixService.seedPermissionsParDefaut(profil, java.util.List.of("Vente Art./CodeBare"), actionsVente);
             }
         });
     }

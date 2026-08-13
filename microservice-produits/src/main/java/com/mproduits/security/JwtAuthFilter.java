@@ -25,15 +25,19 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * n'a pas de colonne compagnie dans ce module) en attribut de requete pour
  * le filtre de licence place juste apres dans la chaine.
  *
- * Deux authorities distinctes sont accordees : ROLE_<code du Role> (simple
+ * Trois types d'authorities sont accordees : ROLE_<code du Role> (simple
  * etiquette de hierarchie plateforme : SUPER_ADMIN/SYSTEM_ADMIN/
- * COMPANY_ADMIN/EMPLOYE - jamais ADMIN/CAISSIER/etc, voir Personne.roleid)
- * et ROLE_<code du Profil> (le vrai metier de l'utilisateur : ADMIN/
+ * COMPANY_ADMIN/EMPLOYE - jamais ADMIN/CAISSIER/etc, voir Personne.roleid),
+ * ROLE_<code du Profil> (le vrai metier de l'utilisateur : ADMIN/
  * CAISSIER/COMMERCIAL/COMPTABLE/USER, voir Personne.profilid) si un profil
- * est assigne. @PreAuthorize peut donc distinguer un caissier d'un
- * comptable, tout en gardant COMPANY_ADMIN comme "passe-partout" pour le
- * createur de la compagnie (qui n'a jamais de profil assigne - voir
- * AdminAccountService.createCompanyAdmin, cote microservice-administration).
+ * est assigne, et PERM_<code menu>_<code action> (droits fins Profil +
+ * exceptions par utilisateur, voir EffectivePermissionService) pour les
+ * actions metier sensibles (Facture Valider/Annuler/Imprimer, Vente
+ * Art./CodeBare Valider...). @PreAuthorize peut donc distinguer un caissier
+ * d'un comptable OU verifier une action precise, tout en gardant
+ * COMPANY_ADMIN comme "passe-partout" pour le createur de la compagnie (qui
+ * n'a jamais de profil assigne - voir AdminAccountService.createCompanyAdmin,
+ * cote microservice-administration).
  */
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -43,6 +47,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     @Autowired
     private PersonneRepositories personneRepository;
+
+    @Autowired
+    private EffectivePermissionService effectivePermissionService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -74,6 +81,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (personne.getProfilid() != null && personne.getProfilid().getCode() != null) {
             authorities.add(new SimpleGrantedAuthority("ROLE_" + personne.getProfilid().getCode()));
         }
+        authorities.addAll(effectivePermissionService.getAuthoritiesEffectives(personne));
 
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(personne.getUserName(), null, authorities);

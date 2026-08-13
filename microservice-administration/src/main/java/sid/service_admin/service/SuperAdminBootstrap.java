@@ -30,6 +30,7 @@ public class SuperAdminBootstrap implements ApplicationRunner {
     private final PersonneRepository personneRepository;
     private final AdminAccountService adminAccountService;
     private final UserService userService;
+    private final ActionService actionService;
 
     @Value("${app.superadmin.username:superadmin}")
     private String superAdminUsername;
@@ -39,19 +40,30 @@ public class SuperAdminBootstrap implements ApplicationRunner {
     private String configuredSuperAdminPassword;
 
     public SuperAdminBootstrap(RoleRepository roleRepository, CompagnieRepository compagnieRepository,
-            PersonneRepository personneRepository, AdminAccountService adminAccountService, UserService userService) {
+            PersonneRepository personneRepository, AdminAccountService adminAccountService, UserService userService,
+            ActionService actionService) {
         this.roleRepository = roleRepository;
         this.compagnieRepository = compagnieRepository;
         this.personneRepository = personneRepository;
         this.adminAccountService = adminAccountService;
         this.userService = userService;
+        this.actionService = actionService;
     }
 
     @Override
     public void run(ApplicationArguments args) {
+        // Doit passer avant tout semis de Profil/Permission : seme le
+        // catalogue Action et relie les permissions existantes (ancien enum
+        // OperationType) a leur Action - voir ActionService.
+        actionService.seedActionsEtBackfillPermissions();
         seedHierarchyRoles();
         seedProfilsPourCompagniesExistantes();
         userService.seedPermissionsManquantesPourProfilsExistants();
+        // Apres le rattrapage general ci-dessus (qui ne seme rien si un
+        // profil a deja au moins une permission) : accorde en plus, de facon
+        // additive, les actions metier Valider/Annuler/Imprimer aux profils
+        // qui en avaient l'usage implicite jusqu'ici (voir UserService).
+        userService.seedActionsMetierEtDroitsParDefaut();
 
         if (personneRepository.findByUserName(superAdminUsername).isPresent()) {
             return;

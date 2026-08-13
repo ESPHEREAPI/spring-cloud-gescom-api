@@ -27,15 +27,20 @@ public class ActionService {
 
     /**
      * Libelles des 5 actions historiques (anciennement l'enum Java
-     * OperationType) - identiques a LIBELLE_ACTION cote frontend
-     * (user-profil.component.ts).
+     * OperationType) - le frontend charge desormais ce catalogue
+     * dynamiquement via GET /actions (voir user-profil.component.ts).
      */
+    // PRINT porte "(generique)" pour ne pas entrer en collision d'affichage
+    // avec l'action metier IMPRIMER (voir UserService.LIBELLES_ACTIONS_METIER)
+    // qui, elle, gouverne reellement l'impression PDF d'une Facture - sans ce
+    // suffixe, la matrice Profil x Menu affichait deux colonnes "Imprimer"
+    // indiscernables l'une de l'autre.
     private static final java.util.Map<String, String> LIBELLES_PAR_DEFAUT = java.util.Map.of(
             "READ", "Voir",
             "WRITE", "Ajouter",
             "UPDATE", "Modifier",
             "DELETE", "Supprimer",
-            "PRINT", "Imprimer");
+            "PRINT", "Imprimer (generique)");
 
     @Transactional(readOnly = true)
     public List<Action> findAll() {
@@ -61,8 +66,16 @@ public class ActionService {
     @Transactional
     public void seedActionsEtBackfillPermissions() {
         LIBELLES_PAR_DEFAUT.forEach((code, libelle) -> {
-            if (repository.findByCode(code).isEmpty()) {
+            Action existante = repository.findByCode(code).orElse(null);
+            if (existante == null) {
                 repository.save(new Action(code, libelle));
+            } else if ("PRINT".equals(code) && "Imprimer".equals(existante.getLibelle())) {
+                // Rattrapage ponctuel : les compagnies deja provisionnees avant ce
+                // correctif ont encore l'ancien libelle "Imprimer" en collision
+                // avec l'action metier IMPRIMER - ne touche jamais un libelle
+                // deja personnalise manuellement (differe de "Imprimer").
+                existante.setLibelle(libelle);
+                repository.save(existante);
             }
         });
 

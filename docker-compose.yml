@@ -87,9 +87,8 @@ services:
       dockerfile: Dockerfile
     container_name: easycom-gateway
     restart: unless-stopped
-    # Plus expose publiquement (voir service caddy) : seul le reseau
-    # docker interne y accede desormais. Reexposer temporairement
-    # "8080:8080" ici si un acces direct de diagnostic est necessaire.
+    ports:
+      - "8080:8080"
     environment:
       JAVA_OPTS: "-Xms512m -Xmx1024m"
       SPRING_PROFILES_ACTIVE: prod
@@ -228,9 +227,8 @@ services:
       dockerfile: Dockerfile
     container_name: easycom-frontend
     restart: unless-stopped
-    # Plus expose publiquement (voir service caddy) : seul le reseau
-    # docker interne y accede desormais. Reexposer temporairement
-    # "8081:80" ici si un acces direct de diagnostic est necessaire.
+    ports:
+      - "8081:80"
     networks:
       - easycom-network
     depends_on:
@@ -242,26 +240,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
-
-  # ==========================================
-  # CADDY - TLS/HTTPS, point d'entree public unique
-  # ==========================================
-  caddy:
-    image: caddy:2-alpine
-    container_name: easycom-caddy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
-    networks:
-      - easycom-network
-    depends_on:
-      frontend:
-        condition: service_healthy
 
 # ==========================================
 # RÉSEAUX
@@ -277,10 +255,3 @@ networks:
 volumes:
   mysql-data:
     name: easycom-mysql-data
-  # Certificats Let's Encrypt + etat ACME de Caddy - a conserver entre les
-  # redeploiements pour ne pas re-demander un certificat a chaque fois
-  # (Let's Encrypt limite le nombre de demandes par domaine/semaine).
-  caddy-data:
-    name: easycom-caddy-data
-  caddy-config:
-    name: easycom-caddy-config

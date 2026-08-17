@@ -129,8 +129,14 @@ public interface ProduitRepositories extends JpaRepository<Produit, Long>{
     // Produit peuvent partager la meme reference si un import anterieur en a
     // cree en double - findByReferenceAndCompagnie_Id planterait
     // (IncorrectResultSizeDataAccessException) au lieu de planter la
-    // restauration entiere, on prend simplement le premier.
-    List<Produit> findAllByReferenceAndCompagnie_Id(String reference, Long compagnieId);
+    // restauration entiere, on prend simplement le premier. Le "First" (LIMIT 1)
+    // est essentiel : charger TOUS les doublons dans le contexte de
+    // persistance (findAllBy...) faisait planter Hibernate au flush avec
+    // "Found shared references to a collection" des qu'un des doublons
+    // trainait dans la session sans etre jamais modifie.
+    Optional<Produit> findFirstByReferenceAndCompagnie_IdOrderByIdAsc(String reference, Long compagnieId);
+
+    long countByReferenceAndCompagnie_Id(String reference, Long compagnieId);
     Optional<Produit> findByLibelleAndCompagnie_Id(String libelle, Long compagnieId);
     Page<Produit> findAllByCompagnie_Id(Long compagnieId, Pageable pageable);
     List<Produit> findAllByCompagnie_Id(Long compagnieId);

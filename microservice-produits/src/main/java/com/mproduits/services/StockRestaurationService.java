@@ -326,15 +326,21 @@ public class StockRestaurationService {
      * si un import anterieur a deja cree un doublon pour cette reference -
      * prend le premier plutot que de faire planter toute la restauration ;
      * le doublon en base reste une donnee a nettoyer separement, mais ne
-     * doit plus bloquer l'ecran.
+     * doit plus bloquer l'ecran. Charge UNIQUEMENT ce premier resultat
+     * (LIMIT 1, findFirstBy...OrderByIdAsc) plutot que tous les doublons :
+     * les charger tous dans le contexte de persistance (ancien
+     * findAllByReferenceAndCompagnie_Id) faisait planter Hibernate au flush
+     * avec "Found shared references to a collection" des qu'un doublon
+     * jamais modifie restait attache a la session.
      */
     private Produit resolveProduitTolerantDoublons(String reference, Long compagnieId) {
-        List<Produit> trouves = produitRepositories.findAllByReferenceAndCompagnie_Id(reference, compagnieId);
-        if (trouves.size() > 1) {
+        long nbTrouves = produitRepositories.countByReferenceAndCompagnie_Id(reference, compagnieId);
+        if (nbTrouves > 1) {
             log.warn("Reference '{}' en double en base pour la compagnie {} ({} produits) - le premier est utilise",
-                    reference, compagnieId, trouves.size());
+                    reference, compagnieId, nbTrouves);
         }
-        return trouves.isEmpty() ? null : trouves.get(0);
+        return produitRepositories.findFirstByReferenceAndCompagnie_IdOrderByIdAsc(reference, compagnieId)
+                .orElse(null);
     }
 
     /**

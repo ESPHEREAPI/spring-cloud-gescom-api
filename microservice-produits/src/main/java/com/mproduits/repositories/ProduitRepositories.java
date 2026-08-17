@@ -124,6 +124,13 @@ public interface ProduitRepositories extends JpaRepository<Produit, Long>{
     // compagnie A manipule un id de produit appartenant a une compagnie B).
     Optional<Produit> findByIdAndCompagnie_Id(Long id, Long compagnieId);
     Optional<Produit> findByReferenceAndCompagnie_Id(String reference, Long compagnieId);
+
+    // Variante tolerante aux doublons (voir StockRestaurationService) : deux
+    // Produit peuvent partager la meme reference si un import anterieur en a
+    // cree en double - findByReferenceAndCompagnie_Id planterait
+    // (IncorrectResultSizeDataAccessException) au lieu de planter la
+    // restauration entiere, on prend simplement le premier.
+    List<Produit> findAllByReferenceAndCompagnie_Id(String reference, Long compagnieId);
     Optional<Produit> findByLibelleAndCompagnie_Id(String libelle, Long compagnieId);
     Page<Produit> findAllByCompagnie_Id(Long compagnieId, Pageable pageable);
     List<Produit> findAllByCompagnie_Id(Long compagnieId);

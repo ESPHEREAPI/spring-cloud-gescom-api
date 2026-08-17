@@ -322,6 +322,22 @@ public class StockRestaurationService {
     }
 
     /**
+     * findByReferenceAndCompagnie_Id plante (IncorrectResultSizeDataAccessException)
+     * si un import anterieur a deja cree un doublon pour cette reference -
+     * prend le premier plutot que de faire planter toute la restauration ;
+     * le doublon en base reste une donnee a nettoyer separement, mais ne
+     * doit plus bloquer l'ecran.
+     */
+    private Produit resolveProduitTolerantDoublons(String reference, Long compagnieId) {
+        List<Produit> trouves = produitRepositories.findAllByReferenceAndCompagnie_Id(reference, compagnieId);
+        if (trouves.size() > 1) {
+            log.warn("Reference '{}' en double en base pour la compagnie {} ({} produits) - le premier est utilise",
+                    reference, compagnieId, trouves.size());
+        }
+        return trouves.isEmpty() ? null : trouves.get(0);
+    }
+
+    /**
      * Cree le produit manquant a partir des colonnes informatives du fichier
      * (Produit/Categorie servent ici, pas seulement d'affichage). Reference
      * et compagnie sont les seuls champs garantis ; Produit (libelle) retombe
@@ -396,6 +412,25 @@ public class StockRestaurationService {
 
         try (InputStream in = fichier.getInputStream(); Workbook workbook = WorkbookFactory.create(in)) {
             Sheet sheet = workbook.getSheetAt(0);
+
+            // Pre-passe : une meme reference sur plusieurs lignes du fichier
+            // creerait un doublon de Produit a l'application (chaque ligne
+            // "nouveau produit" resolue independamment ne voit pas les
+            // autres lignes du meme fichier) - et un doublon fait planter
+            // toute future restauration (findByReferenceAndCompagnie_Id
+            // n'attend qu'un seul resultat). Bloque des la previsualisation.
+            Map<String, Integer> occurrencesReference = new java.util.HashMap<>();
+            for (int r = 1; r <= sheet.getLastRowNum(); r++) {
+                Row row = sheet.getRow(r);
+                if (row == null || estLigneVide(row, colonnes.size())) {
+                    continue;
+                }
+                String reference = lireTexte(row, indexReference);
+                if (!reference.isBlank()) {
+                    occurrencesReference.merge(reference, 1, Integer::sum);
+                }
+            }
+
             for (int r = 1; r <= sheet.getLastRowNum(); r++) {
                 Row row = sheet.getRow(r);
                 if (row == null || estLigneVide(row, colonnes.size())) {
@@ -416,10 +451,17 @@ public class StockRestaurationService {
                     continue;
                 }
 
+                if (occurrencesReference.get(reference) > 1) {
+                    resultat.add(new LigneResolue(ligneNo, reference, boutiqueNom, null, null, null, null,
+                            "Reference en double dans ce fichier (" + occurrencesReference.get(reference) + " lignes) : " + reference,
+                            false, produitLibelle, categorieLibelle, prixVenteFichier, prixAchatFichier));
+                    continue;
+                }
+
                 // Produit introuvable : pas une erreur bloquante en soi -
                 // appliquerImport le creera (voir creerProduit), a condition
                 // que la boutique et la quantite restent valides ci-dessous.
-                Produit produit = produitRepositories.findByReferenceAndCompagnie_Id(reference, compagnieId).orElse(null);
+                Produit produit = resolveProduitTolerantDoublons(reference, compagnieId);
                 boolean nouveauProduit = produit == null;
 
                 Boutique boutique = indexBoutique >= 0

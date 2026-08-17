@@ -315,7 +315,12 @@ public class ProduitService {
         prd.setUsernameupdate(tenantContext.currentUsername());
         Produit prodSave = articleRepository.save(prd);
         System.out.println("qunatite pacquet " + prodSave.getQuantiteByPacquet());
-        ProduitDto pdto = mapperdto.mapperProduitDto(prodSave,new Boutique());
+        // Mise a jour du catalogue, pas scopee a une boutique : la variante
+        // sans Boutique (pas de calcul de stockFinal) evite de passer une
+        // Boutique() transitoire/non sauvegardee a une requete JPA
+        // (TransientObjectException - stock d'une boutique factice n'aurait
+        // de toute facon aucun sens ici).
+        ProduitDto pdto = mapperdto.mapperProduitDto(prodSave);
         return pdto;
 
     }

@@ -410,26 +410,18 @@ public class StockRestaurationService {
         Entreprise entreprise = entrepriseService.obtenirOuCreerExerciceActif(compagnieId);
         List<LigneResolue> resultat = new ArrayList<>();
 
+        // Une meme reference peut legitimement apparaitre sur plusieurs
+        // lignes du fichier (plusieurs lots recus pour le meme produit,
+        // dans la meme boutique) - leurs quantites sont cumulees en une
+        // seule ligne resolue plutot que de creer un doublon de produit ou
+        // de faire planter la restauration (voir resolveProduitTolerantDoublons).
+        record LigneBrute(int ligneNo, String reference, String boutiqueNom, String produitLibelle,
+                String categorieLibelle, BigDecimal prixVente, BigDecimal prixAchat, BigDecimal quantite, String erreur) {
+        }
+
         try (InputStream in = fichier.getInputStream(); Workbook workbook = WorkbookFactory.create(in)) {
             Sheet sheet = workbook.getSheetAt(0);
-
-            // Pre-passe : une meme reference sur plusieurs lignes du fichier
-            // creerait un doublon de Produit a l'application (chaque ligne
-            // "nouveau produit" resolue independamment ne voit pas les
-            // autres lignes du meme fichier) - et un doublon fait planter
-            // toute future restauration (findByReferenceAndCompagnie_Id
-            // n'attend qu'un seul resultat). Bloque des la previsualisation.
-            Map<String, Integer> occurrencesReference = new java.util.HashMap<>();
-            for (int r = 1; r <= sheet.getLastRowNum(); r++) {
-                Row row = sheet.getRow(r);
-                if (row == null || estLigneVide(row, colonnes.size())) {
-                    continue;
-                }
-                String reference = lireTexte(row, indexReference);
-                if (!reference.isBlank()) {
-                    occurrencesReference.merge(reference, 1, Integer::sum);
-                }
-            }
+            List<LigneBrute> brutes = new ArrayList<>();
 
             for (int r = 1; r <= sheet.getLastRowNum(); r++) {
                 Row row = sheet.getRow(r);
@@ -446,31 +438,8 @@ public class StockRestaurationService {
                 BigDecimal prixAchatFichier = lireNombreOuZero(row, indexPrixAchat);
 
                 if (reference.isBlank()) {
-                    resultat.add(new LigneResolue(ligneNo, reference, boutiqueNom, null, null, null, null,
-                            "Reference manquante", false, null, null, null, null));
-                    continue;
-                }
-
-                if (occurrencesReference.get(reference) > 1) {
-                    resultat.add(new LigneResolue(ligneNo, reference, boutiqueNom, null, null, null, null,
-                            "Reference en double dans ce fichier (" + occurrencesReference.get(reference) + " lignes) : " + reference,
-                            false, produitLibelle, categorieLibelle, prixVenteFichier, prixAchatFichier));
-                    continue;
-                }
-
-                // Produit introuvable : pas une erreur bloquante en soi -
-                // appliquerImport le creera (voir creerProduit), a condition
-                // que la boutique et la quantite restent valides ci-dessous.
-                Produit produit = resolveProduitTolerantDoublons(reference, compagnieId);
-                boolean nouveauProduit = produit == null;
-
-                Boutique boutique = indexBoutique >= 0
-                        ? boutiqueRepositories.findByNomIgnoreCaseAndCompagnie_Id(boutiqueNom, compagnieId).orElse(null)
-                        : boutiquePreselectionnee;
-                if (boutique == null) {
-                    resultat.add(new LigneResolue(ligneNo, reference, boutiqueNom, produit, null, null, null,
-                            "Boutique introuvable : " + boutiqueNom, nouveauProduit, produitLibelle, categorieLibelle,
-                            prixVenteFichier, prixAchatFichier));
+                    brutes.add(new LigneBrute(ligneNo, reference, boutiqueNom, produitLibelle, categorieLibelle,
+                            prixVenteFichier, prixAchatFichier, null, "Reference manquante"));
                     continue;
                 }
 
@@ -478,22 +447,64 @@ public class StockRestaurationService {
                 try {
                     quantiteFichier = lireNombre(row, indexQuantite);
                 } catch (NumberFormatException e) {
-                    resultat.add(new LigneResolue(ligneNo, reference, boutiqueNom, produit, boutique, null, null,
-                            "Quantite invalide", nouveauProduit, produitLibelle, categorieLibelle,
-                            prixVenteFichier, prixAchatFichier));
+                    brutes.add(new LigneBrute(ligneNo, reference, boutiqueNom, produitLibelle, categorieLibelle,
+                            prixVenteFichier, prixAchatFichier, null, "Quantite invalide"));
                     continue;
                 }
                 if (quantiteFichier == null || quantiteFichier.compareTo(BigDecimal.ZERO) < 0) {
-                    resultat.add(new LigneResolue(ligneNo, reference, boutiqueNom, produit, boutique, null, null,
-                            "Quantite manquante ou negative", nouveauProduit, produitLibelle, categorieLibelle,
-                            prixVenteFichier, prixAchatFichier));
+                    brutes.add(new LigneBrute(ligneNo, reference, boutiqueNom, produitLibelle, categorieLibelle,
+                            prixVenteFichier, prixAchatFichier, null, "Quantite manquante ou negative"));
+                    continue;
+                }
+
+                brutes.add(new LigneBrute(ligneNo, reference, boutiqueNom, produitLibelle, categorieLibelle,
+                        prixVenteFichier, prixAchatFichier, quantiteFichier, null));
+            }
+
+            for (LigneBrute lb : brutes) {
+                if (lb.erreur() != null) {
+                    resultat.add(new LigneResolue(lb.ligneNo(), lb.reference(), lb.boutiqueNom(), null, null, null,
+                            null, lb.erreur(), false, null, null, null, null));
+                }
+            }
+
+            // Regroupe les lignes valides par couple (reference, boutique) -
+            // ordre de premiere apparition conserve (LinkedHashMap).
+            Map<String, List<LigneBrute>> groupes = new java.util.LinkedHashMap<>();
+            for (LigneBrute lb : brutes) {
+                if (lb.erreur() == null) {
+                    groupes.computeIfAbsent(lb.reference() + " " + lb.boutiqueNom(), k -> new ArrayList<>()).add(lb);
+                }
+            }
+
+            for (List<LigneBrute> groupe : groupes.values()) {
+                LigneBrute premiere = groupe.get(0);
+                String reference = premiere.reference();
+                String boutiqueNom = premiere.boutiqueNom();
+                BigDecimal quantiteFichier = groupe.stream()
+                        .map(LigneBrute::quantite)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                // Produit introuvable : pas une erreur bloquante en soi -
+                // appliquerImport le creera (voir creerProduit), a condition
+                // que la boutique reste valide ci-dessous.
+                Produit produit = resolveProduitTolerantDoublons(reference, compagnieId);
+                boolean nouveauProduit = produit == null;
+
+                Boutique boutique = indexBoutique >= 0
+                        ? boutiqueRepositories.findByNomIgnoreCaseAndCompagnie_Id(boutiqueNom, compagnieId).orElse(null)
+                        : boutiquePreselectionnee;
+                if (boutique == null) {
+                    resultat.add(new LigneResolue(premiere.ligneNo(), reference, boutiqueNom, produit, null, null, null,
+                            "Boutique introuvable : " + boutiqueNom, nouveauProduit, premiere.produitLibelle(),
+                            premiere.categorieLibelle(), premiere.prixVente(), premiere.prixAchat()));
                     continue;
                 }
 
                 if (nouveauProduit) {
-                    resultat.add(new LigneResolue(ligneNo, reference, boutiqueNom, null, boutique,
-                            BigDecimal.ZERO, quantiteFichier, null, true, produitLibelle, categorieLibelle,
-                            prixVenteFichier, prixAchatFichier));
+                    resultat.add(new LigneResolue(premiere.ligneNo(), reference, boutiqueNom, null, boutique,
+                            BigDecimal.ZERO, quantiteFichier, null, true, premiere.produitLibelle(),
+                            premiere.categorieLibelle(), premiere.prixVente(), premiere.prixAchat()));
                     continue;
                 }
 
@@ -502,9 +513,9 @@ public class StockRestaurationService {
                         .map(PointVente::getStockFinalTheorie)
                         .orElse(null);
                 if (ancienneQuantite == null) {
-                    resultat.add(new LigneResolue(ligneNo, reference, boutiqueNom, produit, boutique, null, null,
-                            "Aucun point de vente actif pour ce produit dans cette boutique", false, produitLibelle,
-                            categorieLibelle, prixVenteFichier, prixAchatFichier));
+                    resultat.add(new LigneResolue(premiere.ligneNo(), reference, boutiqueNom, produit, boutique, null,
+                            null, "Aucun point de vente actif pour ce produit dans cette boutique", false,
+                            premiere.produitLibelle(), premiere.categorieLibelle(), premiere.prixVente(), premiere.prixAchat()));
                     continue;
                 }
 
@@ -512,10 +523,12 @@ public class StockRestaurationService {
                         ? ancienneQuantite.add(quantiteFichier)
                         : quantiteFichier;
 
-                resultat.add(new LigneResolue(ligneNo, reference, boutiqueNom, produit, boutique,
-                        ancienneQuantite, nouvelleQuantite, null, false, produitLibelle, categorieLibelle,
-                        prixVenteFichier, prixAchatFichier));
+                resultat.add(new LigneResolue(premiere.ligneNo(), reference, boutiqueNom, produit, boutique,
+                        ancienneQuantite, nouvelleQuantite, null, false, premiere.produitLibelle(),
+                        premiere.categorieLibelle(), premiere.prixVente(), premiere.prixAchat()));
             }
+
+            resultat.sort(java.util.Comparator.comparingInt(LigneResolue::ligneNo));
         } catch (IOException e) {
             log.error("Erreur lors de la lecture du fichier de restauration de stock", e);
             throw new MetierException("Fichier illisible - verifiez qu'il s'agit bien du modele genere par cet ecran");

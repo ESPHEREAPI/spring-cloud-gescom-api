@@ -322,6 +322,73 @@ public class StockRestaurationService {
     }
 
     /**
+     * Remet une boutique a zero pour permettre de reprendre une
+     * initialisation de stock depuis un etat propre pendant les tests :
+     * supprime tout le stock (PointVente + PrixArticles + StockMovement)
+     * et l'historique de restauration de cette boutique, puis supprime
+     * aussi chaque Produit qui n'a plus AUCUN point de vente dans une
+     * AUTRE boutique (un produit partage avec une autre boutique est
+     * uniquement deleste de son stock ici, jamais supprime du catalogue).
+     * Ordre de suppression contraint par les FK (historique/mouvements/prix
+     * avant PointVente, PrixAchat avant Produit).
+     */
+    @Transactional
+    public java.util.Map<String, Object> reinitialiserBoutique(Long boutiqueId) {
+        Long compagnieId = tenantContext.currentCompagnieId();
+        Boutique boutique = boutiqueRepositories.findByIdAndCompagnie_Id(boutiqueId, compagnieId)
+                .orElseThrow(() -> new BadRequestException("Boutique introuvable"));
+
+        List<PointVente> pointVentes = pointVenteRepositories.findByBoutique(boutique);
+        java.util.Set<Long> produitIds = pointVentes.stream()
+                .map(pv -> pv.getProduit().getId())
+                .collect(java.util.stream.Collectors.toSet());
+
+        List<HistoriqueRestaurationStock> historiques = historiqueRestaurationStockRepository.findByBoutique(boutique);
+        historiqueRestaurationStockRepository.deleteAll(historiques);
+
+        int mouvementsSupprimes = 0;
+        int prixArticlesSupprimes = 0;
+        for (PointVente pv : pointVentes) {
+            List<StockMovement> mouvements = stockMovementRepository.findByPointVenteId(pv.getId());
+            mouvementsSupprimes += mouvements.size();
+            stockMovementRepository.deleteAll(mouvements);
+
+            List<PrixArticles> prix = prixArticlesRepositories.findByPointVente(pv);
+            prixArticlesSupprimes += prix.size();
+            prixArticlesRepositories.deleteAll(prix);
+        }
+        pointVenteRepositories.deleteAll(pointVentes);
+
+        int produitsSupprimes = 0;
+        for (Long produitId : produitIds) {
+            Produit produit = produitRepositories.findById(produitId).orElse(null);
+            if (produit == null) {
+                continue;
+            }
+            boolean encoreUtiliseAilleurs = !pointVenteRepositories.findByProduit(produit).isEmpty();
+            if (encoreUtiliseAilleurs) {
+                continue;
+            }
+            prixAchatRepositories.deleteAll(prixAchatRepositories.findByProduit(produit));
+            produitRepositories.delete(produit);
+            produitsSupprimes++;
+        }
+
+        log.info("Boutique '{}' (id={}) reinitialisee : {} PointVente, {} PrixArticles, {} StockMovement, "
+                        + "{} HistoriqueRestaurationStock et {} Produit supprimes",
+                boutique.getNom(), boutiqueId, pointVentes.size(), prixArticlesSupprimes, mouvementsSupprimes,
+                historiques.size(), produitsSupprimes);
+
+        return java.util.Map.of(
+                "pointVentesSupprimes", pointVentes.size(),
+                "prixArticlesSupprimes", prixArticlesSupprimes,
+                "mouvementsSupprimes", mouvementsSupprimes,
+                "historiqueSupprime", historiques.size(),
+                "produitsSupprimes", produitsSupprimes,
+                "produitsConserves", produitIds.size() - produitsSupprimes);
+    }
+
+    /**
      * findByReferenceAndCompagnie_Id plante (IncorrectResultSizeDataAccessException)
      * si un import anterieur a deja cree un doublon pour cette reference -
      * prend le premier plutot que de faire planter toute la restauration ;

@@ -65,4 +65,15 @@ public class StockRestaurationController {
         String batchId = stockRestaurationService.appliquerImport(fichier, boutiqueId, mode, tenantContext.currentUsername());
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("batchId", batchId));
     }
+
+    /**
+     * Remet une boutique a zero (stock + produits qui lui sont exclusifs)
+     * pour reprendre une initialisation depuis un etat propre - outil de
+     * maintenance, reserve aux administrateurs de la compagnie.
+     */
+    @PreAuthorize("hasRole('COMPANY_ADMIN')")
+    @PostMapping("/reinitialiser-boutique")
+    public ResponseEntity<Map<String, Object>> reinitialiserBoutique(@RequestParam Long boutiqueId) {
+        return ResponseEntity.ok(stockRestaurationService.reinitialiserBoutique(boutiqueId));
+    }
 }

@@ -1,5 +1,6 @@
 package com.mproduits.repositories;
 
+import com.mproduits.model.Boutique;
 import com.mproduits.model.HistoriqueRestaurationStock;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,4 +13,6 @@ public interface HistoriqueRestaurationStockRepository extends JpaRepository<His
 
     @Query("SELECT h FROM HistoriqueRestaurationStock h WHERE h.compagnie.id = :compagnieId ORDER BY h.dateRestauration DESC")
     List<HistoriqueRestaurationStock> findAllByCompagnieId(@Param("compagnieId") Long compagnieId);
+
+    List<HistoriqueRestaurationStock> findByBoutique(Boutique boutique);
 }

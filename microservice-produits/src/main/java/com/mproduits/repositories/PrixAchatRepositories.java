@@ -8,6 +8,7 @@ import com.mproduits.model.PrixAchat;
 import com.mproduits.model.Produit;
 import feign.Param;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -39,6 +40,6 @@ public interface PrixAchatRepositories extends JpaRepository<PrixAchat, Long> {
     Date debut,
     Date fin
 );
-    
-   
+
+    List<PrixAchat> findByProduit(Produit produit);
 }

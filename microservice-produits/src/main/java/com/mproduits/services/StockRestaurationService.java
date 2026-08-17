@@ -231,7 +231,14 @@ public class StockRestaurationService {
                 pointVente.setEntreprise(entrepriseActive);
                 pointVente.setProduit(produit);
                 pointVente.setDateReception(maintenant);
-                pointVente.setStockInitial(ligne.nouvelleQuantite());
+                // Premiere reception pour ce produit dans cette boutique :
+                // stockInitial reste a zero et entreeProduit porte la
+                // quantite (meme convention que ServiceCommande, "premiere
+                // reception") - stockInitial ET entreeProduit mis tous les
+                // deux a la quantite du fichier faisait apparaitre le double
+                // de la vraie quantite recue sur l'ecran Approvisionnement
+                // (Quantite = entreeProduit + stockInitial).
+                pointVente.setStockInitial(BigDecimal.ZERO);
                 pointVente.setStockFinalTheorie(ligne.nouvelleQuantite());
                 pointVente.setEntreeProduit(ligne.nouvelleQuantite());
                 pointVente.setSortiProduit(BigDecimal.ZERO);
@@ -262,7 +269,15 @@ public class StockRestaurationService {
                         .findLatestActiveByProduitBoutiqueAndEntreprise(produit, ligne.boutique(), entrepriseActive)
                         .orElseThrow(() -> new BadRequestException(
                                 "Aucun point de vente actif pour " + ligne.reference() + " / " + ligne.boutiqueNom()));
+                // Meme convention que InventairesService.saveStock (ecran
+                // "Mise a jour du Stock") pour une correction : entreeProduit
+                // est REMPLACE par la nouvelle quantite (pas accumule) et
+                // sortiProduit remis a zero, pour que l'ecran Approvisionnement
+                // (Quantite = entreeProduit + stockInitial) reste coherent avec
+                // le stock reellement restaure.
                 pointVente.setStockFinalTheorie(ligne.nouvelleQuantite());
+                pointVente.setEntreeProduit(ligne.nouvelleQuantite());
+                pointVente.setSortiProduit(BigDecimal.ZERO);
                 pointVenteRepositories.save(pointVente);
             }
 

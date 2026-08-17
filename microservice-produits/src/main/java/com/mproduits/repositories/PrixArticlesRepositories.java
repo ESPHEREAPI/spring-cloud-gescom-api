@@ -113,7 +113,12 @@ public interface PrixArticlesRepositories extends JpaRepository<PrixArticles, Lo
     @Query("SELECT pa FROM PrixArticles pa WHERE pa.entreprise = :e AND pa.actif = :active and pa.pointVente.depotId.id= :magasinid")
     Page<PrixArticles> findAllByEntrepriseProduitActifMagasin(@Param("e") Entreprise e, @Param("active") Boolean active, Pageable pageable, @Param("magasinid") Long magasinid);
 
-    @Query("SELECT DISTINCT pa FROM PrixArticles pa WHERE pa.entreprise = :e AND pa.pointVente.produit.libelle LIKE %:search% and pa.pointVente.depotId.id= :magasinid")
+    // Recherche sur libelle OU reference (insensible a la casse) - la
+    // recherchait uniquement sur le libelle auparavant, ne remontait donc
+    // jamais rien pour une recherche par reference (ex: ecran Approvisionnement).
+    @Query("SELECT DISTINCT pa FROM PrixArticles pa WHERE pa.entreprise = :e AND pa.pointVente.depotId.id= :magasinid AND ("
+            + "LOWER(pa.pointVente.produit.libelle) LIKE LOWER(CONCAT('%', :search, '%')) OR "
+            + "LOWER(pa.pointVente.produit.reference) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<PrixArticles> findProduitLibelleByEntrepriseWithFilterMagasin(@Param("e") Entreprise e, @Param("search") String search, Pageable pageable, @Param("magasinid") Long magasinid);
 
     // Page de vente publique (visiteur non authentifie, pas de TenantContext

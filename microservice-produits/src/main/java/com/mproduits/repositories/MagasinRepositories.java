@@ -49,6 +49,11 @@ public interface MagasinRepositories  extends JpaRepository<Magasin, Long>{
     /** Trouve un magasin par son ID, verifie qu'il appartient bien a la compagnie de l'appelant. */
     Optional<Magasin> findByIdAndCompagnie_Id(Long id, Long compagnieId);
 
+    // Depot "point de vente" d'une boutique - aucune unicite garantie en base
+    // (une boutique peut avoir plusieurs Magasin), le premier trouve fait foi
+    // (voir StockRestaurationService, qui en cree un par defaut s'il n'y en a aucun).
+    Optional<Magasin> findFirstByBoutique_IdAndCompagnie_Id(Long boutiqueId, Long compagnieId);
+
     /**
      * Liste tous les magasins actifs
      */

@@ -31,4 +31,8 @@ public interface CategorieRepositories extends JpaRepository<Categories, Long>{
     List<Categories> findByCompagnie_Id(Long compagnieId);
 
     Optional<Categories> findByIdAndCompagnie_Id(Long id, Long compagnieId);
+
+    // Resolution "trouve ou cree" par libelle (voir StockRestaurationService,
+    // creation d'un produit inconnu depuis un fichier de restauration de stock).
+    Optional<Categories> findByLibelleIgnoreCaseAndCompagnie_Id(String libelle, Long compagnieId);
 }

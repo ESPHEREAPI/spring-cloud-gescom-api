@@ -21,4 +21,7 @@ public class LigneApercuImportStockDTO {
     private BigDecimal ancienneQuantite;
     private BigDecimal nouvelleQuantite;
     private String erreur;
+    // true si ce produit n'existe pas encore : l'application creera le
+    // produit (et son point de vente) au lieu de mettre a jour un stock existant.
+    private boolean nouveauProduit;
 }

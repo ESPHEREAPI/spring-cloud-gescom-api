@@ -15,8 +15,7 @@ package com.mproduits.enums;
         INVENTAIRE("Ajustement inventaire"),
         AJUSTEMENT("Ajustement"),
         SORTIE_FACTURE("Sortie Facture"),
-        ENTREE_ANNULATION("Entree Annulation"),
-        INITIALISATION("Restauration de stock");
+        ENTREE_ANNULATION("Entree Annulation");
         
         private final String label;
         

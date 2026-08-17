@@ -204,7 +204,13 @@ public class StockRestaurationService {
                     .pointVente(pointVente)
                     .quantite(ligne.nouvelleQuantite().subtract(ligne.ancienneQuantite()))
                     .stockAvant(ligne.ancienneQuantite())
-                    .typeMouvement(MovementType.INITIALISATION)
+                    // MovementType.INITIALISATION serait plus precis mais
+                    // type_mouvement est une colonne ENUM MySQL native creee
+                    // avant l'ajout de toute nouvelle valeur (meme piege que
+                    // Permission.operationType/PRINT) - reutilise AJUSTEMENT,
+                    // deja present en base, le motif ci-dessous precise le
+                    // contexte reel (restauration + lot).
+                    .typeMouvement(MovementType.AJUSTEMENT)
                     .motif("Restauration de stock (" + mode + "), lot " + batchId)
                     .usernameCreate(username)
                     .dateCreation(maintenantLdt)

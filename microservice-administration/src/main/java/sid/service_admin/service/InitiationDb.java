@@ -373,6 +373,7 @@ public class InitiationDb implements InitDB {
             menuone.add(new Menu("Configuration", "Configuration generale", modsec5));
             menuone.add(new Menu("Option Entreprise", "Options de l'entreprise", modsec5));
             menuone.add(new Menu("Recond. session anterieur", "Reconduction de la session anterieure", modsec5));
+            menuone.add(new Menu("Initialisation Stock", "Personnalisation et restauration du stock par boutique", modsec5));
 
         }
         upsertMenus(menuone);

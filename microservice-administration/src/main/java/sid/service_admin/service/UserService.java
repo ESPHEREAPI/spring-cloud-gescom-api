@@ -525,7 +525,7 @@ public class UserService implements Serializable {
                     "Type Resource", "Ressource", "Historique vente", "Controle Vente", "Marge Caisse",
                     "Compte Client", "Charge", "Marge", "Type depense", "Element Ressource/Depense",
                     // administration
-                    "Configuration", "Option Entreprise", "Recond. session anterieur",
+                    "Configuration", "Option Entreprise", "Recond. session anterieur", "Initialisation Stock",
                     // parametrage
                     "Annee", "Employeur", "Entreprise", "Boutique", "Categorie Produit", "Specifique Produit",
                     "Ville", "Magasin", "Service", "Type client", "Zone Vente",
@@ -641,6 +641,27 @@ public class UserService implements Serializable {
             }
             if (java.util.Set.of("ADMIN", "CAISSIER").contains(profil.getCode())) {
                 profilPermissionMatrixService.seedPermissionsParDefaut(profil, java.util.List.of("Vente Art./CodeBare"), actionsVente);
+            }
+        });
+    }
+
+    /**
+     * Nouveau menu "Initialisation Stock" (format personnalise + restauration
+     * de stock par boutique, voir StockRestaurationController cote
+     * microservice-produits) : accorde de facon additive READ/WRITE/UPDATE/
+     * DELETE + VALIDER (l'action qui protege l'application reelle d'une
+     * restauration) aux profils ADMIN deja existants - meme raison que
+     * seedActionsMetierEtDroitsParDefaut, sans ce backfill aucun ADMIN d'une
+     * compagnie deja creee ne verrait ce menu.
+     */
+    @Transactional
+    public void seedInitialisationStockDroitsParDefaut() {
+        java.util.List<sid.service_admin.model.Action> actions = new java.util.ArrayList<>(actionsParDefaut());
+        actionRepository.findByCode("VALIDER").ifPresent(actions::add);
+
+        profilRepository.findAll().forEach(profil -> {
+            if ("ADMIN".equals(profil.getCode())) {
+                profilPermissionMatrixService.seedPermissionsParDefaut(profil, java.util.List.of("Initialisation Stock"), actions);
             }
         });
     }

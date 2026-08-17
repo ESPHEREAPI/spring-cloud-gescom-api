@@ -17,9 +17,11 @@ import sid.service_admin.dto.CompagnieParametresDTO;
 import sid.service_admin.dto.CreateCompagnieDTO;
 import sid.service_admin.dto.CreateCompagnieResultDTO;
 import sid.service_admin.dto.ResetPasswordResultDTO;
+import sid.service_admin.dto.StockImportFormatDTO;
 import sid.service_admin.dto.UpdateCompagnieDTO;
 import sid.service_admin.service.CompagnieParametresService;
 import sid.service_admin.service.CompagnieService;
+import sid.service_admin.service.StockImportFormatService;
 
 /**
  * Creation/gestion des compagnies - reserve aux administrateurs
@@ -31,10 +33,13 @@ public class CompagnieController {
 
     private final CompagnieService compagnieService;
     private final CompagnieParametresService compagnieParametresService;
+    private final StockImportFormatService stockImportFormatService;
 
-    public CompagnieController(CompagnieService compagnieService, CompagnieParametresService compagnieParametresService) {
+    public CompagnieController(CompagnieService compagnieService, CompagnieParametresService compagnieParametresService,
+            StockImportFormatService stockImportFormatService) {
         this.compagnieService = compagnieService;
         this.compagnieParametresService = compagnieParametresService;
+        this.stockImportFormatService = stockImportFormatService;
     }
 
     @PostMapping
@@ -79,6 +84,19 @@ public class CompagnieController {
     @PreAuthorize("hasRole('COMPANY_ADMIN')")
     public ResponseEntity<CompagnieParametresDTO> updateOwnParametres(@RequestBody CompagnieParametresDTO dto, Authentication authentication) {
         return ResponseEntity.ok(compagnieParametresService.updateOwn(authentication.getName(), dto));
+    }
+
+    /** Format du fichier de restauration de stock (voir StockImportFormat) - personnalise par chaque compagnie. */
+    @GetMapping("/me/stock-import-format")
+    @PreAuthorize("hasRole('COMPANY_ADMIN')")
+    public ResponseEntity<StockImportFormatDTO> getOwnStockImportFormat(Authentication authentication) {
+        return ResponseEntity.ok(stockImportFormatService.getOwn(authentication.getName()));
+    }
+
+    @PutMapping("/me/stock-import-format")
+    @PreAuthorize("hasRole('COMPANY_ADMIN')")
+    public ResponseEntity<StockImportFormatDTO> updateOwnStockImportFormat(@RequestBody StockImportFormatDTO dto, Authentication authentication) {
+        return ResponseEntity.ok(stockImportFormatService.updateOwn(authentication.getName(), dto));
     }
 
     @PutMapping("/{id}")

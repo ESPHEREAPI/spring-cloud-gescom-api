@@ -33,6 +33,10 @@ public interface BoutiqueRepositories extends JpaRepository<Boutique, Long>{
 
     Optional<Boutique> findByIdAndCompagnie_Id(Long id, Long compagnieId);
 
+    // Resolution d'une boutique par nom (colonne BOUTIQUE d'un fichier de
+    // restauration de stock, voir StockRestaurationService) - insensible a la casse.
+    Optional<Boutique> findByNomIgnoreCaseAndCompagnie_Id(String nom, Long compagnieId);
+
     @Query("SELECT COUNT(b) FROM Boutique b WHERE b.compagnie.id = :compagnieId")
     long countByCompagnieId(@Param("compagnieId") Long compagnieId);
 

@@ -64,6 +64,9 @@ public class SuperAdminBootstrap implements ApplicationRunner {
         // additive, les actions metier Valider/Annuler/Imprimer aux profils
         // qui en avaient l'usage implicite jusqu'ici (voir UserService).
         userService.seedActionsMetierEtDroitsParDefaut();
+        // Idem pour le nouveau menu "Initialisation Stock" (sinon aucun ADMIN
+        // d'une compagnie deja creee ne le verrait).
+        userService.seedInitialisationStockDroitsParDefaut();
 
         if (personneRepository.findByUserName(superAdminUsername).isPresent()) {
             return;

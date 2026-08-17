@@ -203,6 +203,7 @@ public class StockRestaurationService {
                     .produit(ligne.produit())
                     .pointVente(pointVente)
                     .quantite(ligne.nouvelleQuantite().subtract(ligne.ancienneQuantite()))
+                    .stockAvant(ligne.ancienneQuantite())
                     .typeMouvement(MovementType.INITIALISATION)
                     .motif("Restauration de stock (" + mode + "), lot " + batchId)
                     .usernameCreate(username)

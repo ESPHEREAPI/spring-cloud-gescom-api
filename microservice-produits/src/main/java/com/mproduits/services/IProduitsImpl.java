@@ -67,7 +67,12 @@ public class IProduitsImpl implements IProduits{
 
     @Override
     public ProduitDto findByReference(String reference) {
-         Produit p= produitRepository.findByReferenceAndCompagnie_Id(reference, tenantContext.currentCompagnieId())
+        // findByReferenceAndCompagnie_Id (resultat unique) plante
+        // (IncorrectResultSizeDataAccessException) si un import de
+        // restauration de stock a cree un doublon pour cette reference -
+        // findFirstBy...OrderByIdAsc (LIMIT 1) tolere ce cas au lieu de
+        // faire planter une recherche/scan de produit.
+        Produit p = produitRepository.findFirstByReferenceAndCompagnie_IdOrderByIdAsc(reference, tenantContext.currentCompagnieId())
                 .orElse(null);
          return this.convertToDto(p);
     }
@@ -101,7 +106,7 @@ public class IProduitsImpl implements IProduits{
         if (!StringUtils.hasText(reference)) {
             return false;
         }
-        return produitRepository.findByReferenceAndCompagnie_Id(reference.trim(), tenantContext.currentCompagnieId()).isPresent();
+        return produitRepository.countByReferenceAndCompagnie_Id(reference.trim(), tenantContext.currentCompagnieId()) > 0;
     }
 
     @Override

@@ -172,7 +172,12 @@ public class ProduitService {
             return null;
         }
 
-        Produit article = articleRepository.findByReferenceAndCompagnie_Id(reference.trim(), tenantContext.currentCompagnieId()).orElse(null);
+        // findByReferenceAndCompagnie_Id (resultat unique) plante
+        // (IncorrectResultSizeDataAccessException) si un import de
+        // restauration de stock a cree un doublon pour cette reference -
+        // findFirstBy...OrderByIdAsc (LIMIT 1) tolere ce cas au lieu de
+        // faire planter une recherche/scan de produit.
+        Produit article = articleRepository.findFirstByReferenceAndCompagnie_IdOrderByIdAsc(reference.trim(), tenantContext.currentCompagnieId()).orElse(null);
         Optional<Boutique> boutique =boutiqueRepository.findByIdAndCompagnie_Id(boutiqueid, tenantContext.currentCompagnieId());
         return article != null ? mapperdto.mapperProduitDto(article,boutique.isPresent() ? boutique.get(): new Boutique()) : null;
     }

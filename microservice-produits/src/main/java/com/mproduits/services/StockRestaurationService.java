@@ -269,14 +269,18 @@ public class StockRestaurationService {
                         .findLatestActiveByProduitBoutiqueAndEntreprise(produit, ligne.boutique(), entrepriseActive)
                         .orElseThrow(() -> new BadRequestException(
                                 "Aucun point de vente actif pour " + ligne.reference() + " / " + ligne.boutiqueNom()));
-                // Meme convention que InventairesService.saveStock (ecran
-                // "Mise a jour du Stock") pour une correction : entreeProduit
-                // est REMPLACE par la nouvelle quantite (pas accumule) et
-                // sortiProduit remis a zero, pour que l'ecran Approvisionnement
-                // (Quantite = entreeProduit + stockInitial) reste coherent avec
-                // le stock reellement restaure.
+                // entreeProduit REMPLACE par la nouvelle quantite (pas
+                // accumule, comme InventairesService.saveStock) et
+                // sortiProduit remis a zero. stockInitial remis a zero aussi
+                // (contrairement a InventairesService, qui n'y touche pas) :
+                // une ligne deja creee par une restauration anterieure au
+                // correctif du double-comptage y avait la quantite entiere,
+                // et sans cette remise a zero ici, rejouer la restauration
+                // ne suffisait pas a corriger l'affichage (Quantite =
+                // entreeProduit + stockInitial) sur l'ecran Approvisionnement.
                 pointVente.setStockFinalTheorie(ligne.nouvelleQuantite());
                 pointVente.setEntreeProduit(ligne.nouvelleQuantite());
+                pointVente.setStockInitial(BigDecimal.ZERO);
                 pointVente.setSortiProduit(BigDecimal.ZERO);
                 pointVenteRepositories.save(pointVente);
             }

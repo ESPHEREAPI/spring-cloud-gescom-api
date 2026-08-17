@@ -664,6 +664,18 @@ public class UserService implements Serializable {
                 profilPermissionMatrixService.seedPermissionsParDefaut(profil, java.util.List.of("Initialisation Stock"), actions);
             }
         });
+
+        // Un COMPANY_ADMIN n'a jamais de profil assigne (voir
+        // AdminAccountService.createCompanyAdmin) : son sidebar est gere par
+        // l'ancien mecanisme Usermodule/Usermenu par utilisateur, pas par la
+        // matrice Profil ci-dessus. provisionerModulesEtMenusPourTypeCommerce
+        // est deja concu pour ce rattrapage ("resynchroniser un compte
+        // existant apres l'ajout de nouveaux menus au catalogue") mais n'est
+        // normalement declenche qu'a la main - on l'appelle ici pour tous les
+        // COMPANY_ADMIN existants, sinon aucun ne verrait "Initialisation Stock".
+        personneRepository.findByRoleid_Name(sid.service_admin.security.RoleNames.COMPANY_ADMIN).stream()
+                .filter(p -> p.getCompagnie() != null)
+                .forEach(p -> securiteService.provisionerModulesEtMenusPourTypeCommerce(p, p.getCompagnie().getTypeCommerce()));
     }
 
     /**

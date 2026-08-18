@@ -98,16 +98,15 @@ public class StockRestaurationController {
         Map<String, Object> resultatStock = stockRestaurationService.viderStockBoutique(boutiqueId);
         List<Long> produitIdsCandidats = (List<Long>) resultatStock.get("produitIdsCandidats");
 
-        // Si le stock de cette boutique a deja ete vide par un essai
-        // precedent (ex. l'ancienne etape produits avait echoue seule, apres
-        // que le stock ait deja commis), produitIdsCandidats est vide - on ne
-        // peut plus retrouver "les produits de cette boutique" via
-        // PointVente puisqu'il n'y en a plus. On retombe alors sur "tout
-        // produit de la compagnie sans plus aucun stock nulle part".
+        // ATTENTION : ne PAS retomber sur "tout produit de la compagnie sans
+        // stock nulle part" ici - le catalogue de cette compagnie est un vrai
+        // catalogue volumineux (centaines de references reelles), pas
+        // seulement les produits de test. Si cette boutique est la seule a
+        // avoir du stock, un tel repli capturerait quasiment tout le
+        // catalogue reel des qu'il a deja ete vide par un essai precedent.
+        // Se limiter strictement a PointVente pour cette boutique - si c'est
+        // vide, il n'y a simplement plus de candidat sur ce faire.
         List<Long> aTenterDeSupprimer = produitIdsCandidats;
-        if (aTenterDeSupprimer.isEmpty()) {
-            aTenterDeSupprimer = produitRepositories.findIdsWithoutAnyPointVente(tenantContext.currentCompagnieId());
-        }
 
         int produitsSupprimes = 0;
         for (Long produitId : aTenterDeSupprimer) {

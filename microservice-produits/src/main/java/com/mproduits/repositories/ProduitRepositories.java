@@ -139,16 +139,6 @@ public interface ProduitRepositories extends JpaRepository<Produit, Long>{
 
     long countByReferenceAndCompagnie_Id(String reference, Long compagnieId);
 
-    // Produits sans plus aucun PointVente nulle part (toutes boutiques
-    // confondues) pour cette compagnie - utilise par
-    // StockRestaurationController.reinitialiserBoutique une fois le stock
-    // d'une boutique deja vide : a ce moment-la, on ne peut plus retrouver
-    // "les produits de cette boutique" via PointVente (il n'y en a plus), le
-    // seul signal restant est "plus aucun stock du tout, dans aucune boutique".
-    @Query("SELECT p.id FROM Produit p WHERE p.compagnie.id = :compagnieId "
-            + "AND p.id NOT IN (SELECT DISTINCT pv.produit.id FROM PointVente pv)")
-    List<Long> findIdsWithoutAnyPointVente(@Param("compagnieId") Long compagnieId);
-
     // Suppression en masse (DML direct, aucune entite chargee) - voir
     // StockRestaurationService.reinitialiserBoutique : deleteById() de
     // Spring Data charge puis supprime l'entite (declenche le cascade=ALL

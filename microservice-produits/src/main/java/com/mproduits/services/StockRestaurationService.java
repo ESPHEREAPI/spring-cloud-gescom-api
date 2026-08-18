@@ -112,9 +112,17 @@ public class StockRestaurationService {
     // appliquerImport (voir creerProduitEtStockInitial), pas seulement mis a
     // jour - produitLibelle/categorieLibelle/prixVente/prixAchat portent alors
     // les valeurs du fichier necessaires a cette creation.
+    //
+    // nouveauPointVente == true : aucun PointVente actif n'existe pour ce
+    // produit DANS CETTE BOUTIQUE (produit deja connu du catalogue mais
+    // jamais stocke ici - cas typique : catalogue partage, initialisation
+    // d'une DEUXIEME boutique avec des references qui existent deja pour une
+    // autre). Toujours vrai quand nouveauProduit l'est aussi. appliquerImport
+    // cree alors un PointVente + PrixArticles (meme logique que pour un
+    // produit tout neuf), sans recreer le Produit lui-meme.
     private record LigneResolue(int ligneNo, String reference, String boutiqueNom, Produit produit,
             Boutique boutique, BigDecimal ancienneQuantite, BigDecimal nouvelleQuantite, String erreur,
-            boolean nouveauProduit, String produitLibelle, String categorieLibelle,
+            boolean nouveauProduit, boolean nouveauPointVente, String produitLibelle, String categorieLibelle,
             BigDecimal prixVente, BigDecimal prixAchat) {
     }
 
@@ -201,7 +209,7 @@ public class StockRestaurationService {
         List<LigneResolue> lignes = resoudreLignes(fichier, boutiqueIdPreselectionnee, mode);
         List<LigneApercuImportStockDTO> dto = lignes.stream()
                 .map(l -> new LigneApercuImportStockDTO(l.ligneNo(), l.reference(), l.boutiqueNom(),
-                        l.ancienneQuantite(), l.nouvelleQuantite(), l.erreur(), l.nouveauProduit()))
+                        l.ancienneQuantite(), l.nouvelleQuantite(), l.erreur(), l.nouveauProduit(), l.nouveauPointVente()))
                 .toList();
         return new ApercuImportStockDTO(dto);
     }
@@ -223,11 +231,20 @@ public class StockRestaurationService {
         Entreprise entrepriseActive = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
 
         for (LigneResolue ligne : lignes) {
-            Produit produit;
+            Produit produit = ligne.nouveauProduit() ? creerProduit(ligne) : ligne.produit();
             PointVente pointVente;
 
-            if (ligne.nouveauProduit()) {
-                produit = creerProduit(ligne);
+            if (ligne.nouveauPointVente()) {
+                // Premiere reception pour ce produit dans cette boutique -
+                // vrai aussi bien pour un produit tout neuf que pour un
+                // produit deja au catalogue mais jamais stocke ici
+                // (catalogue partage entre boutiques). stockInitial reste a
+                // zero et entreeProduit porte la quantite (meme convention
+                // que ServiceCommande, "premiere reception") - stockInitial
+                // ET entreeProduit mis tous les deux a la quantite du
+                // fichier faisait apparaitre le double de la vraie quantite
+                // recue sur l'ecran Approvisionnement (Quantite =
+                // entreeProduit + stockInitial).
                 Magasin magasin = resolveOuCreerMagasinPointDeVente(ligne.boutique());
                 pointVente = new PointVente();
                 pointVente.setBoutique(ligne.boutique());
@@ -235,19 +252,16 @@ public class StockRestaurationService {
                 pointVente.setEntreprise(entrepriseActive);
                 pointVente.setProduit(produit);
                 pointVente.setDateReception(maintenant);
-                // Premiere reception pour ce produit dans cette boutique :
-                // stockInitial reste a zero et entreeProduit porte la
-                // quantite (meme convention que ServiceCommande, "premiere
-                // reception") - stockInitial ET entreeProduit mis tous les
-                // deux a la quantite du fichier faisait apparaitre le double
-                // de la vraie quantite recue sur l'ecran Approvisionnement
-                // (Quantite = entreeProduit + stockInitial).
                 pointVente.setStockInitial(BigDecimal.ZERO);
                 pointVente.setStockFinalTheorie(ligne.nouvelleQuantite());
                 pointVente.setEntreeProduit(ligne.nouvelleQuantite());
                 pointVente.setSortiProduit(BigDecimal.ZERO);
                 pointVente = pointVenteRepositories.save(pointVente);
 
+                // pa.actif = TRUE est requis par findLatestActiveByProduitBoutiqueAndEntreprise
+                // (join sur prixarticlesCollection) - sans cette ligne, ce
+                // PointVente resterait invisible a toute future recherche de
+                // stock actif pour ce produit/boutique.
                 PrixArticles prixArticles = new PrixArticles();
                 prixArticles.setActif(true);
                 prixArticles.setDateCreation(maintenant);
@@ -268,7 +282,6 @@ public class StockRestaurationService {
                     prixAchatRepositories.save(prixAchat);
                 }
             } else {
-                produit = ligne.produit();
                 pointVente = pointVenteRepositories
                         .findLatestActiveByProduitBoutiqueAndEntreprise(produit, ligne.boutique(), entrepriseActive)
                         .orElseThrow(() -> new BadRequestException(
@@ -535,7 +548,7 @@ public class StockRestaurationService {
             for (LigneBrute lb : brutes) {
                 if (lb.erreur() != null) {
                     resultat.add(new LigneResolue(lb.ligneNo(), lb.reference(), lb.boutiqueNom(), null, null, null,
-                            null, lb.erreur(), false, null, null, null, null));
+                            null, lb.erreur(), false, false, null, null, null, null));
                 }
             }
 
@@ -567,35 +580,38 @@ public class StockRestaurationService {
                         : boutiquePreselectionnee;
                 if (boutique == null) {
                     resultat.add(new LigneResolue(premiere.ligneNo(), reference, boutiqueNom, produit, null, null, null,
-                            "Boutique introuvable : " + boutiqueNom, nouveauProduit, premiere.produitLibelle(),
+                            "Boutique introuvable : " + boutiqueNom, nouveauProduit, nouveauProduit, premiere.produitLibelle(),
                             premiere.categorieLibelle(), premiere.prixVente(), premiere.prixAchat()));
                     continue;
                 }
 
                 if (nouveauProduit) {
                     resultat.add(new LigneResolue(premiere.ligneNo(), reference, boutiqueNom, null, boutique,
-                            BigDecimal.ZERO, quantiteFichier, null, true, premiere.produitLibelle(),
+                            BigDecimal.ZERO, quantiteFichier, null, true, true, premiere.produitLibelle(),
                             premiere.categorieLibelle(), premiere.prixVente(), premiere.prixAchat()));
                     continue;
                 }
 
+                // Produit deja au catalogue mais jamais stocke dans CETTE
+                // boutique (catalogue partage entre boutiques, initialisation
+                // d'une deuxieme boutique...) : pas une erreur bloquante non
+                // plus - appliquerImport cree un nouveau PointVente (comme
+                // pour un produit tout neuf), sans recreer le Produit.
                 BigDecimal ancienneQuantite = pointVenteRepositories
                         .findLatestActiveByProduitBoutiqueAndEntreprise(produit, boutique, entreprise)
                         .map(PointVente::getStockFinalTheorie)
                         .orElse(null);
-                if (ancienneQuantite == null) {
-                    resultat.add(new LigneResolue(premiere.ligneNo(), reference, boutiqueNom, produit, boutique, null,
-                            null, "Aucun point de vente actif pour ce produit dans cette boutique", false,
-                            premiere.produitLibelle(), premiere.categorieLibelle(), premiere.prixVente(), premiere.prixAchat()));
-                    continue;
+                boolean nouveauPointVente = ancienneQuantite == null;
+                if (nouveauPointVente) {
+                    ancienneQuantite = BigDecimal.ZERO;
                 }
 
-                BigDecimal nouvelleQuantite = mode == ModeRestauration.AJOUT
+                BigDecimal nouvelleQuantite = !nouveauPointVente && mode == ModeRestauration.AJOUT
                         ? ancienneQuantite.add(quantiteFichier)
                         : quantiteFichier;
 
                 resultat.add(new LigneResolue(premiere.ligneNo(), reference, boutiqueNom, produit, boutique,
-                        ancienneQuantite, nouvelleQuantite, null, false, premiere.produitLibelle(),
+                        ancienneQuantite, nouvelleQuantite, null, false, nouveauPointVente, premiere.produitLibelle(),
                         premiere.categorieLibelle(), premiere.prixVente(), premiere.prixAchat()));
             }
 

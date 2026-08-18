@@ -24,4 +24,9 @@ public class LigneApercuImportStockDTO {
     // true si ce produit n'existe pas encore : l'application creera le
     // produit (et son point de vente) au lieu de mettre a jour un stock existant.
     private boolean nouveauProduit;
+    // true si ce produit existe deja au catalogue mais n'a encore aucun
+    // point de vente dans cette boutique precise (catalogue partage entre
+    // boutiques) - un nouveau point de vente sera cree, sans recreer le
+    // produit. Toujours vrai quand nouveauProduit l'est aussi.
+    private boolean nouveauPointVente;
 }

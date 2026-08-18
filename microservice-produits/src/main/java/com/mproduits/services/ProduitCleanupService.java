@@ -5,21 +5,23 @@ import com.mproduits.repositories.PrixAchatRepositories;
 import com.mproduits.repositories.ProduitRepositories;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Suppression best-effort d'un Produit orphelin (voir
- * StockRestaurationService.reinitialiserBoutique). Isolee dans sa propre
- * transaction (REQUIRES_NEW) : un DataIntegrityViolationException capture
- * dans la MEME transaction que l'appelant marque quand meme celle-ci
- * "rollback-only" cote Spring (le catch ne suffit pas a l'empecher), ce qui
- * annulait silencieusement TOUTES les suppressions deja faites par
- * reinitialiserBoutique des qu'un seul produit avait une reference bloquante
- * ailleurs (ex. Facturecommandefournisseur). Avec REQUIRES_NEW, l'echec
- * d'un produit reste confine a sa propre transaction et n'affecte pas le reste.
+ * StockRestaurationService.viderStockBoutique). Verifie AVANT de supprimer
+ * (ProduitRepositories.estSupprimableSansReferenceRestante) plutot que
+ * d'essayer puis d'attraper l'echec : en JPA, des qu'une exception survient
+ * pendant l'execution d'une requete, la transaction est marquee
+ * "rollback-only" par le fournisseur JPA lui-meme, independamment de tout
+ * catch cote Java - un catch autour du DELETE ne l'empeche pas, le commit
+ * echoue quand meme ensuite avec UnexpectedRollbackException et annule tout
+ * ce que la transaction avait fait, meme les operations reussies avant
+ * l'echec. REQUIRES_NEW isole quand meme chaque tentative des autres (utile
+ * si un jour cette methode est rappelee en boucle) mais n'est PAS ce qui
+ * evite le probleme ci-dessus - c'est bien la verification prealable.
  */
 @Service
 @RequiredArgsConstructor
@@ -41,13 +43,12 @@ public class ProduitCleanupService {
             // Encore utilise dans une autre boutique - jamais supprime du catalogue.
             return false;
         }
-        try {
-            prixAchatRepositories.deleteByProduitIdBulk(produitId);
-            produitRepositories.deleteByIdBulk(produitId);
-            return true;
-        } catch (DataIntegrityViolationException e) {
-            log.warn("Produit {} conserve dans le catalogue (references restantes, ex. facture fournisseur)", produitId);
+        if (!produitRepositories.estSupprimableSansReferenceRestante(produitId)) {
+            log.info("Produit {} conserve dans le catalogue (references restantes ailleurs - vente, facture, devis, etc.)", produitId);
             return false;
         }
+        prixAchatRepositories.deleteByProduitIdBulk(produitId);
+        produitRepositories.deleteByIdBulk(produitId);
+        return true;
     }
 }

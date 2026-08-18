@@ -160,6 +160,42 @@ public interface ProduitRepositories extends JpaRepository<Produit, Long>{
             + "WHERE REFERENCED_TABLE_NAME = 'produit' AND REFERENCED_COLUMN_NAME = 'id' AND TABLE_SCHEMA = DATABASE()",
             nativeQuery = true)
     List<String> findForeignKeysReferencingProduitDiagnostic();
+
+    /**
+     * true si AUCUNE des 18 tables ayant une contrainte FK vers produit(id)
+     * (liste obtenue via findForeignKeysReferencingProduitDiagnostic, cf.
+     * ProduitCleanupService) n'a de ligne pour ce produit. Pre-check
+     * deliberement utilise a la place d'un try/catch autour du DELETE : en
+     * JPA, des qu'une exception survient pendant l'execution d'une requete,
+     * la transaction est marquee "rollback-only" par le fournisseur JPA lui
+     * meme (pas seulement par Spring) - l'attraper cote Java ne l'empeche
+     * pas, le commit echoue quand meme ensuite avec
+     * UnexpectedRollbackException. Verifier avant plutot qu'essayer/attraper
+     * evite de declencher l'exception du tout. prixachat est volontairement
+     * exclu de cette liste : ProduitCleanupService le supprime lui-meme
+     * inconditionnellement avant de supprimer le produit (ce n'est pas un
+     * blocage externe, juste un enfant nettoye dans la meme operation).
+     */
+    @Query(value = "SELECT NOT EXISTS ("
+            + "SELECT 1 FROM commande_easy WHERE produitid = :produitId "
+            + "UNION ALL SELECT 1 FROM devis_item WHERE produit_id = :produitId "
+            + "UNION ALL SELECT 1 FROM facture_item_customer WHERE produit_id = :produitId "
+            + "UNION ALL SELECT 1 FROM facture_item_snapshot WHERE produit_id = :produitId "
+            + "UNION ALL SELECT 1 FROM historique_correction_stock WHERE produit_id = :produitId "
+            + "UNION ALL SELECT 1 FROM historique_restauration_stock WHERE produit_id = :produitId "
+            + "UNION ALL SELECT 1 FROM inventaire WHERE produit_id = :produitId "
+            + "UNION ALL SELECT 1 FROM lignevente WHERE produit_id = :produitId "
+            + "UNION ALL SELECT 1 FROM pointvente_easy WHERE produitid = :produitId "
+            + "UNION ALL SELECT 1 FROM prix_historique WHERE produit_id = :produitId "
+            + "UNION ALL SELECT 1 FROM prixclient WHERE produitid = :produitId "
+            + "UNION ALL SELECT 1 FROM prixvente WHERE produitid = :produitId "
+            + "UNION ALL SELECT 1 FROM produitachat WHERE produitid = :produitId "
+            + "UNION ALL SELECT 1 FROM specificationarticles WHERE artticleid = :produitId "
+            + "UNION ALL SELECT 1 FROM stock_movement WHERE produit_id = :produitId "
+            + "UNION ALL SELECT 1 FROM taxeproduits WHERE produitid = :produitId "
+            + "UNION ALL SELECT 1 FROM transfert_stock WHERE produit_id = :produitId"
+            + ")", nativeQuery = true)
+    boolean estSupprimableSansReferenceRestante(@Param("produitId") Long produitId);
     Optional<Produit> findByLibelleAndCompagnie_Id(String libelle, Long compagnieId);
     Page<Produit> findAllByCompagnie_Id(Long compagnieId, Pageable pageable);
     List<Produit> findAllByCompagnie_Id(Long compagnieId);

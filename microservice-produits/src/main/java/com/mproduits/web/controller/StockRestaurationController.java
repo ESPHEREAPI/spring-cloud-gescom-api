@@ -98,8 +98,19 @@ public class StockRestaurationController {
         Map<String, Object> resultatStock = stockRestaurationService.viderStockBoutique(boutiqueId);
         List<Long> produitIdsCandidats = (List<Long>) resultatStock.get("produitIdsCandidats");
 
+        // Si le stock de cette boutique a deja ete vide par un essai
+        // precedent (ex. l'ancienne etape produits avait echoue seule, apres
+        // que le stock ait deja commis), produitIdsCandidats est vide - on ne
+        // peut plus retrouver "les produits de cette boutique" via
+        // PointVente puisqu'il n'y en a plus. On retombe alors sur "tout
+        // produit de la compagnie sans plus aucun stock nulle part".
+        List<Long> aTenterDeSupprimer = produitIdsCandidats;
+        if (aTenterDeSupprimer.isEmpty()) {
+            aTenterDeSupprimer = produitRepositories.findIdsWithoutAnyPointVente(tenantContext.currentCompagnieId());
+        }
+
         int produitsSupprimes = 0;
-        for (Long produitId : produitIdsCandidats) {
+        for (Long produitId : aTenterDeSupprimer) {
             if (produitCleanupService.essayerSupprimerProduitOrphelin(produitId)) {
                 produitsSupprimes++;
             }
@@ -108,7 +119,7 @@ public class StockRestaurationController {
         Map<String, Object> reponse = new HashMap<>(resultatStock);
         reponse.remove("produitIdsCandidats");
         reponse.put("produitsSupprimes", produitsSupprimes);
-        reponse.put("produitsConserves", produitIdsCandidats.size() - produitsSupprimes);
+        reponse.put("produitsConserves", aTenterDeSupprimer.size() - produitsSupprimes);
         return ResponseEntity.ok(reponse);
     }
 }

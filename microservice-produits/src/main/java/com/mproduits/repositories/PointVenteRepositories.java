@@ -291,4 +291,19 @@ List<ProduitDto> findProduitsDtoByAnneeAndBoutique(
             @org.springframework.data.repository.query.Param("pk") EntreprisePK pk,
             @org.springframework.data.repository.query.Param("produitId") Long produitId
     );
+
+    // Reinitialisation d'une boutique (voir StockRestaurationService.reinitialiserBoutique) :
+    // projection/comptage/suppression en masse, jamais de chargement d'entite
+    // Produit - charger deux Produit qui partagent la meme reference (doublon
+    // en base) dans la meme session, meme juste pour les supprimer, declenche
+    // le meme "Found shared references to a collection" que la restauration.
+    @Query("SELECT DISTINCT pv.produit.id FROM PointVente pv WHERE pv.boutique = :boutique")
+    List<Long> findDistinctProduitIdsByBoutique(@Param("boutique") Boutique boutique);
+
+    @Query("SELECT COUNT(pv) FROM PointVente pv WHERE pv.produit.id = :produitId")
+    long countByProduitId(@Param("produitId") Long produitId);
+
+    @Modifying
+    @Query("DELETE FROM PointVente pv WHERE pv.boutique = :boutique")
+    int deleteByBoutiqueBulk(@Param("boutique") Boutique boutique);
 }

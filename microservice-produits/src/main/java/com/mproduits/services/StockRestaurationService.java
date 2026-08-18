@@ -338,52 +338,46 @@ public class StockRestaurationService {
         Boutique boutique = boutiqueRepositories.findByIdAndCompagnie_Id(boutiqueId, compagnieId)
                 .orElseThrow(() -> new BadRequestException("Boutique introuvable"));
 
-        List<PointVente> pointVentes = pointVenteRepositories.findByBoutique(boutique);
-        java.util.Set<Long> produitIds = pointVentes.stream()
-                .map(pv -> pv.getProduit().getId())
-                .collect(java.util.stream.Collectors.toSet());
+        // Uniquement des projections/suppressions en masse ci-dessous, jamais
+        // de findById/findByBoutique qui chargerait des Produit en entite -
+        // avec des references dupliquees en base (voir resolveProduitTolerantDoublons),
+        // charger deux Produit qui partagent la meme reference dans la meme
+        // session, meme juste pour les supprimer, replante avec "Found shared
+        // references to a collection" (meme cause que la restauration).
+        List<Long> produitIds = pointVenteRepositories.findDistinctProduitIdsByBoutique(boutique);
 
-        List<HistoriqueRestaurationStock> historiques = historiqueRestaurationStockRepository.findByBoutique(boutique);
-        historiqueRestaurationStockRepository.deleteAll(historiques);
-
-        int mouvementsSupprimes = 0;
-        int prixArticlesSupprimes = 0;
-        for (PointVente pv : pointVentes) {
-            List<StockMovement> mouvements = stockMovementRepository.findByPointVenteId(pv.getId());
-            mouvementsSupprimes += mouvements.size();
-            stockMovementRepository.deleteAll(mouvements);
-
-            List<PrixArticles> prix = prixArticlesRepositories.findByPointVente(pv);
-            prixArticlesSupprimes += prix.size();
-            prixArticlesRepositories.deleteAll(prix);
-        }
-        pointVenteRepositories.deleteAll(pointVentes);
+        int historiqueSupprime = historiqueRestaurationStockRepository.deleteByBoutiqueBulk(boutique);
+        int mouvementsSupprimes = stockMovementRepository.deleteByPointVenteBoutiqueBulk(boutique);
+        int prixArticlesSupprimes = prixArticlesRepositories.deleteByPointVenteBoutiqueBulk(boutique);
+        int pointVentesSupprimes = pointVenteRepositories.deleteByBoutiqueBulk(boutique);
 
         int produitsSupprimes = 0;
         for (Long produitId : produitIds) {
-            Produit produit = produitRepositories.findById(produitId).orElse(null);
-            if (produit == null) {
+            // Le PointVente de cette boutique vient d'etre supprime ci-dessus ;
+            // s'il en reste encore pour ce produit, c'est qu'il est aussi
+            // utilise dans une autre boutique - on ne le supprime pas du catalogue.
+            if (pointVenteRepositories.countByProduitId(produitId) > 0) {
                 continue;
             }
-            boolean encoreUtiliseAilleurs = !pointVenteRepositories.findByProduit(produit).isEmpty();
-            if (encoreUtiliseAilleurs) {
-                continue;
+            try {
+                prixAchatRepositories.deleteByProduitIdBulk(produitId);
+                produitRepositories.deleteByIdBulk(produitId);
+                produitsSupprimes++;
+            } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                log.warn("Produit {} conserve dans le catalogue (references restantes, ex. facture fournisseur)", produitId);
             }
-            prixAchatRepositories.deleteAll(prixAchatRepositories.findByProduit(produit));
-            produitRepositories.delete(produit);
-            produitsSupprimes++;
         }
 
         log.info("Boutique '{}' (id={}) reinitialisee : {} PointVente, {} PrixArticles, {} StockMovement, "
                         + "{} HistoriqueRestaurationStock et {} Produit supprimes",
-                boutique.getNom(), boutiqueId, pointVentes.size(), prixArticlesSupprimes, mouvementsSupprimes,
-                historiques.size(), produitsSupprimes);
+                boutique.getNom(), boutiqueId, pointVentesSupprimes, prixArticlesSupprimes, mouvementsSupprimes,
+                historiqueSupprime, produitsSupprimes);
 
         return java.util.Map.of(
-                "pointVentesSupprimes", pointVentes.size(),
+                "pointVentesSupprimes", pointVentesSupprimes,
                 "prixArticlesSupprimes", prixArticlesSupprimes,
                 "mouvementsSupprimes", mouvementsSupprimes,
-                "historiqueSupprime", historiques.size(),
+                "historiqueSupprime", historiqueSupprime,
                 "produitsSupprimes", produitsSupprimes,
                 "produitsConserves", produitIds.size() - produitsSupprimes);
     }

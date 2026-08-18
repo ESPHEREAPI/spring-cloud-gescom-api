@@ -4,10 +4,12 @@
  */
 package com.mproduits.repositories;
 
+import com.mproduits.model.Boutique;
 import com.mproduits.model.StockMovement;
 import feign.Param;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 
@@ -39,5 +41,11 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, Lo
 
     @Query("SELECT sm FROM StockMovement sm WHERE sm.pointVente.depotId.compagnie.id = :compagnieId ORDER BY sm.dateCreation DESC")
     List<StockMovement> findAllByCompagnieId(@Param("compagnieId") Long compagnieId);
+
+    // Suppression en masse (DML direct, aucune entite chargee) - voir
+    // StockRestaurationService.reinitialiserBoutique.
+    @Modifying
+    @Query("DELETE FROM StockMovement sm WHERE sm.pointVente.boutique = :boutique")
+    int deleteByPointVenteBoutiqueBulk(@Param("boutique") Boutique boutique);
 
 }

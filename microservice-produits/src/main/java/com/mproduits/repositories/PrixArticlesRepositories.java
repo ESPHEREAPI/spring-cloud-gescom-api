@@ -5,6 +5,7 @@
 package com.mproduits.repositories;
 
 import com.mproduits.dto.ProduitDto;
+import com.mproduits.model.Boutique;
 import com.mproduits.model.Entreprise;
 import com.mproduits.model.EntreprisePK;
 import com.mproduits.model.Mois;
@@ -20,6 +21,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -34,6 +36,12 @@ public interface PrixArticlesRepositories extends JpaRepository<PrixArticles, Lo
     Optional<PrixArticles> findActiveByEntrepriseAndPointVente(@Param("e") Entreprise e, @Param("pv") PointVente pv);
 
     List<PrixArticles> findByPointVente_Produit(Produit produit);
+
+    // Suppression en masse (DML direct, aucune entite chargee) - voir
+    // StockRestaurationService.reinitialiserBoutique.
+    @Modifying
+    @Query("DELETE FROM PrixArticles pa WHERE pa.pointVente.boutique = :boutique")
+    int deleteByPointVenteBoutiqueBulk(@Param("boutique") Boutique boutique);
 
     @Query("SELECT MAX(pa.id) FROM PrixArticles pa WHERE pa.entreprise = :e AND pa.pointVente = :pv AND pa.actif = TRUE ")
     Optional<Long> findMaxIdByEntreprisePointVenteMois(@Param("e") Entreprise e, @Param("pv") PointVente pv, @Param("mois") Mois mois);

@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 /**
@@ -137,6 +138,19 @@ public interface ProduitRepositories extends JpaRepository<Produit, Long>{
     Optional<Produit> findFirstByReferenceAndCompagnie_IdOrderByIdAsc(String reference, Long compagnieId);
 
     long countByReferenceAndCompagnie_Id(String reference, Long compagnieId);
+
+    // Suppression en masse (DML direct, aucune entite chargee) - voir
+    // StockRestaurationService.reinitialiserBoutique : deleteById() de
+    // Spring Data charge puis supprime l'entite (declenche le cascade=ALL
+    // sur facturecommandefournisseurCollection), ce qui replante avec
+    // "Found shared references to a collection" des qu'un doublon de
+    // reference est implique. Le DELETE direct l'evite completement -
+    // echoue proprement (contrainte FK) si le produit a encore des lignes
+    // liees ailleurs (ex. Facturecommandefournisseur) plutot que de les
+    // orpheliner silencieusement.
+    @Modifying
+    @Query("DELETE FROM Produit p WHERE p.id = :produitId")
+    int deleteByIdBulk(@Param("produitId") Long produitId);
     Optional<Produit> findByLibelleAndCompagnie_Id(String libelle, Long compagnieId);
     Page<Produit> findAllByCompagnie_Id(Long compagnieId, Pageable pageable);
     List<Produit> findAllByCompagnie_Id(Long compagnieId);

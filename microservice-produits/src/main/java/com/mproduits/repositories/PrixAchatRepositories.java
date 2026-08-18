@@ -11,6 +11,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -42,4 +43,10 @@ public interface PrixAchatRepositories extends JpaRepository<PrixAchat, Long> {
 );
 
     List<PrixAchat> findByProduit(Produit produit);
+
+    // Suppression en masse (DML direct, aucune entite chargee) - voir
+    // StockRestaurationService.reinitialiserBoutique.
+    @Modifying
+    @Query("DELETE FROM PrixAchat pa WHERE pa.produit.id = :produitId")
+    int deleteByProduitIdBulk(@Param("produitId") Long produitId);
 }

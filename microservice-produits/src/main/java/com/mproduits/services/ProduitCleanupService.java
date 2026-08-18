@@ -1,5 +1,6 @@
 package com.mproduits.services;
 
+import com.mproduits.repositories.PointVenteRepositories;
 import com.mproduits.repositories.PrixAchatRepositories;
 import com.mproduits.repositories.ProduitRepositories;
 import lombok.RequiredArgsConstructor;
@@ -27,9 +28,19 @@ public class ProduitCleanupService {
 
     private final ProduitRepositories produitRepositories;
     private final PrixAchatRepositories prixAchatRepositories;
+    private final PointVenteRepositories pointVenteRepositories;
 
+    /**
+     * A appeler depuis un contexte SANS transaction ambiante (ex. un
+     * controleur) - voir StockRestaurationService.viderStockBoutique pour le
+     * pourquoi de cette contrainte.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean essayerSupprimerProduitOrphelin(Long produitId) {
+        if (pointVenteRepositories.countByProduitId(produitId) > 0) {
+            // Encore utilise dans une autre boutique - jamais supprime du catalogue.
+            return false;
+        }
         try {
             prixAchatRepositories.deleteByProduitIdBulk(produitId);
             produitRepositories.deleteByIdBulk(produitId);

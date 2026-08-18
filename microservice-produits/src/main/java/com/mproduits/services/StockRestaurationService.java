@@ -107,7 +107,6 @@ public class StockRestaurationService {
     private final PrixAchatRepositories prixAchatRepositories;
     private final EntrepriseService entrepriseService;
     private final TenantContext tenantContext;
-    private final ProduitCleanupService produitCleanupService;
 
     // produit == null et nouveauProduit == true : le produit sera cree par
     // appliquerImport (voir creerProduitEtStockInitial), pas seulement mis a
@@ -337,8 +336,21 @@ public class StockRestaurationService {
      * Ordre de suppression contraint par les FK (historique/mouvements/prix
      * avant PointVente, PrixAchat avant Produit).
      */
+    /**
+     * Ne fait QUE la partie stock (atomique, tout ou rien) et renvoie les ids
+     * Produit candidats a la suppression. La suppression des produits
+     * eux-memes est volontairement laissee au caller (voir
+     * StockRestaurationController) : elle doit passer par
+     * ProduitCleanupService.essayerSupprimerProduitOrphelin SANS transaction
+     * ambiante, sinon l'echec (FK) d'un seul produit marque CETTE transaction
+     * "rollback-only" cote Spring et annule tout le travail ci-dessous, meme
+     * si l'appelant capture l'exception (UnexpectedRollbackException :
+     * "Transaction silently rolled back because it has been marked as
+     * rollback-only") - Propagation.REQUIRES_NEW seul ne suffit pas tant que
+     * l'appel reste imbrique dans une methode @Transactional englobante.
+     */
     @Transactional
-    public java.util.Map<String, Object> reinitialiserBoutique(Long boutiqueId) {
+    public java.util.Map<String, Object> viderStockBoutique(Long boutiqueId) {
         Long compagnieId = tenantContext.currentCompagnieId();
         Boutique boutique = boutiqueRepositories.findByIdAndCompagnie_Id(boutiqueId, compagnieId)
                 .orElseThrow(() -> new BadRequestException("Boutique introuvable"));
@@ -360,32 +372,18 @@ public class StockRestaurationService {
         prixHistoriqueRepository.deleteByPointVenteBoutiqueBulk(boutique);
         int pointVentesSupprimes = pointVenteRepositories.deleteByBoutiqueBulk(boutique);
 
-        int produitsSupprimes = 0;
-        for (Long produitId : produitIds) {
-            // Le PointVente de cette boutique vient d'etre supprime ci-dessus ;
-            // s'il en reste encore pour ce produit, c'est qu'il est aussi
-            // utilise dans une autre boutique - on ne le supprime pas du catalogue.
-            if (pointVenteRepositories.countByProduitId(produitId) > 0) {
-                continue;
-            }
-            if (produitCleanupService.essayerSupprimerProduitOrphelin(produitId)) {
-                produitsSupprimes++;
-            }
-        }
-
-        log.info("Boutique '{}' (id={}) reinitialisee : {} PointVente, {} PrixArticles, {} Barcodeproduit, "
-                        + "{} StockMovement, {} HistoriqueRestaurationStock et {} Produit supprimes",
+        log.info("Boutique '{}' (id={}) : stock vide - {} PointVente, {} PrixArticles, {} Barcodeproduit, "
+                        + "{} StockMovement, {} HistoriqueRestaurationStock supprimes, {} produit(s) candidat(s) au nettoyage",
                 boutique.getNom(), boutiqueId, pointVentesSupprimes, prixArticlesSupprimes, barcodesSupprimes,
-                mouvementsSupprimes, historiqueSupprime, produitsSupprimes);
+                mouvementsSupprimes, historiqueSupprime, produitIds.size());
 
         return java.util.Map.of(
+                "produitIdsCandidats", produitIds,
                 "pointVentesSupprimes", pointVentesSupprimes,
                 "prixArticlesSupprimes", prixArticlesSupprimes,
                 "barcodesSupprimes", barcodesSupprimes,
                 "mouvementsSupprimes", mouvementsSupprimes,
-                "historiqueSupprime", historiqueSupprime,
-                "produitsSupprimes", produitsSupprimes,
-                "produitsConserves", produitIds.size() - produitsSupprimes);
+                "historiqueSupprime", historiqueSupprime);
     }
 
     /**

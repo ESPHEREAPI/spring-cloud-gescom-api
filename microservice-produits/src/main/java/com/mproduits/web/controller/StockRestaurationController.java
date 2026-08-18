@@ -3,7 +3,10 @@ package com.mproduits.web.controller;
 import com.mproduits.dto.ApercuImportStockDTO;
 import com.mproduits.enums.ModeRestauration;
 import com.mproduits.security.TenantContext;
+import com.mproduits.services.ProduitCleanupService;
 import com.mproduits.services.StockRestaurationService;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;
@@ -33,6 +36,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class StockRestaurationController {
 
     private final StockRestaurationService stockRestaurationService;
+    private final ProduitCleanupService produitCleanupService;
     private final TenantContext tenantContext;
 
     private static final MediaType XLSX = MediaType.parseMediaType(
@@ -70,10 +74,31 @@ public class StockRestaurationController {
      * Remet une boutique a zero (stock + produits qui lui sont exclusifs)
      * pour reprendre une initialisation depuis un etat propre - outil de
      * maintenance, reserve aux administrateurs de la compagnie.
+     *
+     * La suppression des produits candidats est faite ICI, depuis ce
+     * controleur (donc SANS transaction ambiante), en appelant
+     * ProduitCleanupService (Propagation.REQUIRES_NEW) un produit a la fois -
+     * necessaire pour qu'un produit non supprimable (reference FK ailleurs)
+     * n'annule pas le reste du nettoyage (voir StockRestaurationService.viderStockBoutique).
      */
+    @SuppressWarnings("unchecked")
     @PreAuthorize("hasRole('COMPANY_ADMIN')")
     @PostMapping("/reinitialiser-boutique")
     public ResponseEntity<Map<String, Object>> reinitialiserBoutique(@RequestParam Long boutiqueId) {
-        return ResponseEntity.ok(stockRestaurationService.reinitialiserBoutique(boutiqueId));
+        Map<String, Object> resultatStock = stockRestaurationService.viderStockBoutique(boutiqueId);
+        List<Long> produitIdsCandidats = (List<Long>) resultatStock.get("produitIdsCandidats");
+
+        int produitsSupprimes = 0;
+        for (Long produitId : produitIdsCandidats) {
+            if (produitCleanupService.essayerSupprimerProduitOrphelin(produitId)) {
+                produitsSupprimes++;
+            }
+        }
+
+        Map<String, Object> reponse = new HashMap<>(resultatStock);
+        reponse.remove("produitIdsCandidats");
+        reponse.put("produitsSupprimes", produitsSupprimes);
+        reponse.put("produitsConserves", produitIdsCandidats.size() - produitsSupprimes);
+        return ResponseEntity.ok(reponse);
     }
 }

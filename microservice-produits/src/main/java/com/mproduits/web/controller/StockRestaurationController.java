@@ -5,6 +5,7 @@ import com.mproduits.enums.ModeRestauration;
 import com.mproduits.security.TenantContext;
 import com.mproduits.services.ProduitCleanupService;
 import com.mproduits.services.StockRestaurationService;
+import com.mproduits.repositories.ProduitRepositories;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,7 @@ public class StockRestaurationController {
 
     private final StockRestaurationService stockRestaurationService;
     private final ProduitCleanupService produitCleanupService;
+    private final ProduitRepositories produitRepositories;
     private final TenantContext tenantContext;
 
     private static final MediaType XLSX = MediaType.parseMediaType(
@@ -81,6 +83,14 @@ public class StockRestaurationController {
      * necessaire pour qu'un produit non supprimable (reference FK ailleurs)
      * n'annule pas le reste du nettoyage (voir StockRestaurationService.viderStockBoutique).
      */
+    // Diagnostic ponctuel - a retirer une fois la reinitialisation de
+    // boutique stabilisee (voir StockRestaurationService.viderStockBoutique).
+    @PreAuthorize("hasRole('COMPANY_ADMIN')")
+    @GetMapping("/diagnostic-fk-produit")
+    public ResponseEntity<List<String>> diagnosticFkProduit() {
+        return ResponseEntity.ok(produitRepositories.findForeignKeysReferencingProduitDiagnostic());
+    }
+
     @SuppressWarnings("unchecked")
     @PreAuthorize("hasRole('COMPANY_ADMIN')")
     @PostMapping("/reinitialiser-boutique")

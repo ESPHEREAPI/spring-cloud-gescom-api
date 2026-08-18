@@ -151,6 +151,15 @@ public interface ProduitRepositories extends JpaRepository<Produit, Long>{
     @Modifying
     @Query("DELETE FROM Produit p WHERE p.id = :produitId")
     int deleteByIdBulk(@Param("produitId") Long produitId);
+
+    // Diagnostic ponctuel (voir StockRestaurationController) : liste exacte
+    // des contraintes FK reelles en base pointant vers produit(id), plutot
+    // que de deviner via les mappings JPA (@OneToMany) qui peuvent ne pas
+    // toutes correspondre a une contrainte reellement creee par ddl-auto=update.
+    @Query(value = "SELECT CONCAT(TABLE_NAME, '.', COLUMN_NAME) FROM information_schema.KEY_COLUMN_USAGE "
+            + "WHERE REFERENCED_TABLE_NAME = 'produit' AND REFERENCED_COLUMN_NAME = 'id' AND TABLE_SCHEMA = DATABASE()",
+            nativeQuery = true)
+    List<String> findForeignKeysReferencingProduitDiagnostic();
     Optional<Produit> findByLibelleAndCompagnie_Id(String libelle, Long compagnieId);
     Page<Produit> findAllByCompagnie_Id(Long compagnieId, Pageable pageable);
     List<Produit> findAllByCompagnie_Id(Long compagnieId);

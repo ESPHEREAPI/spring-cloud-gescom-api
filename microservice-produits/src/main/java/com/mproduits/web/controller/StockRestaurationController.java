@@ -91,6 +91,14 @@ public class StockRestaurationController {
         return ResponseEntity.ok(produitRepositories.findForeignKeysReferencingProduitDiagnostic());
     }
 
+    // Diagnostic ponctuel - a retirer une fois le probleme "Found shared
+    // references to a collection" stabilise pour de bon.
+    @PreAuthorize("hasRole('COMPANY_ADMIN')")
+    @GetMapping("/diagnostic-references-dupliquees")
+    public ResponseEntity<List<String>> diagnosticReferencesDupliquees() {
+        return ResponseEntity.ok(produitRepositories.findReferencesDupliqueesDiagnostic(tenantContext.currentCompagnieId()));
+    }
+
     @SuppressWarnings("unchecked")
     @PreAuthorize("hasRole('COMPANY_ADMIN')")
     @PostMapping("/reinitialiser-boutique")

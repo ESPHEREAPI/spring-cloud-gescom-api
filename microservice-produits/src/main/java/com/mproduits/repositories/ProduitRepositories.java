@@ -161,6 +161,15 @@ public interface ProduitRepositories extends JpaRepository<Produit, Long>{
             nativeQuery = true)
     List<String> findForeignKeysReferencingProduitDiagnostic();
 
+    // Diagnostic ponctuel : toutes les references dupliquees en base pour
+    // une compagnie, "reference (n)" - evite de bisecter un gros fichier a
+    // la main pour retrouver quel(s) doublon(s) declenche(nt) "Found shared
+    // references to a collection".
+    @Query(value = "SELECT CONCAT(reference, ' (', COUNT(*), ')') FROM produit "
+            + "WHERE compagnie_id = :compagnieId GROUP BY reference HAVING COUNT(*) > 1 ORDER BY COUNT(*) DESC",
+            nativeQuery = true)
+    List<String> findReferencesDupliqueesDiagnostic(@Param("compagnieId") Long compagnieId);
+
     /**
      * true si AUCUNE des 18 tables ayant une contrainte FK vers produit(id)
      * (liste obtenue via findForeignKeysReferencingProduitDiagnostic, cf.

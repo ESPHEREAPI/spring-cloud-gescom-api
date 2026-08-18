@@ -107,6 +107,7 @@ public class StockRestaurationService {
     private final PrixAchatRepositories prixAchatRepositories;
     private final EntrepriseService entrepriseService;
     private final TenantContext tenantContext;
+    private final ProduitCleanupService produitCleanupService;
 
     // produit == null et nouveauProduit == true : le produit sera cree par
     // appliquerImport (voir creerProduitEtStockInitial), pas seulement mis a
@@ -367,12 +368,8 @@ public class StockRestaurationService {
             if (pointVenteRepositories.countByProduitId(produitId) > 0) {
                 continue;
             }
-            try {
-                prixAchatRepositories.deleteByProduitIdBulk(produitId);
-                produitRepositories.deleteByIdBulk(produitId);
+            if (produitCleanupService.essayerSupprimerProduitOrphelin(produitId)) {
                 produitsSupprimes++;
-            } catch (org.springframework.dao.DataIntegrityViolationException e) {
-                log.warn("Produit {} conserve dans le catalogue (references restantes, ex. facture fournisseur)", produitId);
             }
         }
 

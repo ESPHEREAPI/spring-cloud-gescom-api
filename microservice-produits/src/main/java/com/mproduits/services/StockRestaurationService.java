@@ -20,6 +20,7 @@ import com.mproduits.model.Produit;
 import com.mproduits.model.StockImportFormat;
 import com.mproduits.model.StockMovement;
 import com.mproduits.model.HistoriqueRestaurationStock;
+import com.mproduits.repositories.BarcodeproduitRepositories;
 import com.mproduits.repositories.BoutiqueRepositories;
 import com.mproduits.repositories.CategorieRepositories;
 import com.mproduits.repositories.HistoriqueRestaurationStockRepository;
@@ -27,6 +28,7 @@ import com.mproduits.repositories.MagasinRepositories;
 import com.mproduits.repositories.PointVenteRepositories;
 import com.mproduits.repositories.PrixAchatRepositories;
 import com.mproduits.repositories.PrixArticlesRepositories;
+import com.mproduits.repositories.PrixHistoriqueRepository;
 import com.mproduits.repositories.ProduitRepositories;
 import com.mproduits.repositories.StockImportFormatRepositories;
 import com.mproduits.repositories.StockMovementRepository;
@@ -91,6 +93,7 @@ public class StockRestaurationService {
             ChampImportStock.BOUTIQUE, "Boutique",
             ChampImportStock.QUANTITE, "Quantite");
 
+    private final BarcodeproduitRepositories barcodeproduitRepositories;
     private final StockImportFormatRepositories stockImportFormatRepositories;
     private final ProduitRepositories produitRepositories;
     private final BoutiqueRepositories boutiqueRepositories;
@@ -100,6 +103,7 @@ public class StockRestaurationService {
     private final CategorieRepositories categorieRepositories;
     private final MagasinRepositories magasinRepositories;
     private final PrixArticlesRepositories prixArticlesRepositories;
+    private final PrixHistoriqueRepository prixHistoriqueRepository;
     private final PrixAchatRepositories prixAchatRepositories;
     private final EntrepriseService entrepriseService;
     private final TenantContext tenantContext;
@@ -348,7 +352,11 @@ public class StockRestaurationService {
 
         int historiqueSupprime = historiqueRestaurationStockRepository.deleteByBoutiqueBulk(boutique);
         int mouvementsSupprimes = stockMovementRepository.deleteByPointVenteBoutiqueBulk(boutique);
+        // Doit precéder la suppression des PrixArticles (FK barcodeproduit.prixarticlesid).
+        int barcodesSupprimes = barcodeproduitRepositories.deleteByPointVenteBoutiqueBulk(boutique);
         int prixArticlesSupprimes = prixArticlesRepositories.deleteByPointVenteBoutiqueBulk(boutique);
+        // Doit precéder la suppression des PointVente (FK prixhistorique.point_vente_id, NOT NULL).
+        prixHistoriqueRepository.deleteByPointVenteBoutiqueBulk(boutique);
         int pointVentesSupprimes = pointVenteRepositories.deleteByBoutiqueBulk(boutique);
 
         int produitsSupprimes = 0;
@@ -368,14 +376,15 @@ public class StockRestaurationService {
             }
         }
 
-        log.info("Boutique '{}' (id={}) reinitialisee : {} PointVente, {} PrixArticles, {} StockMovement, "
-                        + "{} HistoriqueRestaurationStock et {} Produit supprimes",
-                boutique.getNom(), boutiqueId, pointVentesSupprimes, prixArticlesSupprimes, mouvementsSupprimes,
-                historiqueSupprime, produitsSupprimes);
+        log.info("Boutique '{}' (id={}) reinitialisee : {} PointVente, {} PrixArticles, {} Barcodeproduit, "
+                        + "{} StockMovement, {} HistoriqueRestaurationStock et {} Produit supprimes",
+                boutique.getNom(), boutiqueId, pointVentesSupprimes, prixArticlesSupprimes, barcodesSupprimes,
+                mouvementsSupprimes, historiqueSupprime, produitsSupprimes);
 
         return java.util.Map.of(
                 "pointVentesSupprimes", pointVentesSupprimes,
                 "prixArticlesSupprimes", prixArticlesSupprimes,
+                "barcodesSupprimes", barcodesSupprimes,
                 "mouvementsSupprimes", mouvementsSupprimes,
                 "historiqueSupprime", historiqueSupprime,
                 "produitsSupprimes", produitsSupprimes,

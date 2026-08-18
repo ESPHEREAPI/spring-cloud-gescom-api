@@ -6,11 +6,13 @@ package com.mproduits.repositories;
 
 import com.mproduits.dto.ProduitDto;
 import com.mproduits.model.Barcodeproduit;
+import com.mproduits.model.Boutique;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -32,4 +34,11 @@ public interface BarcodeproduitRepositories extends JpaRepository<Barcodeproduit
 
     @Query("SELECT b FROM Barcodeproduit b WHERE b.codeBard = :codeBard AND b.prixArticles.entreprise.entreprisePK.compagnieId = :compagnieId")
     Optional<Barcodeproduit> findByCodeBardAndCompagnieId(@Param("codeBard") String codeBard, @Param("compagnieId") Long compagnieId);
+
+    // Suppression en masse (DML direct, aucune entite chargee) - voir
+    // StockRestaurationService.reinitialiserBoutique. Doit s'executer AVANT
+    // la suppression des PrixArticles de la boutique (FK barcodeproduit.prixarticlesid).
+    @Modifying
+    @Query("DELETE FROM Barcodeproduit b WHERE b.prixArticles.pointVente.boutique = :boutique")
+    int deleteByPointVenteBoutiqueBulk(@Param("boutique") Boutique boutique);
 }

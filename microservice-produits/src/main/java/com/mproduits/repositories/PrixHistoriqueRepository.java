@@ -4,11 +4,13 @@
  */
 package com.mproduits.repositories;
 
+import com.mproduits.model.Boutique;
 import com.mproduits.model.PrixHistorique;
 import feign.Param;
 
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 import java.util.Optional;
@@ -26,4 +28,11 @@ public interface PrixHistoriqueRepository extends JpaRepository<PrixHistorique, 
     @Query("SELECT ph FROM PrixHistorique ph WHERE ph.produit.id = :produitId " +
            "AND ph.actif = true")
     List<PrixHistorique> findAllActiveByProduit(@Param("produitId") Long produitId);
+
+    // Suppression en masse (DML direct, aucune entite chargee) - voir
+    // StockRestaurationService.reinitialiserBoutique. Doit s'executer AVANT
+    // la suppression des PointVente (FK prixhistorique.point_vente_id, NOT NULL).
+    @Modifying
+    @Query("DELETE FROM PrixHistorique ph WHERE ph.pointVente.boutique = :boutique")
+    int deleteByPointVenteBoutiqueBulk(@Param("boutique") Boutique boutique);
 }

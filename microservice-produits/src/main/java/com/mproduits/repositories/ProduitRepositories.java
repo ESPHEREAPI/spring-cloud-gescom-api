@@ -139,6 +139,19 @@ public interface ProduitRepositories extends JpaRepository<Produit, Long>{
 
     long countByReferenceAndCompagnie_Id(String reference, Long compagnieId);
 
+    // Variante scalaire (ID seul, aucune entite Produit hydratee) de
+    // findFirstByReferenceAndCompagnie_IdOrderByIdAsc - voir
+    // StockRestaurationService.resolveProduitTolerantDoublons : sur un gros
+    // fichier reel (~500 references distinctes), charger CHAQUE Produit en
+    // entite pendant la resolution (meme un seul par reference, jamais en
+    // double dans la session) suffisait quand meme a accumuler des centaines
+    // de Produit dans la session Hibernate partagee de la requete (Open
+    // Session In View) et a declencher "Found shared references to a
+    // collection" - rester en ID (Long) tant qu'on n'a pas besoin de
+    // l'entite evite cette accumulation.
+    @Query("SELECT MIN(p.id) FROM Produit p WHERE p.reference = :reference AND p.compagnie.id = :compagnieId")
+    Optional<Long> findMinIdByReferenceAndCompagnie_Id(@Param("reference") String reference, @Param("compagnieId") Long compagnieId);
+
     // Suppression en masse (DML direct, aucune entite chargee) - voir
     // StockRestaurationService.reinitialiserBoutique : deleteById() de
     // Spring Data charge puis supprime l'entite (declenche le cascade=ALL

@@ -61,6 +61,21 @@ public interface PointVenteRepositories extends JpaRepository<PointVente, Long> 
     @Query("SELECT pv FROM PointVente pv WHERE pv.id = (SELECT MAX(pv2.id) FROM PointVente pv2 JOIN pv2.prixarticlesCollection pa WHERE pv2.boutique = :b AND pv2.produit = :cde AND pa.entreprise = :e AND pa.actif = true)")
     Optional<PointVente> findLatestActiveByProduitBoutiqueAndEntreprise(@Param("cde") Produit cde, @Param("b") Boutique b, @Param("e") Entreprise e);
 
+    // Variante scalaire (stockFinalTheorie seul, aucune entite PointVente ni
+    // Produit hydratee) de findLatestActiveByProduitBoutiqueAndEntreprise -
+    // voir StockRestaurationService.resoudreLignes : PointVente.produit est
+    // en fetch EAGER (par defaut, pas de FetchType.LAZY dans le mapping) -
+    // charger l'entite PointVente charge donc AUSSI son Produit associe a
+    // chaque fois, ce qui, sur un gros fichier reel (~500 references
+    // distinctes), accumulait des centaines de Produit dans la session
+    // Hibernate partagee de la requete (Open Session In View) et
+    // declenchait "Found shared references to a collection" - une
+    // projection scalaire (SELECT pv.stockFinalTheorie) n'hydrate ni
+    // PointVente ni Produit.
+    @Query("SELECT pv.stockFinalTheorie FROM PointVente pv WHERE pv.id = (SELECT MAX(pv2.id) FROM PointVente pv2 JOIN pv2.prixarticlesCollection pa WHERE pv2.boutique = :b AND pv2.produit.id = :produitId AND pa.entreprise = :e AND pa.actif = true)")
+    Optional<BigDecimal> findStockFinalTheorieActifByProduitIdBoutiqueAndEntreprise(
+            @Param("produitId") Long produitId, @Param("b") Boutique b, @Param("e") Entreprise e);
+
     // Dernier PointVente (sans filtre sur actif)
     @Query("SELECT pv FROM PointVente pv WHERE pv.id = (SELECT MAX(pv2.id) FROM PointVente pv2 JOIN pv2.prixarticlesCollection pa WHERE pv2.boutique = :b AND pv2.produit = :cde AND pa.entreprise = :e)")
     Optional<PointVente> findLatestByProduitBoutiqueAndEntreprise(@Param("cde") Produit cde, @Param("b") Boutique b, @Param("e") Entreprise e);

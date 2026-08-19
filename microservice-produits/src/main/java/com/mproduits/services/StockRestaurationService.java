@@ -128,10 +128,16 @@ public class StockRestaurationService {
     // cree alors un PointVente + PrixArticles (meme logique que pour un
     // produit tout neuf), sans recreer le Produit lui-meme.
     //
+    // produitId (pas Produit) : resoudreLignes reste volontairement en ID
+    // tant qu'elle n'a pas besoin de l'entite (voir resolveProduitTolerantDoublons
+    // et findStockFinalTheorieActifByProduitIdBoutiqueAndEntreprise) -
+    // RestaurationLigneService recharge l'entite lui-meme, dans sa propre
+    // transaction courte, quand il en a reellement besoin.
+    //
     // Package-private (pas private) : RestaurationLigneService (meme
     // package) en a besoin pour appliquer chaque ligne dans sa propre
     // transaction - voir appliquerImport.
-    record LigneResolue(int ligneNo, String reference, String boutiqueNom, Produit produit,
+    record LigneResolue(int ligneNo, String reference, String boutiqueNom, Long produitId,
             Boutique boutique, BigDecimal ancienneQuantite, BigDecimal nouvelleQuantite, String erreur,
             boolean nouveauProduit, boolean nouveauPointVente, String produitLibelle, String categorieLibelle,
             BigDecimal prixVente, BigDecimal prixAchat) {
@@ -337,20 +343,23 @@ public class StockRestaurationService {
      * si un import anterieur a deja cree un doublon pour cette reference -
      * prend le premier plutot que de faire planter toute la restauration ;
      * le doublon en base reste une donnee a nettoyer separement, mais ne
-     * doit plus bloquer l'ecran. Charge UNIQUEMENT ce premier resultat
-     * (LIMIT 1, findFirstBy...OrderByIdAsc) plutot que tous les doublons :
-     * les charger tous dans le contexte de persistance (ancien
-     * findAllByReferenceAndCompagnie_Id) faisait planter Hibernate au flush
-     * avec "Found shared references to a collection" des qu'un doublon
-     * jamais modifie restait attache a la session.
+     * doit plus bloquer l'ecran. Renvoie l'ID seul (pas l'entite Produit) :
+     * meme avec LIMIT 1 (jamais deux Produit pour la meme reference dans la
+     * session), charger l'entite ici accumulait quand meme des centaines de
+     * Produit dans la session Hibernate partagee de la requete (Open
+     * Session In View) sur un gros fichier reel (~500 references
+     * distinctes), et declenchait "Found shared references to a
+     * collection" - voir aussi findStockFinalTheorieActifByProduitIdBoutiqueAndEntreprise.
+     * L'entite n'est chargee que plus tard, dans RestaurationLigneService,
+     * une seule a la fois, dans une transaction courte et isolee.
      */
-    private Produit resolveProduitTolerantDoublons(String reference, Long compagnieId) {
+    private Long resolveProduitTolerantDoublons(String reference, Long compagnieId) {
         long nbTrouves = produitRepositories.countByReferenceAndCompagnie_Id(reference, compagnieId);
         if (nbTrouves > 1) {
             log.warn("Reference '{}' en double en base pour la compagnie {} ({} produits) - le premier est utilise",
                     reference, compagnieId, nbTrouves);
         }
-        return produitRepositories.findFirstByReferenceAndCompagnie_IdOrderByIdAsc(reference, compagnieId)
+        return produitRepositories.findMinIdByReferenceAndCompagnie_Id(reference, compagnieId)
                 .orElse(null);
     }
 
@@ -458,14 +467,14 @@ public class StockRestaurationService {
                 // Produit introuvable : pas une erreur bloquante en soi -
                 // appliquerImport le creera (voir creerProduit), a condition
                 // que la boutique reste valide ci-dessous.
-                Produit produit = resolveProduitTolerantDoublons(reference, compagnieId);
-                boolean nouveauProduit = produit == null;
+                Long produitId = resolveProduitTolerantDoublons(reference, compagnieId);
+                boolean nouveauProduit = produitId == null;
 
                 Boutique boutique = indexBoutique >= 0
                         ? boutiqueRepositories.findByNomIgnoreCaseAndCompagnie_Id(boutiqueNom, compagnieId).orElse(null)
                         : boutiquePreselectionnee;
                 if (boutique == null) {
-                    resultat.add(new LigneResolue(premiere.ligneNo(), reference, boutiqueNom, produit, null, null, null,
+                    resultat.add(new LigneResolue(premiere.ligneNo(), reference, boutiqueNom, produitId, null, null, null,
                             "Boutique introuvable : " + boutiqueNom, nouveauProduit, nouveauProduit, premiere.produitLibelle(),
                             premiere.categorieLibelle(), premiere.prixVente(), premiere.prixAchat()));
                     continue;
@@ -484,8 +493,7 @@ public class StockRestaurationService {
                 // plus - appliquerImport cree un nouveau PointVente (comme
                 // pour un produit tout neuf), sans recreer le Produit.
                 BigDecimal ancienneQuantite = pointVenteRepositories
-                        .findLatestActiveByProduitBoutiqueAndEntreprise(produit, boutique, entreprise)
-                        .map(PointVente::getStockFinalTheorie)
+                        .findStockFinalTheorieActifByProduitIdBoutiqueAndEntreprise(produitId, boutique, entreprise)
                         .orElse(null);
                 boolean nouveauPointVente = ancienneQuantite == null;
                 if (nouveauPointVente) {
@@ -496,7 +504,7 @@ public class StockRestaurationService {
                         ? ancienneQuantite.add(quantiteFichier)
                         : quantiteFichier;
 
-                resultat.add(new LigneResolue(premiere.ligneNo(), reference, boutiqueNom, produit, boutique,
+                resultat.add(new LigneResolue(premiere.ligneNo(), reference, boutiqueNom, produitId, boutique,
                         ancienneQuantite, nouvelleQuantite, null, false, nouveauPointVente, premiere.produitLibelle(),
                         premiere.categorieLibelle(), premiere.prixVente(), premiere.prixAchat()));
             }

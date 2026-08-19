@@ -67,7 +67,13 @@ public class RestaurationLigneService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void appliquerLigne(StockRestaurationService.LigneResolue ligne, String batchId, ModeRestauration mode,
             String username, Date maintenant, LocalDateTime maintenantLdt, Entreprise entrepriseActive) {
-        Produit produit = ligne.nouveauProduit() ? creerProduit(ligne) : ligne.produit();
+        // ligne.produitId() (pas une entite) : voir StockRestaurationService.resoudreLignes -
+        // l'entite n'est chargee qu'ici, une seule a la fois, dans cette
+        // transaction courte et isolee (REQUIRES_NEW), jamais accumulee
+        // avec d'autres Produit dans une session partagee.
+        Produit produit = ligne.nouveauProduit() ? creerProduit(ligne)
+                : produitRepositories.findById(ligne.produitId())
+                        .orElseThrow(() -> new IllegalStateException("Produit " + ligne.produitId() + " introuvable"));
         PointVente pointVente;
 
         if (ligne.nouveauPointVente()) {

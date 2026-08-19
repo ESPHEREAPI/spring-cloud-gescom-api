@@ -128,10 +128,9 @@ public class CompagnieService {
         if (dto.getTypeCommerce() != null) {
             compagnie.setTypeCommerce(dto.getTypeCommerce());
         }
-        // Identifiant de l'URL publique - volontairement absent de
-        // applySelfServiceFields() : seul un administrateur systeme peut le
-        // changer, pour eviter qu'une compagnie casse son propre lien public
-        // par erreur ou se l'approprie sans validation.
+        // Identifiant de l'URL publique - un administrateur systeme peut
+        // aussi le forcer ici (ex. litige/collision a resoudre a la main),
+        // mais ce n'est plus le seul chemin : voir applySelfServiceFields.
         if (dto.getCode() != null && !dto.getCode().isBlank() && !dto.getCode().equals(compagnie.getCode())) {
             compagnie.setCode(genererCodeUnique(dto.getCode()));
         }
@@ -203,6 +202,15 @@ public class CompagnieService {
     }
 
     private void applySelfServiceFields(Compagnie compagnie, UpdateCompagnieDTO dto) {
+        // Identifiant de l'URL publique de la boutique en ligne (voir
+        // EcomPublicController/EcomCheckoutController cote microservice-produits).
+        // Choisi par l'admin de compagnie lui-meme, comme le slug de boutique
+        // dans la plupart des SaaS - genererCodeUnique garantit qu'il reste
+        // unique tous compagnies confondues (suffixe -2/-3... en cas de
+        // collision) et ignore une re-soumission de son propre code inchange.
+        if (dto.getCode() != null && !dto.getCode().isBlank()) {
+            compagnie.setCode(genererCodeUnique(dto.getCode(), compagnie.getCode()));
+        }
         if (dto.getNom() != null) {
             compagnie.setNom(dto.getNom());
         }
@@ -317,11 +325,25 @@ public class CompagnieService {
      * identifie la compagnie sur sa page de vente publique.
      */
     private String genererCodeUnique(String seed) {
+        return genererCodeUnique(seed, null);
+    }
+
+    /**
+     * codeActuel : code deja attribue a LA MEME compagnie, le cas echeant.
+     * Sans cette exclusion, re-soumettre son propre code inchange (ex. mise
+     * a jour d'un autre champ du formulaire) le ferait entrer en collision
+     * avec lui-meme et se voir attribuer un suffixe (-2, -3...) a chaque
+     * appel - voir applySelfServiceFields.
+     */
+    private String genererCodeUnique(String seed, String codeActuel) {
         String base = seed.toLowerCase()
                 .replaceAll("[^a-z0-9]+", "-")
                 .replaceAll("^-+|-+$", "");
         if (base.isBlank()) {
             base = "compagnie";
+        }
+        if (base.equals(codeActuel)) {
+            return codeActuel;
         }
         String candidat = base;
         int suffixe = 2;

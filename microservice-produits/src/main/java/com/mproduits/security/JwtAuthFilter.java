@@ -59,10 +59,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring(7);
             if (jwtService.isValid(token)) {
-                String username = jwtService.getUsername(token);
-                personneRepository.findByUserName(username).ifPresent(this::authenticate);
-                request.setAttribute("compagnieId", jwtService.getCompagnieId(token));
-                request.setAttribute("boutiqueId", jwtService.getBoutiqueId(token));
+                if ("customer".equals(jwtService.getTyp(token))) {
+                    // Token client e-commerce (voir EcomAuthController/JwtService) :
+                    // volontairement PAS de personneRepository.findByUserName ni de
+                    // SecurityContext peuple, pour que .anyRequest().authenticated()
+                    // et tout @PreAuthorize staff continuent de rejeter ces tokens
+                    // sur les routes internes. Seuls customerId/customerCompagnieId
+                    // sont exposes, lus par CustomerContext sur les routes publiques
+                    // qui en ont explicitement besoin (checkout, mes-commandes).
+                    request.setAttribute("customerId", jwtService.getClientId(token));
+                    request.setAttribute("customerCompagnieId", jwtService.getCompagnieId(token));
+                } else {
+                    String username = jwtService.getUsername(token);
+                    personneRepository.findByUserName(username).ifPresent(this::authenticate);
+                    request.setAttribute("compagnieId", jwtService.getCompagnieId(token));
+                    request.setAttribute("boutiqueId", jwtService.getBoutiqueId(token));
+                }
             }
         }
 

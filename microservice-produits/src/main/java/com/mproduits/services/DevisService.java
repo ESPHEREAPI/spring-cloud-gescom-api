@@ -2,6 +2,7 @@ package com.mproduits.services;
 
 import com.mproduits.dto.DevisDTO;
 import com.mproduits.dto.DevisItemDTO;
+import com.mproduits.enums.CanalOrigine;
 import com.mproduits.enums.StatutDevis;
 import com.mproduits.exceptions.MetierException;
 import com.mproduits.exceptions.DevisException;
@@ -88,6 +89,23 @@ public class DevisService {
      * @throws MetierException Si validation échoue
      */
     public Devis creerDevis(DevisDTO dto, String username, Long boutiqueid, int anneeid) {
+        return creerDevisInterne(dto, username, boutiqueid, anneeid, tenantContext.currentCompagnieId(), CanalOrigine.INTERNE);
+    }
+
+    /**
+     * Chemin public (site e-commerce, visiteur invite ou client connecte -
+     * voir EcomCheckoutController) : aucun JWT staff, donc pas de
+     * TenantContext - compagnieId vient de la compagnie deja resolue par
+     * l'URL publique (Compagnie.code), passee ici explicitement plutot que
+     * de compter sur un attribut de requete pose artificiellement.
+     * "e-commerce" comme usernameCreate (NOT NULL en base, pas d'utilisateur
+     * staff pour une commande en ligne).
+     */
+    public Devis creerDevisPublic(DevisDTO dto, Long boutiqueid, int anneeid, Long compagnieId) {
+        return creerDevisInterne(dto, "e-commerce", boutiqueid, anneeid, compagnieId, CanalOrigine.EN_LIGNE);
+    }
+
+    private Devis creerDevisInterne(DevisDTO dto, String username, Long boutiqueid, int anneeid, Long compagnieId, CanalOrigine origine) {
         log.info("═══════════════════════════════════════");
         log.info("DÉBUT CRÉATION DEVIS - Client ID: {}", dto.getClient().getNom());
         log.info("═══════════════════════════════════════");
@@ -130,6 +148,7 @@ public class DevisService {
                     .totalRemise(dto.getTotalRemise())
                     .items(new ArrayList<>())
                     .boutique(boutique.get())
+                    .canalOrigine(origine)
                     .build();
 
             // 5. CALCULER DATE EXPIRATION
@@ -144,7 +163,7 @@ public class DevisService {
             // 6. CRÉER LES ARTICLES
             int ordre = 1;
             for (DevisItemDTO itemDto : dto.getItems()) {
-                Produit produit = produitRepo.findByIdAndCompagnie_Id(itemDto.getProduitId(), tenantContext.currentCompagnieId())
+                Produit produit = produitRepo.findByIdAndCompagnie_Id(itemDto.getProduitId(), compagnieId)
                         .orElseThrow(() -> new DevisException(
                         "Produit non trouvé: " + itemDto.getProduitId()));
 

@@ -135,6 +135,13 @@ public interface PrixArticlesRepositories extends JpaRepository<PrixArticles, Lo
     @Query("SELECT pa FROM PrixArticles pa WHERE pa.actif = true AND pa.pointVente.boutique.id = :boutiqueId")
     Page<PrixArticles> findActifsByBoutiqueId(@Param("boutiqueId") Long boutiqueId, Pageable pageable);
 
+    // Checkout public (voir EcomCheckoutController) : prix + stock d'UN
+    // produit dans une boutique, pour recalculer chaque ligne de commande
+    // cote serveur - ne jamais faire confiance a un prix envoye par un
+    // visiteur anonyme.
+    @Query("SELECT pa FROM PrixArticles pa WHERE pa.actif = true AND pa.pointVente.boutique.id = :boutiqueId AND pa.pointVente.produit.id = :produitId")
+    Optional<PrixArticles> findActifByProduitIdAndBoutiqueId(@Param("produitId") Long produitId, @Param("boutiqueId") Long boutiqueId);
+
     @Query("SELECT pa FROM PrixArticles pa WHERE pa.id = :id AND pa.entreprise.entreprisePK.compagnieId = :compagnieId")
     Optional<PrixArticles> findByIdAndCompagnieId(@Param("id") Long id, @Param("compagnieId") Long compagnieId);
 

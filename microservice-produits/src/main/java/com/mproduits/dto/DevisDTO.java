@@ -279,6 +279,13 @@ public class DevisDTO {
     private int anneeid;
     private Long boutiqueid;
 
+    /**
+     * Canal d'origine du devis - INTERNE (personnel) ou EN_LIGNE (client via
+     * le site public e-commerce). Voir CanalOrigine.
+     */
+    private String canalOrigine;
+    private String canalOrigineLibelle;
+
     // ========== OPTIONS ==========
     
     /**

@@ -73,4 +73,9 @@ Page<Client> searchActiveClients(
            "LOWER(c.nom) LIKE LOWER(CONCAT('%', :term, '%')) OR " +
            "LOWER(c.email) LIKE LOWER(CONCAT('%', :term, '%')))")
     List<Client> searchByCompagnie(@Param("term") String term, @Param("compagnieId") Long compagnieId);
+
+    // Compte client e-commerce (voir EcomAuthController) - email unique
+    // seulement AU SEIN d'une compagnie, jamais globalement (deux
+    // compagnies differentes peuvent avoir un client au meme email).
+    Optional<Client> findByEmailIgnoreCaseAndCompagnie_Id(String email, Long compagnieId);
 }

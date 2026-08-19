@@ -1,5 +1,6 @@
 package com.mproduits.model;
 
+import com.mproduits.enums.CanalOrigine;
 import com.mproduits.enums.StatutDevis;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -170,6 +171,18 @@ public class Devis implements Serializable {
     @Column(nullable = false, length = 20)
     @Enumerated(EnumType.STRING)
     private StatutDevis statut = StatutDevis.EN_ATTENTE;
+
+    /**
+     * Distingue un devis cree par le personnel (INTERNE) d'une commande
+     * soumise par un client via le site e-commerce public (EN_LIGNE) - voir
+     * DevisService.creerDevisPublic. Nullable en base (colonne ajoutee apres
+     * coup via ddl-auto=update) : traiter NULL comme INTERNE partout ou la
+     * distinction compte, plutot que d'exiger un backfill immediat.
+     */
+    @Column(name = "canal_origine", length = 20)
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private CanalOrigine canalOrigine = CanalOrigine.INTERNE;
 
     /**
      * Version du devis (pour gestion des modifications)

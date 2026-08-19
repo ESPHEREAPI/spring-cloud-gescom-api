@@ -4,6 +4,7 @@
  */
 package com.mproduits.repositories;
 
+import com.mproduits.enums.CanalOrigine;
 import com.mproduits.enums.StatutDevis;
 import com.mproduits.model.Devis;
 import feign.Param;
@@ -108,6 +109,16 @@ public interface DevisRepository  extends JpaRepository<Devis, Long>{
      * @return Liste des devis avec ce statut
      */
     List<Devis> findByStatutAndBoutiqueId(StatutDevis statut,Long boutiqueid);
+
+    // Ecran admin "Commandes en ligne" (voir CanalOrigine) : ne montrer que
+    // les devis soumis par un client via le site public, jamais les devis
+    // internes crees par le personnel.
+    List<Devis> findByStatutAndCanalOrigineAndBoutiqueId(StatutDevis statut, CanalOrigine canalOrigine, Long boutiqueid);
+
+    // "Mes commandes" cote client connecte (voir EcomCheckoutController) -
+    // scope par client ET compagnie (jamais boutique seule, un client peut
+    // avoir commande dans plusieurs boutiques de la meme compagnie).
+    List<Devis> findByClient_IdAndBoutique_Compagnie_IdOrderByDateDevisDesc(Long clientId, Long compagnieId);
 
     /**
      * Recherche combinée: devis d'un client avec un statut spécifique

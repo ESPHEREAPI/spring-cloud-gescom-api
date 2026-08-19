@@ -92,6 +92,18 @@ public class Client implements Serializable {
     private Compagnie compagnie;
 
     private boolean fidelite;
+
+    // Compte client e-commerce optionnel (voir EcomAuthController) - un
+    // Client reste utilisable sans jamais avoir de mot de passe (commande
+    // invite classique, ou client B2B existant gere par le personnel).
+    // passwordHash null = pas de compte / invite uniquement.
+    @JsonIgnore
+    @Column(name = "password_hash")
+    private String passwordHash;
+
+    @Column(name = "guest_only")
+    private boolean guestOnly = true;
+
     @JsonIgnore
     @OneToMany(mappedBy = "client")
     private List<Devis> devis;

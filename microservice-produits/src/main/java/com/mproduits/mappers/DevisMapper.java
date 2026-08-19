@@ -3,6 +3,7 @@ package com.mproduits.mappers;
 import com.mproduits.dto.ClientDto;
 import com.mproduits.dto.DevisDTO;
 import com.mproduits.dto.DevisItemDTO;
+import com.mproduits.enums.CanalOrigine;
 import com.mproduits.model.Client;
 import com.mproduits.model.Devis;
 import com.mproduits.model.DevisItem;
@@ -84,6 +85,11 @@ public class DevisMapper {
                 // Statut
                 .statut(devis.getStatut().name())
                 .statutLibelle(devis.getStatut().getLibelle())
+
+                // Canal d'origine - nullable en base (colonne ajoutee apres
+                // coup) : NULL affiche comme INTERNE, voir Devis.canalOrigine.
+                .canalOrigine((devis.getCanalOrigine() != null ? devis.getCanalOrigine() : CanalOrigine.INTERNE).name())
+                .canalOrigineLibelle((devis.getCanalOrigine() != null ? devis.getCanalOrigine() : CanalOrigine.INTERNE).getLibelle())
                 
                 // États calculés
                 .modifiable(devis.isModifiable())

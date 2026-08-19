@@ -67,17 +67,23 @@ import org.springframework.web.multipart.MultipartFile;
  * par genererModele (memes colonnes, meme ordre), donc le parsing se fait
  * par position de colonne, jamais par detection d'en-tete.
  *
- * previsualiserImport ne modifie rien ; appliquerImport refuse d'ecrire si
- * la moindre ligne est en erreur (tout ou rien), et trace chaque ligne dans
- * HistoriqueRestaurationStock + StockMovement, meme discipline que
- * InventairesService pour les corrections manuelles.
+ * previsualiserImport ne modifie rien ; appliquerImport refuse de commencer
+ * si la moindre ligne est en erreur (previsualiserImport doit etre propre au
+ * prealable), et trace chaque ligne dans HistoriqueRestaurationStock +
+ * StockMovement, meme discipline que InventairesService pour les corrections
+ * manuelles. Chaque ligne est ensuite appliquee independamment (voir
+ * RestaurationLigneService) - un fichier reel de plusieurs centaines de
+ * lignes n'est PLUS tout-ou-rien au niveau de l'application (seule la
+ * validation prealable l'est) ; ResultatApplicationStock rapporte les
+ * eventuelles lignes en echec malgre une previsualisation propre (rare, ex.
+ * modification concurrente).
  *
  * Cas particulier : une reference absente du catalogue n'est PAS une erreur
  * bloquante (usage vise : initialiser une boutique de A a Z) - le produit,
  * son point de vente, son prix de vente (PrixArticles) et, si fourni, son
  * prix d'achat (PrixAchat) sont crees a l'application. Un Magasin "point de
  * vente" par defaut est cree pour la boutique s'il n'en existe encore aucun
- * (voir resolveOuCreerMagasinPointDeVente).
+ * (voir RestaurationLigneService.resolveOuCreerMagasinPointDeVente).
  */
 @Service
 @RequiredArgsConstructor
@@ -107,6 +113,7 @@ public class StockRestaurationService {
     private final PrixAchatRepositories prixAchatRepositories;
     private final EntrepriseService entrepriseService;
     private final TenantContext tenantContext;
+    private final RestaurationLigneService restaurationLigneService;
 
     // produit == null et nouveauProduit == true : le produit sera cree par
     // appliquerImport (voir creerProduitEtStockInitial), pas seulement mis a
@@ -120,7 +127,11 @@ public class StockRestaurationService {
     // autre). Toujours vrai quand nouveauProduit l'est aussi. appliquerImport
     // cree alors un PointVente + PrixArticles (meme logique que pour un
     // produit tout neuf), sans recreer le Produit lui-meme.
-    private record LigneResolue(int ligneNo, String reference, String boutiqueNom, Produit produit,
+    //
+    // Package-private (pas private) : RestaurationLigneService (meme
+    // package) en a besoin pour appliquer chaque ligne dans sa propre
+    // transaction - voir appliquerImport.
+    record LigneResolue(int ligneNo, String reference, String boutiqueNom, Produit produit,
             Boutique boutique, BigDecimal ancienneQuantite, BigDecimal nouvelleQuantite, String erreur,
             boolean nouveauProduit, boolean nouveauPointVente, String produitLibelle, String categorieLibelle,
             BigDecimal prixVente, BigDecimal prixAchat) {
@@ -214,8 +225,20 @@ public class StockRestaurationService {
         return new ApercuImportStockDTO(dto);
     }
 
-    @Transactional
-    public String appliquerImport(MultipartFile fichier, Long boutiqueIdPreselectionnee, ModeRestauration mode, String username) {
+    public record ResultatApplicationStock(String batchId, int lignesAppliquees, int lignesEnErreur,
+            List<String> referencesEnErreur) {
+    }
+
+    /**
+     * Delibermement PAS @Transactional : chaque ligne est appliquee dans sa
+     * propre transaction via RestaurationLigneService.appliquerLigne
+     * (REQUIRES_NEW) - voir cette classe pour le pourquoi (Hibernate
+     * "Found shared references to a collection" sur les gros fichiers reels
+     * des que trop de Produit sont geres dans une seule session). Englober
+     * la boucle dans une transaction ici annulerait cet isolement (meme
+     * piege que reinitialiserBoutique, voir son historique de commits).
+     */
+    public ResultatApplicationStock appliquerImport(MultipartFile fichier, Long boutiqueIdPreselectionnee, ModeRestauration mode, String username) {
         List<LigneResolue> lignes = resoudreLignes(fichier, boutiqueIdPreselectionnee, mode);
         if (lignes.isEmpty()) {
             throw new BadRequestException("Le fichier ne contient aucune ligne exploitable");
@@ -230,112 +253,22 @@ public class StockRestaurationService {
 
         Entreprise entrepriseActive = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
 
+        int reussies = 0;
+        List<String> referencesEnErreur = new ArrayList<>();
         for (LigneResolue ligne : lignes) {
-            Produit produit = ligne.nouveauProduit() ? creerProduit(ligne) : ligne.produit();
-            PointVente pointVente;
-
-            if (ligne.nouveauPointVente()) {
-                // Premiere reception pour ce produit dans cette boutique -
-                // vrai aussi bien pour un produit tout neuf que pour un
-                // produit deja au catalogue mais jamais stocke ici
-                // (catalogue partage entre boutiques). stockInitial reste a
-                // zero et entreeProduit porte la quantite (meme convention
-                // que ServiceCommande, "premiere reception") - stockInitial
-                // ET entreeProduit mis tous les deux a la quantite du
-                // fichier faisait apparaitre le double de la vraie quantite
-                // recue sur l'ecran Approvisionnement (Quantite =
-                // entreeProduit + stockInitial).
-                Magasin magasin = resolveOuCreerMagasinPointDeVente(ligne.boutique());
-                pointVente = new PointVente();
-                pointVente.setBoutique(ligne.boutique());
-                pointVente.setDepotId(magasin);
-                pointVente.setEntreprise(entrepriseActive);
-                pointVente.setProduit(produit);
-                pointVente.setDateReception(maintenant);
-                pointVente.setStockInitial(BigDecimal.ZERO);
-                pointVente.setStockFinalTheorie(ligne.nouvelleQuantite());
-                pointVente.setEntreeProduit(ligne.nouvelleQuantite());
-                pointVente.setSortiProduit(BigDecimal.ZERO);
-                pointVente = pointVenteRepositories.save(pointVente);
-
-                // pa.actif = TRUE est requis par findLatestActiveByProduitBoutiqueAndEntreprise
-                // (join sur prixarticlesCollection) - sans cette ligne, ce
-                // PointVente resterait invisible a toute future recherche de
-                // stock actif pour ce produit/boutique.
-                PrixArticles prixArticles = new PrixArticles();
-                prixArticles.setActif(true);
-                prixArticles.setDateCreation(maintenant);
-                prixArticles.setEntreprise(entrepriseActive);
-                prixArticles.setPointVente(pointVente);
-                prixArticles.setPrixVenteNet(ligne.prixVente());
-                prixArticles.setPrixVenteTTC(ligne.prixVente());
-                prixArticles.setRemise(BigDecimal.ZERO);
-                prixArticles.setTva(BigDecimal.ZERO);
-                prixArticlesRepositories.save(prixArticles);
-
-                if (ligne.prixAchat() != null && ligne.prixAchat().compareTo(BigDecimal.ZERO) > 0) {
-                    PrixAchat prixAchat = new PrixAchat();
-                    prixAchat.setProduit(produit);
-                    prixAchat.setDatedebut(maintenant);
-                    prixAchat.setPrix(ligne.prixAchat());
-                    prixAchat.setUsercreat(username);
-                    prixAchatRepositories.save(prixAchat);
-                }
-            } else {
-                pointVente = pointVenteRepositories
-                        .findLatestActiveByProduitBoutiqueAndEntreprise(produit, ligne.boutique(), entrepriseActive)
-                        .orElseThrow(() -> new BadRequestException(
-                                "Aucun point de vente actif pour " + ligne.reference() + " / " + ligne.boutiqueNom()));
-                // entreeProduit REMPLACE par la nouvelle quantite (pas
-                // accumule, comme InventairesService.saveStock) et
-                // sortiProduit remis a zero. stockInitial remis a zero aussi
-                // (contrairement a InventairesService, qui n'y touche pas) :
-                // une ligne deja creee par une restauration anterieure au
-                // correctif du double-comptage y avait la quantite entiere,
-                // et sans cette remise a zero ici, rejouer la restauration
-                // ne suffisait pas a corriger l'affichage (Quantite =
-                // entreeProduit + stockInitial) sur l'ecran Approvisionnement.
-                pointVente.setStockFinalTheorie(ligne.nouvelleQuantite());
-                pointVente.setEntreeProduit(ligne.nouvelleQuantite());
-                pointVente.setStockInitial(BigDecimal.ZERO);
-                pointVente.setSortiProduit(BigDecimal.ZERO);
-                pointVenteRepositories.save(pointVente);
+            try {
+                restaurationLigneService.appliquerLigne(ligne, batchId, mode, username, maintenant, maintenantLdt, entrepriseActive);
+                reussies++;
+            } catch (Exception e) {
+                log.error("Restauration de stock : echec ligne {} (reference {}) lot {}",
+                        ligne.ligneNo(), ligne.reference(), batchId, e);
+                referencesEnErreur.add(ligne.reference());
             }
-
-            StockMovement mouvement = StockMovement.builder()
-                    .produit(produit)
-                    .pointVente(pointVente)
-                    .quantite(ligne.nouvelleQuantite().subtract(ligne.ancienneQuantite()))
-                    .stockAvant(ligne.ancienneQuantite())
-                    // MovementType.INITIALISATION serait plus precis mais
-                    // type_mouvement est une colonne ENUM MySQL native creee
-                    // avant l'ajout de toute nouvelle valeur (meme piege que
-                    // Permission.operationType/PRINT) - reutilise AJUSTEMENT,
-                    // deja present en base, le motif ci-dessous precise le
-                    // contexte reel (restauration + lot).
-                    .typeMouvement(MovementType.AJUSTEMENT)
-                    .motif("Restauration de stock (" + mode + "), lot " + batchId)
-                    .usernameCreate(username)
-                    .dateCreation(maintenantLdt)
-                    .build();
-            stockMovementRepository.save(mouvement);
-
-            HistoriqueRestaurationStock historique = new HistoriqueRestaurationStock();
-            historique.setBatchId(batchId);
-            historique.setProduit(produit);
-            historique.setBoutique(ligne.boutique());
-            historique.setCompagnie(ligne.boutique().getCompagnie());
-            historique.setAncienneQuantite(ligne.ancienneQuantite());
-            historique.setNouvelleQuantite(ligne.nouvelleQuantite());
-            historique.setMode(mode);
-            historique.setUtilisateur(username);
-            historique.setDateRestauration(maintenant);
-            historiqueRestaurationStockRepository.save(historique);
         }
 
-        log.info("Restauration de stock appliquee : lot={}, {} lignes, mode={}, utilisateur={}",
-                batchId, lignes.size(), mode, username);
-        return batchId;
+        log.info("Restauration de stock appliquee : lot={}, {}/{} lignes reussies, mode={}, utilisateur={}",
+                batchId, reussies, lignes.size(), mode, username);
+        return new ResultatApplicationStock(batchId, reussies, referencesEnErreur.size(), referencesEnErreur);
     }
 
     /**
@@ -427,53 +360,6 @@ public class StockRestaurationService {
      * et compagnie sont les seuls champs garantis ; Produit (libelle) retombe
      * sur la reference si absente du format ou vide.
      */
-    private Produit creerProduit(LigneResolue ligne) {
-        Long compagnieId = tenantContext.currentCompagnieId();
-        Produit produit = new Produit();
-        produit.setReference(ligne.reference());
-        produit.setLibelle(ligne.produitLibelle() != null && !ligne.produitLibelle().isBlank()
-                ? ligne.produitLibelle() : ligne.reference());
-        produit.setDeletes(Boolean.FALSE);
-        produit.setPrixVenteModifiable(Boolean.FALSE);
-        produit.setUsername(tenantContext.currentUsername());
-        produit.setCompagnie(new Compagnie(compagnieId));
-        if (ligne.categorieLibelle() != null && !ligne.categorieLibelle().isBlank()) {
-            produit.setCategorie(resolveOuCreerCategorie(ligne.categorieLibelle(), compagnieId));
-        }
-        return produitRepositories.save(produit);
-    }
-
-    private Categories resolveOuCreerCategorie(String libelle, Long compagnieId) {
-        return categorieRepositories.findByLibelleIgnoreCaseAndCompagnie_Id(libelle, compagnieId)
-                .orElseGet(() -> {
-                    Categories categorie = new Categories();
-                    categorie.setLibelle(libelle);
-                    categorie.setCompagnieId(compagnieId);
-                    return categorieRepositories.save(categorie);
-                });
-    }
-
-    /**
-     * Depot "point de vente" de la boutique - cree une fois pour toutes s'il
-     * n'en existe encore aucun, pour qu'une compagnie qui initialise une
-     * nouvelle boutique de A a Z n'ait pas a configurer un Magasin a la main
-     * au prealable (voir Boutique/Magasin, aucune creation automatique
-     * n'existait avant pour ce cas).
-     */
-    private Magasin resolveOuCreerMagasinPointDeVente(Boutique boutique) {
-        Long compagnieId = tenantContext.currentCompagnieId();
-        return magasinRepositories.findFirstByBoutique_IdAndCompagnie_Id(boutique.getId(), compagnieId)
-                .orElseGet(() -> {
-                    Magasin magasin = new Magasin();
-                    magasin.setLibelle("Point de vente - " + boutique.getNom());
-                    magasin.setCode(boutique.getCode());
-                    magasin.setBoutiqueId(boutique);
-                    magasin.setTypeMagasin(TypeMagasin.POINT_DE_VENTE);
-                    magasin.setCompagnieId(compagnieId);
-                    return magasinRepositories.save(magasin);
-                });
-    }
-
     private List<LigneResolue> resoudreLignes(MultipartFile fichier, Long boutiqueIdPreselectionnee, ModeRestauration mode) {
         Long compagnieId = tenantContext.currentCompagnieId();
         StockImportFormat format = formatCourant(compagnieId);

@@ -64,12 +64,12 @@ public class StockRestaurationController {
 
     @PreAuthorize("hasAuthority('PERM_INITIALISATION_STOCK_VALIDER') or hasRole('COMPANY_ADMIN')")
     @PostMapping("/appliquer")
-    public ResponseEntity<Map<String, String>> appliquer(
+    public ResponseEntity<StockRestaurationService.ResultatApplicationStock> appliquer(
             @RequestParam("fichier") MultipartFile fichier,
             @RequestParam(required = false) Long boutiqueId,
             @RequestParam ModeRestauration mode) {
-        String batchId = stockRestaurationService.appliquerImport(fichier, boutiqueId, mode, tenantContext.currentUsername());
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("batchId", batchId));
+        var resultat = stockRestaurationService.appliquerImport(fichier, boutiqueId, mode, tenantContext.currentUsername());
+        return ResponseEntity.status(HttpStatus.CREATED).body(resultat);
     }
 
     /**

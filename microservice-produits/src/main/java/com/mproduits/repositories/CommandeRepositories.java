@@ -419,11 +419,16 @@ public interface CommandeRepositories extends JpaRepository<Commande, Long>{
      * @param produitId ID du produit
      * @return Stock final théorique
      */
+    // LIMIT 1 indispensable : plusieurs lignes Commande peuvent exister pour
+    // le meme (depot, produit) (une par reception/transfert). Sans LIMIT,
+    // Optional<BigDecimal> declenche IncorrectResultSizeDataAccessException
+    // des qu'une deuxieme ligne apparait - meme cause que
+    // findLatestCommandeByMagasinAndProduit ci-dessus, qui a deja LIMIT 1.
     @Query("SELECT c.stockFinalTheorie " +
            "FROM Commande c " +
            "WHERE c.magasinid.id = :depotId " +
            "AND c.produit.id = :produitId " +
-           "ORDER BY c.dateReception DESC")
+           "ORDER BY c.dateReception DESC LIMIT 1")
     Optional<BigDecimal> getStockByDepotAndProduit(
         @Param("depotId") Long depotId,
         @Param("produitId") Long produitId
@@ -446,7 +451,7 @@ public interface CommandeRepositories extends JpaRepository<Commande, Long>{
            "FROM Commande c " +
            "WHERE c.magasinid.id = :depotId " +
            "AND c.produit.id = :produitId " +
-           "ORDER BY c.dateReception DESC")
+           "ORDER BY c.dateReception DESC LIMIT 1")
     Object[] getStockDetailsFromCommande(
         @Param("depotId") Long depotId,
         @Param("produitId") Long produitId

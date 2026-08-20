@@ -97,20 +97,24 @@ public class StockTransfertService {
                     .findLatestCommandeByMagasinAndProduit(magasinId, produitId);
             if (commande.isEmpty()) {
                 Optional<Produit> produit = produitRepository.findByIdAndCompagnie_Id(produitId, tenantContext.currentCompagnieId());
-                
+
                 Commande cde = new Commande();
                 cde.setPrixAchat(prixAchatRepositories.findLastPrixAchatByProduit(produit.get()).get().getPrix());
                 cde.setPrixVente(prixVenteRepositories.findLastPrixventeByProduit(produit.get()).get().getPrix());
                 cde.setQuantite(BigDecimal.ZERO);
+                cde.setStockFinalTheorie(BigDecimal.ZERO);
                 cde.setUsercreate("transfert mouvement");
                 cde.setEntreprise(entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId()));
                 cde.setProduit(produit.get());
-                
+
                 cde.setMagasinid(magasinRepositories.findById(magasinId).get());
                 cde.setNumeroRepartition(generateCodeCommande());
-                commandeRepository.save(cde);
-                
-            }            
+                // Reaffecter commande a la ligne fraichement creee : sans ce
+                // reassignment, la ligne "return commande.map(...)" plus bas
+                // retournait toujours ZERO (Optional.empty() d'origine, jamais
+                // mis a jour), y compris juste apres avoir cree/sauvegarde cde.
+                commande = Optional.of(commandeRepository.save(cde));
+            }
             return commande.map(Commande::getStockFinalTheorie)
                     .orElse(BigDecimal.ZERO);
         } else {

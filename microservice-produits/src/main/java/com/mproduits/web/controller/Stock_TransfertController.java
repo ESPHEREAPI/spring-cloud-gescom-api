@@ -251,111 +251,19 @@ public class Stock_TransfertController {
         }
     }
 
-    /**
-     * Récupère le stock disponible d'un produit dans un dépôt
-     * 
-     * Endpoint: GET /api/stock-transfert/{depotId}/{produitId}
-     * 
-     * @param depotId ID du dépôt
-     * @param produitId ID du produit
-     * @return Stock disponible
-     */
-    @GetMapping("/{depotId}/{produitId}")
-    public ResponseEntity<?> getStockProduit(
-            @PathVariable Long depotId,
-            @PathVariable Long produitId) {
-        
-        log.debug("📊 Récupération du stock - Dépôt: {}, Produit: {}", depotId, produitId);
-        
-        try {
-            Optional<Magasin> depotOpt = magasinRepository.findByIdAndCompagnie_Id(depotId, tenantContext.currentCompagnieId());
-            if (depotOpt.isEmpty()) {
-                return ResponseEntity.notFound().build();
-            }
-
-            Magasin depot = depotOpt.get();
-            BigDecimal quantite = BigDecimal.ZERO;
-            
-            if (depot.getBoutiqueId()== null) {
-                // Stock depuis COMMANDE
-                quantite = commandeRepository.getStockByDepotAndProduit(depotId, produitId)
-                    .orElse(BigDecimal.ZERO);
-            } else {
-                // Stock depuis POINTVENTE
-                quantite = pointVenteRepository.getStockByDepotAndProduit(depotId, produitId)
-                    .orElse(BigDecimal.ZERO);
-            }
-            
-            Map<String, Object> reponse = new HashMap<>();
-            reponse.put("depotId", depotId);
-            reponse.put("produitId", produitId);
-            reponse.put("quantite", quantite);
-            
-            return ResponseEntity.ok(reponse);
-            
-        } catch (Exception e) {
-            log.error("❌ Erreur récupération stock: {}", e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    /**
-     * Récupère les détails complets du stock
-     * 
-     * @param produitId ID du produit
-     * @param depotId ID du dépôt
-     * @return Détails du stock
-     */
-    @GetMapping("/details/{produitId}/{depotId}")
-    public ResponseEntity<?> getDetailsStock(
-            @PathVariable Long produitId,
-            @PathVariable Long depotId) {
-        
-        log.debug("📋 Récupération détails stock - Produit: {}, Dépôt: {}", produitId, depotId);
-        
-        try {
-            Optional<Magasin> depotOpt = magasinRepository.findByIdAndCompagnie_Id(depotId, tenantContext.currentCompagnieId());
-            if (depotOpt.isEmpty()) {
-                return ResponseEntity.notFound().build();
-            }
-
-            Magasin depot = depotOpt.get();
-            Map<String, Object> details = new HashMap<>();
-            
-            if (depot.getBoutiqueId()== null) {
-                // Détails depuis COMMANDE
-                Object[] data = commandeRepository.getStockDetailsFromCommande(depotId, produitId);
-                if (data != null) {
-                    details.put("stockInitial", data[0]);
-                    details.put("entreeProduit", data[1]);
-                    details.put("sortiProduit", data[2]);
-                    details.put("stockFinalTheorie", data[3]);
-                    details.put("prixAchat", data[4]);
-                    details.put("dateReception", data[5]);
-                }
-            } else {
-                // Détails depuis POINTVENTE
-                Object[] data = pointVenteRepository.getStockDetailsFromPointVente(depotId, produitId);
-                if (data != null) {
-                    details.put("stockInitial", data[0]);
-                    details.put("entreeProduit", data[1]);
-                    details.put("sortiProduit", data[2]);
-                    details.put("stockFinalTheorie", data[3]);
-                    details.put("perte", data[4]);
-                    details.put("dateReception", data[5]);
-                }
-            }
-            
-            details.put("depotId", depotId);
-            details.put("produitId", produitId);
-            details.put("typeDepot", depot.getBoutiqueId()== null ? "MAGASIN" : "POINT_VENTE");
-            
-            return ResponseEntity.ok(details);
-            
-        } catch (Exception e) {
-            log.error("❌ Erreur récupération détails: {}", e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
-    }
+    // Deux methodes "getStockProduit"/"getDetailsStock" existaient ici avec
+    // exactement les memes templates d'URL que obtenirStock()/obtenirDetailsStock()
+    // ci-dessus (seuls les noms de variables de chemin differaient, ex.
+    // "/{depotId}/{produitId}" vs "/{magasinId}/{produitId}") - Spring MVC les
+    // enregistre sans erreur au demarrage (les patterns sont compares comme
+    // chaines, pas structurellement) mais laquelle des deux repond a une
+    // requete donnee est indeterministe. Elles utilisaient en plus des
+    // requetes JPQL sans LIMIT 1 (getStockByDepotAndProduit/
+    // getStockDetailsFromCommande/PointVente) qui levaient une exception des
+    // qu'un depot+produit avait plus d'une ligne Commande/PointVente - capturee
+    // en 500 silencieux, affiche comme "Stock actuel: 0,00" cote formulaire de
+    // transfert alors que le transfert avait reellement abouti. Supprimees :
+    // obtenirStock()/obtenirDetailsStock() couvrent deja le meme besoin via
+    // stockService.getStockActuel(), qui utilise les requetes LIMIT 1 correctes.
 }
     

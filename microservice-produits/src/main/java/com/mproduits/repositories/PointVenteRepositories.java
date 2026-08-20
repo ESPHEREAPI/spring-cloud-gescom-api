@@ -203,7 +203,7 @@ public interface PointVenteRepositories extends JpaRepository<PointVente, Long> 
            "FROM PointVente pv " +
            "WHERE pv.depotId.id = :depotId " +
            "AND pv.produit.id = :produitId " +
-           "ORDER BY pv.dateReception DESC")
+           "ORDER BY pv.dateReception DESC LIMIT 1")
     Optional<BigDecimal> getStockByDepotAndProduit(
         @Param("depotId") Long depotId,
         @Param("produitId") Long produitId
@@ -226,7 +226,7 @@ public interface PointVenteRepositories extends JpaRepository<PointVente, Long> 
            "FROM PointVente pv " +
            "WHERE pv.depotId.id = :depotId " +
            "AND pv.produit.id = :produitId " +
-           "ORDER BY pv.dateReception DESC")
+           "ORDER BY pv.dateReception DESC LIMIT 1")
     Object[] getStockDetailsFromPointVente(
         @Param("depotId") Long depotId,
         @Param("produitId") Long produitId

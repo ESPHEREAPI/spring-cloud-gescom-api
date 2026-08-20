@@ -125,7 +125,7 @@ public class DevisService {
 
             // 3. VÉRIFIER STOCK (optionnel selon configuration)
             if (dto.isVerifierStock()) {
-                verifierStockDisponible(dto.getItems(), boutiqueid, anneeid);
+                verifierStockDisponible(dto.getItems(), boutiqueid, anneeid, compagnieId);
                 log.debug("✓ Stock vérifié et disponible");
             }
 
@@ -474,7 +474,7 @@ public class DevisService {
                     .map(this::convertirEnDTO)
                     .collect(Collectors.toList());
 
-            List<String> erreursStock = validerStockDisponible(itemsDto, devis.getBoutique().getId(), anneeid);
+            List<String> erreursStock = validerStockDisponible(itemsDto, devis.getBoutique().getId(), anneeid, tenantContext.currentCompagnieId());
             if (!erreursStock.isEmpty()) {
                 throw new DevisException("Stock insuffisant: " + String.join(", ", erreursStock));
             }
@@ -910,8 +910,8 @@ public class DevisService {
     /**
      * Vérifie la disponibilité du stock
      */
-    private void verifierStockDisponible(List<DevisItemDTO> items, Long boutiqueid, int anneeid) {
-        List<String> erreurs = validerStockDisponible(items, boutiqueid, anneeid);
+    private void verifierStockDisponible(List<DevisItemDTO> items, Long boutiqueid, int anneeid, Long compagnieId) {
+        List<String> erreurs = validerStockDisponible(items, boutiqueid, anneeid, compagnieId);
         if (!erreurs.isEmpty()) {
             throw new DevisException("Stock insuffisant: " + String.join(", ", erreurs));
         }
@@ -920,11 +920,11 @@ public class DevisService {
     /**
      * Valide le stock pour une liste d'articles
      */
-    private List<String> validerStockDisponible(List<DevisItemDTO> items, Long boutiqueid, int anneeid) {
+    private List<String> validerStockDisponible(List<DevisItemDTO> items, Long boutiqueid, int anneeid, Long compagnieId) {
         List<String> erreurs = new ArrayList<>();
 
         for (DevisItemDTO item : items) {
-            Produit produit = produitRepo.findByIdAndCompagnie_Id(item.getProduitId(), tenantContext.currentCompagnieId()).orElse(null);
+            Produit produit = produitRepo.findByIdAndCompagnie_Id(item.getProduitId(), compagnieId).orElse(null);
             if (produit == null) {
                 erreurs.add("Produit introuvable: " + item.getProduitId());
                 continue;

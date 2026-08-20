@@ -101,8 +101,25 @@ public class Client implements Serializable {
     @Column(name = "password_hash")
     private String passwordHash;
 
+    // Boolean (pas boolean) : colonne ajoutee apres coup via ddl-auto=update,
+    // NULL pour toute ligne Client preexistante - Hibernate ne peut pas
+    // hydrater NULL dans un primitif ("Null value was assigned to a
+    // property ... of primitive type"), ce qui cassait le chargement de
+    // TOUT client deja en base. Traiter null comme "invite" (true) partout
+    // ou ce champ est lu, cf. Client.isEffectivementInvite() ci-dessous.
     @Column(name = "guest_only")
-    private boolean guestOnly = true;
+    private Boolean guestOnly = true;
+
+    /**
+     * true si aucun mot de passe n'est encore associe a ce client (jamais
+     * inscrit, ou ligne preexistante creee avant l'auth e-commerce) - a
+     * utiliser a la place de isGuestOnly()/getGuestOnly() partout ou "peut
+     * se connecter avec un mot de passe" doit etre teste de facon sure vis
+     * a vis d'un guestOnly potentiellement null.
+     */
+    public boolean isEffectivementInvite() {
+        return !Boolean.FALSE.equals(guestOnly);
+    }
 
     @JsonIgnore
     @OneToMany(mappedBy = "client")

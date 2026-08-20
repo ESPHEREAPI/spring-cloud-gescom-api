@@ -68,7 +68,7 @@ public class EcomAuthController {
         // EcomCheckoutController.findOrCreateGuestClient) est mis a niveau en
         // place plutot que duplique - son historique de commandes reste
         // rattache au meme Client.id une fois inscrit.
-        if (!client.isGuestOnly() && client.getPasswordHash() != null) {
+        if (!client.isEffectivementInvite() && client.getPasswordHash() != null) {
             throw new BadRequestException("Un compte existe deja avec cet email");
         }
         client.setPasswordHash(passwordEncoder.encode(request.password()));

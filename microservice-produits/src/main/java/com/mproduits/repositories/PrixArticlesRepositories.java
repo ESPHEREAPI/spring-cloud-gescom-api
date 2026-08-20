@@ -135,6 +135,26 @@ public interface PrixArticlesRepositories extends JpaRepository<PrixArticles, Lo
     @Query("SELECT pa FROM PrixArticles pa WHERE pa.actif = true AND pa.pointVente.boutique.id = :boutiqueId")
     Page<PrixArticles> findActifsByBoutiqueId(@Param("boutiqueId") Long boutiqueId, Pageable pageable);
 
+    // Catalogue public filtrable (voir EcomPublicController) : categorie et
+    // recherche optionnels, tous deux ignores si NULL - evite de dupliquer
+    // findActifsByBoutiqueId pour le cas sans filtre.
+    @Query("SELECT pa FROM PrixArticles pa WHERE pa.actif = true AND pa.pointVente.boutique.id = :boutiqueId "
+            + "AND (:categorieId IS NULL OR pa.pointVente.produit.categories.id = :categorieId) "
+            + "AND (:search IS NULL OR LOWER(pa.pointVente.produit.libelle) LIKE LOWER(CONCAT('%', :search, '%')) "
+            + "OR LOWER(pa.pointVente.produit.reference) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<PrixArticles> findActifsByBoutiqueIdAndFilters(@Param("boutiqueId") Long boutiqueId,
+            @Param("categorieId") Long categorieId, @Param("search") String search, Pageable pageable);
+
+    // Categories reellement presentes dans une boutique (pas juste toutes les
+    // categories de la compagnie, qui peut avoir plusieurs boutiques avec des
+    // assortiments differents) - projection scalaire, meme raison que
+    // findAlerteStockByEntrepriseProduitActifWithSeuilStock (eviter de
+    // charger Produit/Categories en entite complete sur une route publique).
+    @Query("SELECT DISTINCT new com.mproduits.dto.CategoriePubliqueDTO(c.id, c.libelle) "
+            + "FROM PrixArticles pa JOIN pa.pointVente pv JOIN pv.produit p JOIN p.categories c "
+            + "WHERE pa.actif = true AND pv.boutique.id = :boutiqueId ORDER BY c.libelle")
+    List<com.mproduits.dto.CategoriePubliqueDTO> findDistinctCategoriesByBoutiqueId(@Param("boutiqueId") Long boutiqueId);
+
     // Checkout public (voir EcomCheckoutController) : prix + stock d'UN
     // produit dans une boutique, pour recalculer chaque ligne de commande
     // cote serveur - ne jamais faire confiance a un prix envoye par un

@@ -2,23 +2,29 @@ package com.mproduits.ecommerce.dto.web;
 
 import com.mproduits.dto.ArticlePublicDTO;
 import com.mproduits.dto.BoutiquePubliqueDTO;
+import com.mproduits.dto.CategoriePubliqueDTO;
 import com.mproduits.dto.CompagniePubliqueDTO;
 import com.mproduits.model.Boutique;
 import com.mproduits.model.Compagnie;
 import com.mproduits.model.PrixArticles;
 import com.mproduits.model.Produit;
+import com.mproduits.model.ProduitPhoto;
 import com.mproduits.repositories.BoutiqueRepositories;
 import com.mproduits.repositories.CompagnieRepositories;
 import com.mproduits.repositories.PrixArticlesRepositories;
+import com.mproduits.repositories.ProduitPhotoRepository;
+import com.mproduits.repositories.ProduitRepositories;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,6 +47,8 @@ public class EcomPublicController {
     private final CompagnieRepositories compagnieRepositories;
     private final BoutiqueRepositories boutiqueRepositories;
     private final PrixArticlesRepositories prixArticlesRepositories;
+    private final ProduitRepositories produitRepositories;
+    private final ProduitPhotoRepository produitPhotoRepository;
 
     @GetMapping("/{code}")
     public ResponseEntity<CompagniePubliqueDTO> getCompagnieParCode(@PathVariable String code) {
@@ -54,7 +62,9 @@ public class EcomPublicController {
     public ResponseEntity<Map<String, Object>> getProduitsParBoutique(@PathVariable String code,
             @PathVariable Long boutiqueId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) Long categorieId,
+            @RequestParam(required = false) String search) {
         Compagnie compagnie = compagnieRepositories.findByCode(code).orElse(null);
         if (compagnie == null) {
             return ResponseEntity.notFound().build();
@@ -67,8 +77,10 @@ public class EcomPublicController {
             return ResponseEntity.notFound().build();
         }
 
+        String searchNettoye = (search != null && !search.isBlank()) ? search.trim() : null;
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        Page<PrixArticles> prixArticles = prixArticlesRepositories.findActifsByBoutiqueId(boutiqueId, pageable);
+        Page<PrixArticles> prixArticles = prixArticlesRepositories
+                .findActifsByBoutiqueIdAndFilters(boutiqueId, categorieId, searchNettoye, pageable);
 
         Map<String, Object> response = new HashMap<>();
         response.put("content", prixArticles.getContent().stream().map(this::toArticleDTO).collect(Collectors.toList()));
@@ -76,6 +88,47 @@ public class EcomPublicController {
         response.put("totalPages", prixArticles.getTotalPages());
         response.put("page", prixArticles.getNumber());
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{code}/boutiques/{boutiqueId}/categories")
+    public ResponseEntity<List<CategoriePubliqueDTO>> getCategoriesParBoutique(@PathVariable String code,
+            @PathVariable Long boutiqueId) {
+        Compagnie compagnie = compagnieRepositories.findByCode(code).orElse(null);
+        if (compagnie == null) {
+            return ResponseEntity.notFound().build();
+        }
+        boolean boutiqueValide = boutiqueRepositories.findByIdAndCompagnie_Id(boutiqueId, compagnie.getId()).isPresent();
+        if (!boutiqueValide) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(prixArticlesRepositories.findDistinctCategoriesByBoutiqueId(boutiqueId));
+    }
+
+    @GetMapping("/{code}/produits/{produitId}/photo")
+    public ResponseEntity<byte[]> getPhotoProduit(@PathVariable String code, @PathVariable Long produitId) {
+        Compagnie compagnie = compagnieRepositories.findByCode(code).orElse(null);
+        if (compagnie == null) {
+            return ResponseEntity.notFound().build();
+        }
+        // Le produit doit appartenir a la compagnie resolue par le code de
+        // l'URL - meme garde anti-usurpation que boutiqueValide ci-dessus.
+        boolean produitValide = produitRepositories.findByIdAndCompagnie_Id(produitId, compagnie.getId()).isPresent();
+        if (!produitValide) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Optional<ProduitPhoto> photo = produitPhotoRepository.findById(produitId);
+        if (photo.isEmpty() || photo.get().getData() == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        MediaType contentType = MediaType.parseMediaType(
+                photo.get().getContentType() != null ? photo.get().getContentType() : MediaType.IMAGE_JPEG_VALUE);
+        return ResponseEntity.ok()
+                .contentType(contentType)
+                .header("Cache-Control", "public, max-age=86400")
+                .body(photo.get().getData());
     }
 
     private CompagniePubliqueDTO toCompagnieDTO(Compagnie compagnie) {

@@ -6,10 +6,17 @@ package com.mproduits.web.controller;
 
 import com.mproduits.dto.ArticleSearchResponse;
 import com.mproduits.dto.ProduitDto;
+import com.mproduits.model.Produit;
+import com.mproduits.model.ProduitPhoto;
 import com.mproduits.model.Specifique;
+import com.mproduits.repositories.ProduitPhotoRepository;
+import com.mproduits.repositories.ProduitRepositories;
 import com.mproduits.repositories.SpecifiqueRepositories;
 import com.mproduits.security.BoutiqueAccessGuard;
+import com.mproduits.security.TenantContext;
 import com.mproduits.services.ProduitService;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -56,19 +63,32 @@ import java.util.*;
 //@Tag(name = "Articles", description = "API pour la gestion des articles")
 public class ArticleController {
 
+    private static final Set<String> CONTENT_TYPES_PHOTO_AUTORISES = Set.of(
+            MediaType.IMAGE_JPEG_VALUE, MediaType.IMAGE_PNG_VALUE, "image/webp");
+    private static final long TAILLE_PHOTO_MAX_OCTETS = 3L * 1024 * 1024;
+
     private final ProduitService articleService;
     private final SpecifiqueRepositories specifiqueRepositories;
     private final StockService stockService;
     private final BoutiqueAccessGuard boutiqueAccessGuard;
+    private final ProduitRepositories produitRepositories;
+    private final ProduitPhotoRepository produitPhotoRepository;
+    private final TenantContext tenantContext;
     @Autowired
     MapperDtoImpl mapperdto;
 
     @Autowired
-    public ArticleController(ProduitService articleService, SpecifiqueRepositories specifiqueRepositories, StockService stockService, BoutiqueAccessGuard boutiqueAccessGuard) {
+    public ArticleController(ProduitService articleService, SpecifiqueRepositories specifiqueRepositories,
+            StockService stockService, BoutiqueAccessGuard boutiqueAccessGuard,
+            ProduitRepositories produitRepositories, ProduitPhotoRepository produitPhotoRepository,
+            TenantContext tenantContext) {
         this.articleService = articleService;
         this.specifiqueRepositories = specifiqueRepositories;
         this.stockService = stockService;
         this.boutiqueAccessGuard = boutiqueAccessGuard;
+        this.produitRepositories = produitRepositories;
+        this.produitPhotoRepository = produitPhotoRepository;
+        this.tenantContext = tenantContext;
     }
 
     /**
@@ -505,4 +525,66 @@ public ResponseEntity<Map<String, Integer>> currentPrixBatch(
     Map<String, Integer> prixMap = stockService.getCurrentPrixBatch(articleIds, boutiqueid);
     return ResponseEntity.ok(prixMap);
 }
+
+    /**
+     * Televerse/remplace la photo d'un produit (voir ProduitPhoto - stockage
+     * BLOB, aucune association JPA avec Produit pour ne pas alourdir chaque
+     * chargement de Produit deja EAGER a de nombreux endroits).
+     */
+    @PostMapping("/articles/{id}/photo")
+    public ResponseEntity<?> uploaderPhoto(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
+        Produit produit = produitRepositories.findByIdAndCompagnie_Id(id, tenantContext.currentCompagnieId())
+                .orElse(null);
+        if (produit == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body("Fichier vide.");
+        }
+        if (file.getSize() > TAILLE_PHOTO_MAX_OCTETS) {
+            return ResponseEntity.badRequest().body("La photo depasse la taille maximale autorisee (3 Mo).");
+        }
+        if (!CONTENT_TYPES_PHOTO_AUTORISES.contains(file.getContentType())) {
+            return ResponseEntity.badRequest().body("Format non supporte (jpeg, png ou webp uniquement).");
+        }
+
+        try {
+            ProduitPhoto photo = produitPhotoRepository.findById(id).orElseGet(ProduitPhoto::new);
+            photo.setProduitId(id);
+            photo.setData(file.getBytes());
+            photo.setContentType(file.getContentType());
+            photo.setDateMaj(new Date());
+            produitPhotoRepository.save(photo);
+            return ResponseEntity.ok().build();
+        } catch (java.io.IOException e) {
+            return ResponseEntity.internalServerError().body("Erreur lors de la lecture du fichier.");
+        }
+    }
+
+    @GetMapping("/articles/{id}/photo")
+    public ResponseEntity<byte[]> getPhoto(@PathVariable Long id) {
+        Produit produit = produitRepositories.findByIdAndCompagnie_Id(id, tenantContext.currentCompagnieId())
+                .orElse(null);
+        if (produit == null) {
+            return ResponseEntity.notFound().build();
+        }
+        ProduitPhoto photo = produitPhotoRepository.findById(id).orElse(null);
+        if (photo == null || photo.getData() == null) {
+            return ResponseEntity.notFound().build();
+        }
+        MediaType contentType = MediaType.parseMediaType(
+                photo.getContentType() != null ? photo.getContentType() : MediaType.IMAGE_JPEG_VALUE);
+        return ResponseEntity.ok().contentType(contentType).body(photo.getData());
+    }
+
+    @DeleteMapping("/articles/{id}/photo")
+    public ResponseEntity<?> supprimerPhoto(@PathVariable Long id) {
+        Produit produit = produitRepositories.findByIdAndCompagnie_Id(id, tenantContext.currentCompagnieId())
+                .orElse(null);
+        if (produit == null) {
+            return ResponseEntity.notFound().build();
+        }
+        produitPhotoRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
 }

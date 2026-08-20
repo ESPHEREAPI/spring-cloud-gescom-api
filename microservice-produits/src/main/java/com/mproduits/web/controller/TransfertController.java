@@ -247,6 +247,23 @@ public class TransfertController {
 
         return ResponseEntity.ok(reponse);
     }
-    
-    
+
+    /**
+     * Repare les PointVente de la compagnie courante qui ont du stock reel
+     * mais aucun PrixArticles actif (les rendant invisibles dans les
+     * listings type "Approvisionnement" malgre un stock correct) - voir
+     * TransfertStockService.reparerPrixArticlesManquants. A usage ponctuel,
+     * idempotent (ne touche pas les PointVente deja corrects).
+     *
+     * Endpoint: POST /microservice-produits/transferts/reparer-prix-articles-manquants
+     */
+    @PreAuthorize("hasAnyRole('COMPANY_ADMIN','ADMIN')")
+    @PostMapping("/reparer-prix-articles-manquants")
+    public ResponseEntity<?> reparerPrixArticlesManquants() {
+        int repares = transfertStockService.reparerPrixArticlesManquants();
+        Map<String, Object> reponse = new HashMap<>();
+        reponse.put("pointVenteRepares", repares);
+        return ResponseEntity.ok(reponse);
+    }
+
 }

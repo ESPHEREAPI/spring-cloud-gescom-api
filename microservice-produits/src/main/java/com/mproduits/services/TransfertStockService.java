@@ -29,7 +29,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.Date;
-import java.util.Optional;
 
 @Slf4j
 @Service
@@ -113,7 +112,7 @@ public class TransfertStockService {
         // ÉTAPE 5: Mettre à jour le stock destination (ajout)
         BigDecimal stockDestinationAvant = stockService.getStockActuel(
                 requete.getMagasinDestinationId(), requete.getProduitId());
-        mettreAJourDestinationTransfert(magasinDestination, produit, requete.getQuantite());
+        mettreAJourDestinationTransfert(magasinSource, magasinDestination, produit, requete.getQuantite());
         BigDecimal stockDestinationApres = stockService.getStockActuel(
                 requete.getMagasinDestinationId(), requete.getProduitId());
 
@@ -240,11 +239,14 @@ public class TransfertStockService {
      * Règles de mise à jour: - entreeProduit += quantite - stockFinalTheorie +=
      * quantite
      *
+     * @param magasinSource Magasin source (pour recuperer un prix de reference
+     * si la destination n'a encore jamais vendu ce produit - voir
+     * assurerPrixArticlesDestination)
      * @param magasinDestination Magasin destination
      * @param produit Produit transféré
      * @param quantite Quantité transférée
      */
-    private void mettreAJourDestinationTransfert(Magasin magasinDestination, Produit produit, BigDecimal quantite) {
+    private void mettreAJourDestinationTransfert(Magasin magasinSource, Magasin magasinDestination, Produit produit, BigDecimal quantite) {
         boolean isMagasin = stockService.isMagasinDeStock(magasinDestination.getId());
 
         if (isMagasin) {
@@ -267,6 +269,7 @@ public class TransfertStockService {
             }
         } else {
             // Mise à jour d'un PointVente (point de vente)
+            Entreprise entreprise = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
             PointVente pointVente = stockService.getPointVenteActuelle(magasinDestination.getId(), produit.getId());
             if (pointVente != null) {
                 // Augmenter entrée
@@ -281,8 +284,6 @@ public class TransfertStockService {
                 log.debug("PointVente destination mise à jour: ID={}, nouvelle entrée={}, nouveau stock={}",
                         pointVente.getId(), pointVente.getEntreeProduit(), pointVente.getStockFinalTheorie());
             } else {
-                //on crer le pointe de vente
-                Entreprise entreprise = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
                 PointVente pv = new PointVente();
                 pv.setEntreeProduit(quantite);
                 pv.setStockFinalTheorie(quantite);
@@ -291,28 +292,107 @@ public class TransfertStockService {
                 pv.setDepotId(magasinDestination);
                 pv.setProduit(produit);
                 pv.setDateReception(new Date());
-              PointVente savePv=  pointVenteRepository.save(pv);
-                
-                Optional<PrixVente> vente = prixVenteRepositories.findLastPrixventeByProduit(produit);
-                if (vente.isPresent()) {
-                    PrixArticles pa = new PrixArticles();
-                    pa.setActif(true);
-                    pa.setDateCreation(new Date());
-                    pa.setEntreprise(entreprise);
-                    pa.setPointVente(savePv);
-                    pa.setPrixVenteNet(vente.get().getPrix());
-                      pa.setPrixVenteTTC(vente.get().getPrix());
-                    // Sans ceci, tva/remise restent null -> "NaN%"/"NaN FCFA"
-                    // a l'affichage (ex. ecran Gestion des Points de Vente).
-                    pa.setTva(BigDecimal.ZERO);
-                    pa.setRemise(BigDecimal.ZERO);
-                    prixArticlesRepositories.save(pa);
-                    
-                    log.debug("PointVente destination mise à jour: ID={}, nouvelle entrée={}, nouveau stock={}",
-                        savePv.getId(), savePv.getEntreeProduit(), savePv.getStockFinalTheorie());
-                }
+                pointVente = pointVenteRepository.save(pv);
+                log.debug("PointVente destination créé: ID={}, entrée={}, stock={}",
+                        pointVente.getId(), pointVente.getEntreeProduit(), pointVente.getStockFinalTheorie());
             }
+            // Que le PointVente vienne d'etre cree ou qu'il existait deja,
+            // s'assurer qu'il a un PrixArticles actif - sans ca, le produit
+            // reste invisible dans "Approvisionnement"/"Liste des Prix
+            // Articles" (ecran cote-a-cote avec ce meme stock) meme si son
+            // stock est correct. Avant ce correctif, la creation etait
+            // seulement tentee au moment de la creation du PointVente ET
+            // seulement si un PrixVente "maitre" existait pour ce produit -
+            // silencieusement ignoree sinon, un ecart jamais rattrape par la
+            // suite (chaque transfert ulterieur ne fait que mettre a jour le
+            // PointVente existant, jamais son PrixArticles).
+            assurerPrixArticlesDestination(pointVente, produit, magasinSource, entreprise);
         }
+    }
+
+    /**
+     * Garantit qu'un PointVente a un PrixArticles actif, en le creant si
+     * besoin. Prix de reference, par ordre de preference : (1) le prix actif
+     * de ce meme produit dans le magasin source du transfert (le plus fiable
+     * : le produit y est deja effectivement vendu) ; (2) a defaut, le dernier
+     * PrixVente "maitre" du produit ; (3) a defaut, zero (mieux qu'un produit
+     * invisible dans les listings faute de PrixArticles).
+     */
+    private void assurerPrixArticlesDestination(PointVente pointVente, Produit produit, Magasin magasinSource, Entreprise entreprise) {
+        if (prixArticlesRepositories.findActivePriceByPointVente(pointVente.getId()).isPresent()) {
+            return;
+        }
+
+        BigDecimal prix = null;
+        PointVente pointVenteSource = stockService.getPointVenteActuelle(magasinSource.getId(), produit.getId());
+        if (pointVenteSource != null) {
+            prix = prixArticlesRepositories.findActivePriceByPointVente(pointVenteSource.getId())
+                    .map(PrixArticles::getPrixVenteTTC)
+                    .orElse(null);
+        }
+        if (prix == null) {
+            prix = prixVenteRepositories.findLastPrixventeByProduit(produit)
+                    .map(PrixVente::getPrix)
+                    .orElse(BigDecimal.ZERO);
+        }
+
+        PrixArticles pa = new PrixArticles();
+        pa.setActif(true);
+        pa.setDateCreation(new Date());
+        pa.setEntreprise(entreprise);
+        pa.setPointVente(pointVente);
+        pa.setPrixVenteNet(prix);
+        pa.setPrixVenteTTC(prix);
+        // Sans ceci, tva/remise restent null -> "NaN%"/"NaN FCFA" a
+        // l'affichage (ex. ecran Gestion des Points de Vente).
+        pa.setTva(BigDecimal.ZERO);
+        pa.setRemise(BigDecimal.ZERO);
+        prixArticlesRepositories.save(pa);
+        log.debug("PrixArticles cree pour PointVente destination ID={}, prix={}", pointVente.getId(), prix);
+    }
+
+    /**
+     * Repare les PointVente de la compagnie courante qui ont du stock reel
+     * mais aucun PrixArticles actif - consequence d'un ecart deja present
+     * dans les donnees avant le correctif de assurerPrixArticlesDestination
+     * (qui empeche desormais le probleme mais ne rattrape pas les PointVente
+     * deja affectes, puisqu'un PointVente existant n'est plus jamais recree).
+     * Idempotent : ne fait rien sur un PointVente qui a deja un PrixArticles
+     * actif.
+     *
+     * @return nombre de PointVente reparés
+     */
+    public int reparerPrixArticlesManquants() {
+        Long compagnieId = tenantContext.currentCompagnieId();
+        Entreprise entreprise = entrepriseService.obtenirOuCreerExerciceActif(compagnieId);
+        java.util.List<PointVente> aReparer = pointVenteRepository.findSansPrixArticlesActifAvecStock(compagnieId);
+
+        for (PointVente pv : aReparer) {
+            BigDecimal prix = prixArticlesRepositories
+                    .findAnyActifByProduitAndCompagnie(pv.getProduit().getId(), compagnieId)
+                    .map(PrixArticles::getPrixVenteTTC)
+                    .orElse(null);
+            if (prix == null) {
+                prix = prixVenteRepositories.findLastPrixventeByProduit(pv.getProduit())
+                        .map(PrixVente::getPrix)
+                        .orElse(BigDecimal.ZERO);
+            }
+
+            PrixArticles pa = new PrixArticles();
+            pa.setActif(true);
+            pa.setDateCreation(new Date());
+            pa.setEntreprise(entreprise);
+            pa.setPointVente(pv);
+            pa.setPrixVenteNet(prix);
+            pa.setPrixVenteTTC(prix);
+            pa.setTva(BigDecimal.ZERO);
+            pa.setRemise(BigDecimal.ZERO);
+            prixArticlesRepositories.save(pa);
+        }
+
+        log.info("Reparation PrixArticles manquants: {} PointVente reparés pour compagnie {}",
+                aReparer.size(), compagnieId);
+        return aReparer.size();
     }
 
     /**

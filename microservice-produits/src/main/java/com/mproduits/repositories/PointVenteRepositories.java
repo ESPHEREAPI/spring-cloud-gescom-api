@@ -33,6 +33,18 @@ public interface PointVenteRepositories extends JpaRepository<PointVente, Long> 
     @Query("SELECT pv FROM PointVente pv JOIN pv.prixarticlesCollection pa WHERE pv.boutique = :b AND pv.produit = :cde AND pa.entreprise = :e")
     Optional<PointVente> findByProduitAndBoutiqueAndEntreprise(Produit cde, Boutique b, Entreprise e);
 
+    // Reparation (voir TransfertStockService.reparerPrixArticlesManquants) :
+    // PointVente avec du stock reel mais aucun PrixArticles actif - rend le
+    // produit invisible dans les listings (ex. "Approvisionnement") malgre un
+    // stock correct. Peut arriver quand un transfert cree un PointVente sans
+    // pouvoir determiner de prix (avant le correctif de
+    // assurerPrixArticlesDestination, qui n'auto-repare que lors du PROCHAIN
+    // transfert touchant ce meme PointVente, jamais retroactivement).
+    @Query("SELECT pv FROM PointVente pv WHERE pv.entreprise.entreprisePK.compagnieId = :compagnieId "
+            + "AND pv.stockFinalTheorie > 0 "
+            + "AND NOT EXISTS (SELECT 1 FROM PrixArticles pa WHERE pa.pointVente = pv AND pa.actif = true)")
+    List<PointVente> findSansPrixArticlesActifAvecStock(@Param("compagnieId") Long compagnieId);
+
     @Query("SELECT pv FROM PointVente pv WHERE pv.id = (SELECT MAX(p.id) FROM PointVente p JOIN p.prixarticlesCollection pa WHERE p.produit = :cde AND pa.entreprise = :e)")
     Optional<PointVente> findLastByProduitAndEntreprise(Produit cde, Entreprise e);
 

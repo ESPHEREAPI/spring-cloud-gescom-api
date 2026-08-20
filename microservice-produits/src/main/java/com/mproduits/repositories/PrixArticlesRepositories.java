@@ -165,6 +165,15 @@ public interface PrixArticlesRepositories extends JpaRepository<PrixArticles, Lo
     @Query("SELECT pa FROM PrixArticles pa WHERE pa.id = :id AND pa.entreprise.entreprisePK.compagnieId = :compagnieId")
     Optional<PrixArticles> findByIdAndCompagnieId(@Param("id") Long id, @Param("compagnieId") Long compagnieId);
 
+    // Reparation (voir TransfertStockService.reparerPrixArticlesManquants) :
+    // prix de reference pour un produit qui a du stock quelque part mais pas
+    // encore de PrixArticles actif au point de vente concerne - on reutilise
+    // le prix pratique ailleurs pour ce meme produit dans la compagnie plutot
+    // que d'inventer une valeur.
+    @Query("SELECT pa FROM PrixArticles pa WHERE pa.actif = true AND pa.pointVente.produit.id = :produitId "
+            + "AND pa.entreprise.entreprisePK.compagnieId = :compagnieId ORDER BY pa.dateCreation DESC LIMIT 1")
+    Optional<PrixArticles> findAnyActifByProduitAndCompagnie(@Param("produitId") Long produitId, @Param("compagnieId") Long compagnieId);
+
     List<PrixArticles> findTop10000ByActifTrueOrderByDateCreationDesc();
 
     @Query("SELECT pa FROM PrixArticles pa WHERE pa.pointVente.produit.reference= :ref and pa.pointVente.boutique.id= :boutiqueid and pa.entreprise.actif=true")

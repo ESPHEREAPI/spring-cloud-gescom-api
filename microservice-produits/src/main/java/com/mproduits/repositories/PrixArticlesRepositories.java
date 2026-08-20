@@ -156,6 +156,18 @@ public interface PrixArticlesRepositories extends JpaRepository<PrixArticles, Lo
     @Query("SELECT pa FROM PrixArticles pa WHERE pa.entreprise = :e   AND pa.actif = :active and pa.pointVente.stockFinalTheorie <= :stock")
     List<PrixArticles> findAllByEntrepriseProduitActifWithSeuilStock(@Param("e") Entreprise e, @Param("active") Boolean active, @Param("stock") BigDecimal stock);
 
+    // Variante scalaire (voir AlerteStockDTO) - le dashboard (alerte stock
+    // faible, execute a chaque connexion) n'a besoin que de ces 5 champs ;
+    // charger les PrixArticles en entite hydrate AUSSI leur Produit via
+    // l'association @ManyToOne eager PointVente.produit, ce qui, sur un
+    // catalogue volumineux, declenchait "Found shared references to a
+    // collection" (meme cause racine que StockRestaurationService/DevisService).
+    @Query("SELECT new com.mproduits.dto.AlerteStockDTO(p.id, p.libelle, p.reference, pv.stockFinalTheorie, c.libelle) "
+            + "FROM PrixArticles pa JOIN pa.pointVente pv JOIN pv.produit p LEFT JOIN p.categories c "
+            + "WHERE pa.entreprise = :e AND pa.actif = :active AND pv.stockFinalTheorie <= :stock")
+    List<com.mproduits.dto.AlerteStockDTO> findAlerteStockByEntrepriseProduitActifWithSeuilStock(
+            @Param("e") Entreprise e, @Param("active") Boolean active, @Param("stock") BigDecimal stock);
+
     @Query("""
     SELECT p 
     FROM PrixArticles p 

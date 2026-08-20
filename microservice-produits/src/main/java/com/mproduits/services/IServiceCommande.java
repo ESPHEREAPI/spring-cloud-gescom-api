@@ -80,7 +80,7 @@ public interface IServiceCommande {
     List<PrixArticles> getPrixArticlesFilster(String search,Long boutiqueid);
     public BigDecimal stockProduit(Long produitId ,Long boutiqueid);
     public BigDecimal stockDepot(Long produitId ,Long boutiqueid);
-    public   List<PrixArticles> alertstock(BigDecimal seuilStock);
+    public   List<com.mproduits.dto.AlerteStockDTO> alertstock(BigDecimal seuilStock);
  
     
 }

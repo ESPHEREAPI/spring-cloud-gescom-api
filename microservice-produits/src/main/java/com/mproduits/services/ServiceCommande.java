@@ -1215,10 +1215,10 @@ public class ServiceCommande implements IServiceCommande {
     }
 
     @Override
-    public List<PrixArticles> alertstock(BigDecimal seuilStock) {
+    public List<com.mproduits.dto.AlerteStockDTO> alertstock(BigDecimal seuilStock) {
         Entreprise e = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
 
-        return prixArticlesRepositories.findAllByEntrepriseProduitActifWithSeuilStock(e, Boolean.TRUE, seuilStock);
+        return prixArticlesRepositories.findAlerteStockByEntrepriseProduitActifWithSeuilStock(e, Boolean.TRUE, seuilStock);
     }
 
 }

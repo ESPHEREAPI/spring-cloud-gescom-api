@@ -552,8 +552,8 @@ public class CommandeController implements Serializable {
     }
 
      @GetMapping("/alert-stock")
-    public ResponseEntity<List<PrixArticles>> alertStock() {
-        List<PrixArticles> results = commandeService.alertstock(BigDecimal.valueOf(5.0));
+    public ResponseEntity<List<com.mproduits.dto.AlerteStockDTO>> alertStock() {
+        List<com.mproduits.dto.AlerteStockDTO> results = commandeService.alertstock(BigDecimal.valueOf(5.0));
         return ResponseEntity.ok(results);
     }
     @PutMapping("/produits/{produitId}")

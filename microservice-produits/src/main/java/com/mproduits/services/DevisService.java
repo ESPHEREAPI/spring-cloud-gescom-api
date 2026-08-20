@@ -717,6 +717,23 @@ public class DevisService {
     }
 
     /**
+     * Ecran admin "Commandes en ligne" (voir CanalOrigine/CommandeEnLigneController) -
+     * ne montre JAMAIS les devis crees en interne par le personnel, uniquement
+     * ceux soumis par un client via le site public e-commerce.
+     */
+    @Transactional(readOnly = true)
+    public List<DevisDTO> findCommandesEnLigne(String statut, Long boutiqueid) {
+        try {
+            StatutDevis statutEnum = StatutDevis.valueOf(statut.toUpperCase());
+            return devisRepo.findByStatutAndCanalOrigineAndBoutiqueId(statutEnum, CanalOrigine.EN_LIGNE, boutiqueid).stream()
+                    .map(mapper::toDto)
+                    .collect(Collectors.toList());
+        } catch (IllegalArgumentException e) {
+            throw new DevisException("Statut invalide: " + statut);
+        }
+    }
+
+    /**
      * Recherche devis par client et statut
      */
     @Transactional(readOnly = true)

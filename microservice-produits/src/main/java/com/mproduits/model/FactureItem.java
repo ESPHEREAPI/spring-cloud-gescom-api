@@ -188,6 +188,26 @@ public class FactureItem implements Serializable {
     @Column(name = "commentaire", columnDefinition = "TEXT")
     private String commentaire;
 
+    // ========== ANNULATION DE LIGNE (voir FactureService.annulerLigneFacture) ==========
+    // La ligne n'est jamais supprimee lors d'une annulation partielle - elle
+    // est marquee, pour garder une trace complete (comptable/audit) de ce qui
+    // a ete initialement commande et de ce qui a ete retire, par qui et
+    // pourquoi. Facture.recalculerMontants() exclut les lignes annulees des
+    // totaux.
+    @Builder.Default
+    @Column(name = "annule")
+    private Boolean annule = false;
+
+    @Column(name = "date_annulation_ligne")
+    @Temporal(jakarta.persistence.TemporalType.TIMESTAMP)
+    private java.util.Date dateAnnulationLigne;
+
+    @Column(name = "motif_annulation_ligne", columnDefinition = "TEXT")
+    private String motifAnnulationLigne;
+
+    @Column(name = "username_annulation_ligne", length = 100)
+    private String usernameAnnulationLigne;
+
     // ========== MÉTHODES DE CALCUL ==========
     
     /**

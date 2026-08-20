@@ -349,6 +349,75 @@ public class FactureService {
     }
 
     /**
+     * Annule UNE ligne d'une facture deja validee, sans annuler le reste de
+     * la facture (ex: le client refuse un seul article au dernier moment).
+     *
+     * GARDE-FOUS (voir plan) :
+     * - meme regle que l'annulation totale : refuse si un paiement a deja
+     *   ete enregistre sur la facture (montantPaye > 0) - c'est la
+     *   protection principale contre l'usage detourne de cette action
+     *   (annuler une ligne pour remettre du stock au compteur sans que la
+     *   marchandise soit reellement revenue).
+     * - refuse si la facture est BROUILLON/PAYEE/ANNULEE.
+     * - refuse si la ligne est deja annulee (idempotence).
+     * - refuse si c'est la derniere ligne active de la facture - dans ce cas
+     *   il faut annuler la facture entiere (annulerFacture), pas vider la
+     *   derniere ligne en silence.
+     *
+     * La ligne n'est jamais supprimee (voir FactureItem.annule) - seul le
+     * stock est reintegre (reutilise effectuerEntreeStock tel quel, pour
+     * cette seule ligne) et les totaux de la facture sont recalcules.
+     */
+    @Transactional
+    public FactureResponse annulerLigneFacture(Long factureId, Long itemId, String motif, String username) {
+        log.info("Annulation de la ligne {} de la facture ID: {}", itemId, factureId);
+
+        Facture facture = factureRepository.findByIdAndClient_Compagnie_Id(factureId, tenantContext.currentCompagnieId())
+                .orElseThrow(() -> new ResourceNotFoundException("Facture introuvable avec l'ID: " + factureId));
+
+        if (!facture.isPeutEtreAnnulee()) {
+            throw new ErrorResponse("Cette facture ne peut plus etre modifiee. Statut actuel: " + facture.getStatut());
+        }
+        if (facture.getStatut() == StatutFacture.BROUILLON) {
+            throw new ErrorResponse("La facture est encore un brouillon : modifiez-la directement plutot que d'annuler une ligne.");
+        }
+        if (facture.getMontantPaye().compareTo(BigDecimal.ZERO) > 0) {
+            throw new ErrorResponse("Impossible d'annuler une ligne sur une facture avec des paiements. Montant payé: "
+                    + facture.getMontantPaye());
+        }
+
+        FactureItem item = facture.getItems().stream()
+                .filter(i -> i.getId().equals(itemId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Article introuvable sur cette facture : " + itemId));
+
+        if (Boolean.TRUE.equals(item.getAnnule())) {
+            throw new ErrorResponse("Cet article est déjà annulé.");
+        }
+
+        long lignesActives = facture.getItems().stream()
+                .filter(i -> !Boolean.TRUE.equals(i.getAnnule()))
+                .count();
+        if (lignesActives <= 1) {
+            throw new ErrorResponse("Impossible d'annuler le dernier article actif d'une facture : annulez la facture entière à la place.");
+        }
+
+        effectuerEntreeStock(facture, item, "Annulation ligne facture: " + motif, username);
+
+        item.setAnnule(true);
+        item.setDateAnnulationLigne(new Date());
+        item.setMotifAnnulationLigne(motif);
+        item.setUsernameAnnulationLigne(username);
+        factureItemRepository.save(item);
+
+        facture.recalculerMontants();
+        facture = factureRepository.save(facture);
+
+        log.info("Ligne {} de la facture {} annulée avec succès", itemId, facture.getNumeroFacture());
+        return mapToResponse(facture);
+    }
+
+    /**
      * Met à jour une facture (uniquement si BROUILLON)
      */
     @Transactional

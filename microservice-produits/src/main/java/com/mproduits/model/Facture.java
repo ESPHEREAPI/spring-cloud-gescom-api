@@ -446,19 +446,26 @@ public class Facture implements Serializable {
             return;
         }
 
-        totalHt = items.stream()
+        // Une ligne annulee (voir FactureService.annulerLigneFacture) reste
+        // dans "items" pour l'historique/audit, mais ne doit plus compter
+        // dans les totaux facturables.
+        java.util.List<FactureItem> itemsActifs = items.stream()
+                .filter(i -> !Boolean.TRUE.equals(i.getAnnule()))
+                .collect(java.util.stream.Collectors.toList());
+
+        totalHt = itemsActifs.stream()
                 .map(FactureItem::getMontantHT)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        totalRemise = items.stream()
+        totalRemise = itemsActifs.stream()
                 .map(FactureItem::getMontantRemise)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        totalTVA = items.stream()
+        totalTVA = itemsActifs.stream()
                 .map(FactureItem::getMontantTVA)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        totalTtc = items.stream()
+        totalTtc = itemsActifs.stream()
                 .map(FactureItem::getMontantTTC)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 

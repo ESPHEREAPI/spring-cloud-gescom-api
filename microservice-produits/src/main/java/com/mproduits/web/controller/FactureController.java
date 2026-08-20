@@ -3,6 +3,7 @@ package com.mproduits.web.controller;
 import com.mproduits.dto.DevisToFactureRequest;
 import com.mproduits.dto.FactureAnnulationRequest;
 import com.mproduits.dto.FactureCreateRequest;
+import com.mproduits.dto.FactureItemAnnulationRequest;
 import com.mproduits.dto.FactureResponse;
 import com.mproduits.dto.FactureSearchCriteria;
 import com.mproduits.dto.FactureStatistiques;
@@ -164,6 +165,26 @@ public class FactureController {
         log.info("Annulation de la facture ID: {}", id);
         request.setFactureId(id);
         FactureResponse response = factureService.annulerFacture(request, tenantContext.currentUsername());
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Annule une seule ligne d'une facture (le reste de la facture reste
+     * valide) - voir FactureService.annulerLigneFacture pour les
+     * garde-fous anti-fraude (paiement deja enregistre, derniere ligne
+     * active, etc.).
+     */
+    @PreAuthorize("hasAuthority('PERM_FACTURE_ANNULER') or hasRole('COMPANY_ADMIN')")
+    @PostMapping("/{factureId}/items/{itemId}/annuler")
+    @Operation(summary = "Annuler une ligne de facture",
+               description = "Annule un seul article d'une facture et réintègre son stock")
+    public ResponseEntity<FactureResponse> annulerLigneFacture(
+            @PathVariable Long factureId,
+            @PathVariable Long itemId,
+            @Valid @RequestBody FactureItemAnnulationRequest request) {
+        log.info("Annulation de la ligne {} de la facture ID: {}", itemId, factureId);
+        FactureResponse response = factureService.annulerLigneFacture(
+                factureId, itemId, request.getMotif(), tenantContext.currentUsername());
         return ResponseEntity.ok(response);
     }
 

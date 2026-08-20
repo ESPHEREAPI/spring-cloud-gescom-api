@@ -1172,6 +1172,12 @@ public class ServiceCommande implements IServiceCommande {
     }
 
     @Override
+    public List<com.mproduits.dto.PrixArticlesAdminDTO> getPrixArticlesAdminDTO(Long boutiqueid) {
+        Entreprise e = entrepriseService.obtenirOuCreerExerciceActif(tenantContext.currentCompagnieId());
+        return prixArticlesRepositories.findAllByEntrepriseProduitActifAdminDTO(e, Boolean.TRUE, boutiqueid);
+    }
+
+    @Override
     public BigDecimal stockProduit(Long produitId, Long boutiqueid) {
         Optional<Produit> produit = produitRepositories.findByIdAndCompagnie_Id(produitId, tenantContext.currentCompagnieId());
         if (produit.isEmpty()) {

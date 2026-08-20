@@ -144,4 +144,22 @@ public class PrixArticles implements Serializable {
         return true;
     }
 
+    /**
+     * Prix reellement paye/affiche : prixVenteNet remise de "remise" % quand
+     * une promotion est active, sinon prixVenteNet tel quel. Calcule ici,
+     * source unique, pour que catalogue public, panier et checkout
+     * (EcomCheckoutController) restent toujours d'accord sur le montant -
+     * jamais recalcule independamment cote client.
+     */
+    public BigDecimal getPrixEffectif() {
+        if (prixVenteNet == null) {
+            return prixVenteNet;
+        }
+        if (!isPromotionActive() || remise == null || remise.compareTo(BigDecimal.ZERO) <= 0) {
+            return prixVenteNet;
+        }
+        BigDecimal facteur = BigDecimal.ONE.subtract(remise.divide(BigDecimal.valueOf(100)));
+        return prixVenteNet.multiply(facteur);
+    }
+
 }

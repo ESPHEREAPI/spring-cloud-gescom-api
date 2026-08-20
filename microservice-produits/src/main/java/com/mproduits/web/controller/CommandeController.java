@@ -468,6 +468,11 @@ public class CommandeController implements Serializable {
         return ResponseEntity.ok(response);
     }
 
+    // Point d'entree unique pour "modifier le prix" ET "mettre en solde" d'une
+    // ligne PrixArticles (un produit dans une boutique) - prixVenteNet/remise
+    // sont nullable dans PromotionRequest : non fournis, ils restent
+    // inchanges (permet d'appeler cet endpoint juste pour desactiver une
+    // promo sans y renvoyer le prix).
     @PutMapping("/prix-articles/{id}/promotion")
     public ResponseEntity<PrixArticles> definirPromotion(@PathVariable Long id, @RequestBody PromotionRequest request) {
         PrixArticles prixArticles = prixArticlesService.findByIdAndCompagnieId(id, tenantContext.currentCompagnieId())
@@ -475,6 +480,15 @@ public class CommandeController implements Serializable {
         prixArticles.setTypePromotion(request.getTypePromotion() != null ? request.getTypePromotion() : com.mproduits.enums.TypePromotion.AUCUNE);
         prixArticles.setDateDebutPromo(request.getDateDebutPromo());
         prixArticles.setDateFinPromo(request.getDateFinPromo());
+        if (request.getRemise() != null) {
+            prixArticles.setRemise(request.getRemise());
+        }
+        if (request.getPrixVenteNet() != null) {
+            prixArticles.setPrixVenteNet(request.getPrixVenteNet());
+            BigDecimal tva = prixArticles.getTva() != null ? prixArticles.getTva() : BigDecimal.ZERO;
+            prixArticles.setPrixVenteTTC(request.getPrixVenteNet()
+                    .multiply(BigDecimal.ONE.add(tva.divide(BigDecimal.valueOf(100)))));
+        }
         return ResponseEntity.ok(prixArticlesService.save(prixArticles));
     }
 
@@ -542,12 +556,15 @@ public class CommandeController implements Serializable {
         return ResponseEntity.ok(results);
     }
 
+     // Ecran "Gestion des Points de Vente" - projection scalaire (voir
+     // PrixArticlesAdminDTO) : la version entite complete plantait sur un
+     // catalogue volumineux ("Found shared references to a collection").
      @GetMapping("/prix-articles/all/{boutiqueid}")
-    public ResponseEntity<List<PrixArticles>> getAllPrixArticles(@PathVariable Long boutiqueid
+    public ResponseEntity<List<com.mproduits.dto.PrixArticlesAdminDTO>> getAllPrixArticles(@PathVariable Long boutiqueid
 
     ) {
         boutiqueAccessGuard.verifierAppartientALaCompagnieCourante(boutiqueid);
-        List<PrixArticles> results = commandeService.getPrixArticlesFilster("",boutiqueid);
+        List<com.mproduits.dto.PrixArticlesAdminDTO> results = commandeService.getPrixArticlesAdminDTO(boutiqueid);
         return ResponseEntity.ok(results);
     }
 

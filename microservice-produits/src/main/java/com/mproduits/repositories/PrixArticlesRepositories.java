@@ -112,6 +112,21 @@ public interface PrixArticlesRepositories extends JpaRepository<PrixArticles, Lo
     @Query("SELECT pa FROM PrixArticles pa WHERE pa.entreprise = :e   AND pa.actif = :active and pa.pointVente.boutique.id= :boutiqueid")
     Page<PrixArticles> findAllByEntrepriseProduitActif(@Param("e") Entreprise e, @Param("active") Boolean active, Pageable pageable, @Param("boutiqueid") Long boutiqueid);
 
+    // Variante scalaire (voir PrixArticlesAdminDTO) pour l'ecran "Gestion des
+    // Points de Vente" (/prix-articles/all/{boutiqueid}) - la version entite
+    // complete ci-dessus (findAllByEntrepriseProduitActif non paginee, sans
+    // limite de taille) chargeait potentiellement des centaines de Produit en
+    // EAGER dans une seule session Hibernate, cause du crash "Found shared
+    // references to a collection" deja rencontre plusieurs fois ce chantier.
+    @Query("SELECT new com.mproduits.dto.PrixArticlesAdminDTO(pa.id, pa.prixVenteNet, pa.tva, pa.remise, "
+            + "new com.mproduits.dto.PointVenteAdminDTO(pv.id, pv.stockFinalTheorie, pv.sortiProduit, "
+            + "new com.mproduits.dto.ProduitLiteDTO(p.reference, p.libelle), "
+            + "new com.mproduits.dto.BoutiqueLiteDTO(b.nom))) "
+            + "FROM PrixArticles pa JOIN pa.pointVente pv JOIN pv.produit p LEFT JOIN pv.boutique b "
+            + "WHERE pa.entreprise = :e AND pa.actif = :active AND pv.boutique.id = :boutiqueid")
+    List<com.mproduits.dto.PrixArticlesAdminDTO> findAllByEntrepriseProduitActifAdminDTO(
+            @Param("e") Entreprise e, @Param("active") Boolean active, @Param("boutiqueid") Long boutiqueid);
+
     @Query("SELECT DISTINCT pa FROM PrixArticles pa WHERE pa.entreprise = :e AND  pa.pointVente.produit.libelle LIKE %:search% and pa.pointVente.boutique.id= :boutiqueid")
     List<PrixArticles> findProduitLibelleByEntrepriseWithFilter(@Param("e") Entreprise e, @Param("search") String search, @Param("boutiqueid") Long boutiqueid);
 

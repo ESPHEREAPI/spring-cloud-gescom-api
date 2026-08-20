@@ -78,6 +78,7 @@ public interface IServiceCommande {
     public Page<PrixArticles> getPrixArticles(int page, int size, String filter,Long boutiqueid);
     public Page<PrixArticles> getPrixArticlesByMagasin(int page, int size, String filter, Long magasinid);
     List<PrixArticles> getPrixArticlesFilster(String search,Long boutiqueid);
+    List<com.mproduits.dto.PrixArticlesAdminDTO> getPrixArticlesAdminDTO(Long boutiqueid);
     public BigDecimal stockProduit(Long produitId ,Long boutiqueid);
     public BigDecimal stockDepot(Long produitId ,Long boutiqueid);
     public   List<com.mproduits.dto.AlerteStockDTO> alertstock(BigDecimal seuilStock);

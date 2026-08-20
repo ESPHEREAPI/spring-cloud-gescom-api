@@ -157,6 +157,7 @@ public class EcomPublicController {
         dto.setPrixArticlesId(prixArticles.getId());
         dto.setPrixVenteNet(prixArticles.getPrixVenteNet());
         dto.setPrixVenteTTC(prixArticles.getPrixVenteTTC());
+        dto.setPrixEffectif(prixArticles.getPrixEffectif());
         dto.setRemise(prixArticles.getRemise());
         dto.setTypePromotion(prixArticles.getTypePromotion());
         dto.setDateDebutPromo(prixArticles.getDateDebutPromo());

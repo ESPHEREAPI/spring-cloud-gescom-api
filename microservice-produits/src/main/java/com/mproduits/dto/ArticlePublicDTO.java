@@ -17,6 +17,8 @@ public class ArticlePublicDTO {
     private String categorieLibelle;
     private BigDecimal prixVenteNet;
     private BigDecimal prixVenteTTC;
+    /** Prix reellement facture - identique a prixVenteNet hors promotion (voir PrixArticles.getPrixEffectif). */
+    private BigDecimal prixEffectif;
     private BigDecimal remise;
     private BigDecimal quantiteDisponible;
     private TypePromotion typePromotion;

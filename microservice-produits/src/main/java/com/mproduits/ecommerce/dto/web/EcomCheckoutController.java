@@ -101,7 +101,9 @@ public class EcomCheckoutController {
             DevisItemDTO item = new DevisItemDTO();
             item.setProduitId(ligne.produitId());
             item.setQuantite(ligne.quantite());
-            item.setPrixUnitaire(prixArticles.getPrixVenteNet());
+            // Prix effectif (tient compte d'une promotion/solde active) - pas
+            // le prix plein, voir PrixArticles.getPrixEffectif().
+            item.setPrixUnitaire(prixArticles.getPrixEffectif());
             items.add(item);
         }
 

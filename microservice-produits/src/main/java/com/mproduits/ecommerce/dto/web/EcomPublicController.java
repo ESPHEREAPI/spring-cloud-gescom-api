@@ -4,6 +4,7 @@ import com.mproduits.dto.ArticlePublicDTO;
 import com.mproduits.dto.BoutiquePubliqueDTO;
 import com.mproduits.dto.CategoriePubliqueDTO;
 import com.mproduits.dto.CompagniePubliqueDTO;
+import com.mproduits.dto.SpecificationPubliqueDTO;
 import com.mproduits.model.Boutique;
 import com.mproduits.model.Compagnie;
 import com.mproduits.model.PrixArticles;
@@ -14,6 +15,7 @@ import com.mproduits.repositories.CompagnieRepositories;
 import com.mproduits.repositories.PrixArticlesRepositories;
 import com.mproduits.repositories.ProduitPhotoRepository;
 import com.mproduits.repositories.ProduitRepositories;
+import com.mproduits.repositories.SpecificationarticlesRepositories;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +51,7 @@ public class EcomPublicController {
     private final PrixArticlesRepositories prixArticlesRepositories;
     private final ProduitRepositories produitRepositories;
     private final ProduitPhotoRepository produitPhotoRepository;
+    private final SpecificationarticlesRepositories specificationarticlesRepository;
 
     @GetMapping("/{code}")
     public ResponseEntity<CompagniePubliqueDTO> getCompagnieParCode(@PathVariable String code) {
@@ -103,6 +106,37 @@ public class EcomPublicController {
         }
 
         return ResponseEntity.ok(prixArticlesRepositories.findDistinctCategoriesByBoutiqueId(boutiqueId));
+    }
+
+    // Fiche produit detaillee (voir "voir les details" cote storefront) -
+    // meme DTO que le catalogue, avec en plus les specifications (si le
+    // produit en a - beaucoup n'en auront aucune, la liste sera vide).
+    @GetMapping("/{code}/boutiques/{boutiqueId}/produits/{produitId}")
+    public ResponseEntity<ArticlePublicDTO> getProduitDetail(@PathVariable String code,
+            @PathVariable Long boutiqueId, @PathVariable Long produitId) {
+        Compagnie compagnie = compagnieRepositories.findByCode(code).orElse(null);
+        if (compagnie == null) {
+            return ResponseEntity.notFound().build();
+        }
+        boolean boutiqueValide = boutiqueRepositories.findByIdAndCompagnie_Id(boutiqueId, compagnie.getId()).isPresent();
+        if (!boutiqueValide) {
+            return ResponseEntity.notFound().build();
+        }
+
+        PrixArticles prixArticles = prixArticlesRepositories
+                .findActifByProduitIdAndBoutiqueId(produitId, boutiqueId)
+                .orElse(null);
+        if (prixArticles == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        ArticlePublicDTO dto = toArticleDTO(prixArticles);
+        List<SpecificationPubliqueDTO> specifications = specificationarticlesRepository
+                .findByArtticleId_Id(produitId).stream()
+                .map(s -> new SpecificationPubliqueDTO(s.getSpecifiqueId().getLibelle(), s.getLibelle()))
+                .collect(Collectors.toList());
+        dto.setSpecifications(specifications);
+        return ResponseEntity.ok(dto);
     }
 
     @GetMapping("/{code}/produits/{produitId}/photo")

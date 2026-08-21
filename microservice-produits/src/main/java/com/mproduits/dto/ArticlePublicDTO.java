@@ -3,6 +3,7 @@ package com.mproduits.dto;
 import com.mproduits.enums.TypePromotion;
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 import lombok.Data;
 
 @Data
@@ -26,4 +27,6 @@ public class ArticlePublicDTO {
     private Date dateFinPromo;
     /** Calcule cote serveur : promotion en cours compte tenu des bornes de dates - la promo expire seule sans intervention. */
     private boolean promotionActive;
+    /** Uniquement rempli par la fiche produit detaillee (pas la liste du catalogue) - voir EcomPublicController.getProduitDetail. */
+    private List<SpecificationPubliqueDTO> specifications;
 }

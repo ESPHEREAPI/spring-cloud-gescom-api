@@ -36,8 +36,8 @@ public class SpecifiqueController {
     }
 
     @GetMapping("/all")
-    public ResponseEntity<List<Specifique>> getAllSimple() {
-        return ResponseEntity.ok(specifiqueService.findAll());
+    public ResponseEntity<List<Specifique>> getAllSimple(@RequestParam(required = false) Long categorieId) {
+        return ResponseEntity.ok(specifiqueService.findAll(categorieId));
     }
 
     @GetMapping("/{id}")

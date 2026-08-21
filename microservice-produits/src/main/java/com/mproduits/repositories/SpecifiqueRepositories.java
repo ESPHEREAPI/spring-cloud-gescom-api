@@ -29,4 +29,12 @@ public interface SpecifiqueRepositories extends JpaRepository<Specifique, Long>{
     List<Specifique> findByCompagnie_Id(Long compagnieId);
 
     Optional<Specifique> findByIdAndCompagnie_Id(Long id, Long compagnieId);
+
+    // Specifications pertinentes pour un produit d'une categorie donnee :
+    // celles rattachees a cette categorie + celles sans categorie
+    // (applicables partout). categorieId NULL = pas de filtre categorie
+    // du tout (comportement equivalent a findByCompagnie_Id).
+    @Query("SELECT s FROM Specifique s WHERE s.compagnie.id = :compagnieId " +
+           "AND (:categorieId IS NULL OR s.categorie IS NULL OR s.categorie.id = :categorieId)")
+    List<Specifique> findByCompagnieIdAndCategorieIdOrGlobal(@Param("compagnieId") Long compagnieId, @Param("categorieId") Long categorieId);
 }

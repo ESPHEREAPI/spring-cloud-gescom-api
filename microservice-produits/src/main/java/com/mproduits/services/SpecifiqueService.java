@@ -45,6 +45,17 @@ public class SpecifiqueService {
         return specifiqueRepository.findByCompagnie_Id(compagnieCourante());
     }
 
+    // Utilise par l'onglet "Specifique" du formulaire produit : ne propose
+    // que les specifications pertinentes pour la categorie de CE produit
+    // (plus celles sans categorie, applicables partout).
+    @Transactional(readOnly = true)
+    public List<Specifique> findAll(Long categorieId) {
+        if (categorieId == null) {
+            return findAll();
+        }
+        return specifiqueRepository.findByCompagnieIdAndCategorieIdOrGlobal(compagnieCourante(), categorieId);
+    }
+
     @Transactional(readOnly = true)
     public Optional<Specifique> findById(Long id) {
         return specifiqueRepository.findByIdAndCompagnie_Id(id, compagnieCourante());

@@ -59,6 +59,16 @@ public class Specifique implements Serializable {
     @ManyToOne
     private Compagnie compagnie;
 
+    // Categorie a laquelle s'applique cette specification (ex. "Auteur"
+    // pour la categorie "Livres") - nullable : une specification sans
+    // categorie s'applique a tous les produits de la compagnie, quelle
+    // que soit leur categorie. Contrairement a compagnie ci-dessus, PAS
+    // @JsonIgnore : c'est le client (ecran admin specifiques) qui choisit
+    // explicitement la categorie, ce n'est jamais derive du token.
+    @JoinColumn(name = "categorie_id")
+    @ManyToOne
+    private Categories categorie;
+
     public Specifique() {
     }
 
@@ -120,6 +130,18 @@ public class Specifique implements Serializable {
 
     public void setCompagnieId(Long compagnieId) {
         this.compagnie = compagnieId != null ? new Compagnie(compagnieId) : null;
+    }
+
+    public Categories getCategorie() {
+        return categorie;
+    }
+
+    public void setCategorie(Categories categorie) {
+        this.categorie = categorie;
+    }
+
+    public Long getCategorieId() {
+        return categorie != null ? categorie.getId() : null;
     }
 
     @Override

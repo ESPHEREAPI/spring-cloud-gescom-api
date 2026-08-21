@@ -29,4 +29,10 @@ public class LigneApercuImportStockDTO {
     // boutiques) - un nouveau point de vente sera cree, sans recreer le
     // produit. Toujours vrai quand nouveauProduit l'est aussi.
     private boolean nouveauPointVente;
+    // true si le fichier n'a pas de prix de vente exploitable pour cette
+    // ligne (colonne absente du format configure, ou cellule vide/illisible) -
+    // PAS bloquant (voir StockRestaurationService.lireNombreOuZero, le prix
+    // reste volontairement facultatif a l'import) mais affiche pour eviter la
+    // surprise silencieuse d'un produit importe a 0 FCFA.
+    private boolean prixManquant;
 }

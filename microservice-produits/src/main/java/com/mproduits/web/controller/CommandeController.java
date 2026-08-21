@@ -492,6 +492,35 @@ public class CommandeController implements Serializable {
         return ResponseEntity.ok(prixArticlesService.save(prixArticles));
     }
 
+    // Correction en masse des prix (voir ecran "Gestion des Points de Vente",
+    // filtre "Sans prix") - typiquement utilise apres un import Excel dont le
+    // fichier ne portait pas de colonne prix (StockRestaurationService importe
+    // alors a 0 FCFA, volontairement non bloquant - voir lireNombreOuZero).
+    // Ne modifie que prixVenteNet/prixVenteTTC, jamais la promotion/remise.
+    @PutMapping("/prix-articles/bulk-prix")
+    public ResponseEntity<Map<String, Object>> definirPrixEnMasse(@RequestBody List<com.mproduits.dto.PrixEnMasseItem> items) {
+        Long compagnieId = tenantContext.currentCompagnieId();
+        int miseAJour = 0;
+        for (com.mproduits.dto.PrixEnMasseItem item : items) {
+            if (item.id() == null || item.prixVenteNet() == null) {
+                continue;
+            }
+            PrixArticles prixArticles = prixArticlesService.findByIdAndCompagnieId(item.id(), compagnieId).orElse(null);
+            if (prixArticles == null) {
+                continue;
+            }
+            prixArticles.setPrixVenteNet(item.prixVenteNet());
+            BigDecimal tva = prixArticles.getTva() != null ? prixArticles.getTva() : BigDecimal.ZERO;
+            prixArticles.setPrixVenteTTC(item.prixVenteNet().multiply(BigDecimal.ONE.add(tva.divide(BigDecimal.valueOf(100)))));
+            prixArticlesService.save(prixArticles);
+            miseAJour++;
+        }
+        Map<String, Object> reponse = new HashMap<>();
+        reponse.put("miseAJour", miseAJour);
+        reponse.put("total", items.size());
+        return ResponseEntity.ok(reponse);
+    }
+
     @GetMapping("/prix-articles/magasin/{magasinid}")
     public ResponseEntity<Map<String, Object>> getPrixArticlesByMagasin(@PathVariable Long magasinid,
             @RequestParam(defaultValue = "0") int page,

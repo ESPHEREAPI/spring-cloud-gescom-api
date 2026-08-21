@@ -226,7 +226,8 @@ public class StockRestaurationService {
         List<LigneResolue> lignes = resoudreLignes(fichier, boutiqueIdPreselectionnee, mode);
         List<LigneApercuImportStockDTO> dto = lignes.stream()
                 .map(l -> new LigneApercuImportStockDTO(l.ligneNo(), l.reference(), l.boutiqueNom(),
-                        l.ancienneQuantite(), l.nouvelleQuantite(), l.erreur(), l.nouveauProduit(), l.nouveauPointVente()))
+                        l.ancienneQuantite(), l.nouvelleQuantite(), l.erreur(), l.nouveauProduit(), l.nouveauPointVente(),
+                        l.prixVente() == null || l.prixVente().compareTo(BigDecimal.ZERO) == 0))
                 .toList();
         return new ApercuImportStockDTO(dto);
     }

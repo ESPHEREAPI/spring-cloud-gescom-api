@@ -15,8 +15,7 @@ import lombok.Data;
 @Data
 @Builder
 public class TicketResponse {
-     private String filePath;
-    private String fileName;
+    private String content;
     private Boolean success;
     private String message;
     private String ticketNumber;

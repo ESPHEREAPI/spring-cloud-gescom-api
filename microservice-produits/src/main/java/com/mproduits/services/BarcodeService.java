@@ -283,7 +283,7 @@ public class BarcodeService {
     /**
      * Génère un ticket de caisse en format texte
      */
-    public void createTicketCaisseTXT(Vente vente) throws IOException {
+    public String createTicketCaisseTXT(Vente vente) {
         var mois = getMoisActuel();
         // Un ticket doit toujours pouvoir s'imprimer meme si, pour une raison
         // imprevue, aucune ligne de paiement n'est retrouvee - avant, ce cas
@@ -306,8 +306,9 @@ public class BarcodeService {
                 .property(new Property())
                 .build();
 
-        ticketCaisseService.generateTicket(ticketRequest);
+        var ticketResponse = ticketCaisseService.generateTicket(ticketRequest);
         log.info("Ticket généré pour la vente: {}", vente.getId());
+        return ticketResponse.getContent();
     }
 
     /**

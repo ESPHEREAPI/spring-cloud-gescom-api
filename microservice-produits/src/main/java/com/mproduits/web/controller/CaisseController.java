@@ -43,7 +43,6 @@ import com.mproduits.services.BarcodeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
@@ -66,8 +65,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import java.nio.file.Paths;
 import java.sql.Date;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.http.ContentDisposition;
 
 /**
@@ -76,6 +75,7 @@ import org.springframework.http.ContentDisposition;
  */
 @RestController
 @RequestMapping("/microservice-produits")
+@lombok.extern.slf4j.Slf4j
 public class CaisseController {
 
     @Autowired
@@ -159,19 +159,20 @@ public class CaisseController {
     @GetMapping("/ticket/{venteid}/download-ticket")
     public ResponseEntity<Resource> telechargerTicket(@PathVariable("venteid") Long venteId) {
         try {
+            // Le ticket est regenere en memoire a chaque appel plutot que lu
+            // depuis un fichier sur le disque du serveur : l'ancienne version
+            // ecrivait sous un chemin par defaut code en dur "C:/Ticket",
+            // valide seulement sur un poste Windows - en production
+            // (backend Linux/Docker), cette ecriture echouait et le ticket ne
+            // se generait jamais, sans message d'erreur exploitable.
             Vente vente = barcodeService.getVenteById(venteId);
-            if ("".equals(vente.getCheminPatheTicket()) || vente.getCheminPatheTicket() == null) {
-                barcodeService.createTicketCaisseTXT(vente);
-                vente = barcodeService.getVenteById(venteId);
-            }
+            String contenu = barcodeService.createTicketCaisseTXT(vente);
 
-            File fichierTxt = new File(vente.getCheminPatheTicket());
-
-            java.nio.file.Path path = fichierTxt.toPath();
-            Resource resource = new UrlResource(path.toUri());
+            byte[] bytes = contenu.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            Resource resource = new ByteArrayResource(bytes);
 
             HttpHeaders headers = new HttpHeaders();
-            headers.setContentDisposition(ContentDisposition.attachment().filename(fichierTxt.getName()).build());
+            headers.setContentDisposition(ContentDisposition.attachment().filename("ticket-" + venteId + ".txt").build());
             headers.setContentType(MediaType.TEXT_PLAIN);
 
             return ResponseEntity.ok()
@@ -179,6 +180,7 @@ public class CaisseController {
                     .body(resource);
 
         } catch (Exception e) {
+            log.error("Erreur lors de la génération/téléchargement du ticket {}: {}", venteId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(null);
         }

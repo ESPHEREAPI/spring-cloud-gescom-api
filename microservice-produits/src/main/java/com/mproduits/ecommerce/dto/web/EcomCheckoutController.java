@@ -3,6 +3,8 @@ package com.mproduits.ecommerce.dto.web;
 import com.mproduits.dto.ClientDto;
 import com.mproduits.dto.DevisDTO;
 import com.mproduits.dto.DevisItemDTO;
+import com.mproduits.exceptions.ArticleIndisponibleDTO;
+import com.mproduits.exceptions.ArticlesIndisponiblesException;
 import com.mproduits.exceptions.BadRequestException;
 import com.mproduits.model.Boutique;
 import com.mproduits.model.Client;
@@ -83,19 +85,34 @@ public class EcomCheckoutController {
 
         // Recalcul serveur : prix et stock viennent de PrixArticles, jamais
         // du corps de la requete (voir la javadoc de classe).
+        //
+        // On collecte TOUTES les lignes en probleme avant d'echouer, plutot
+        // que de s'arreter a la premiere trouvee - un client dont le panier
+        // contient 2 articles en rupture doit les voir tous les deux des le
+        // premier essai, pas decouvrir le second apres avoir corrige le
+        // premier et retente.
         List<DevisItemDTO> items = new ArrayList<>();
+        List<ArticleIndisponibleDTO> indisponibles = new ArrayList<>();
         for (ItemCommande ligne : request.items()) {
             if (ligne.produitId() == null || ligne.quantite() == null || ligne.quantite() <= 0) {
                 throw new BadRequestException("Ligne de commande invalide");
             }
-            PrixArticles prixArticles = prixArticlesRepositories
-                    .findActifByProduitIdAndBoutiqueId(ligne.produitId(), boutiqueId)
-                    .orElseThrow(() -> new BadRequestException("Produit indisponible dans cette boutique : " + ligne.produitId()));
+            var prixArticlesOpt = prixArticlesRepositories
+                    .findActifByProduitIdAndBoutiqueId(ligne.produitId(), boutiqueId);
+            if (prixArticlesOpt.isEmpty()) {
+                indisponibles.add(new ArticleIndisponibleDTO(ligne.produitId(), "Produit indisponible dans cette boutique"));
+                continue;
+            }
+            PrixArticles prixArticles = prixArticlesOpt.get();
 
             BigDecimal stockDisponible = prixArticles.getPointVente() != null
                     ? prixArticles.getPointVente().getStockFinalTheorie() : BigDecimal.ZERO;
             if (stockDisponible == null || stockDisponible.compareTo(BigDecimal.valueOf(ligne.quantite())) < 0) {
-                throw new BadRequestException("Stock insuffisant pour le produit " + ligne.produitId());
+                String motif = stockDisponible == null || stockDisponible.compareTo(BigDecimal.ZERO) <= 0
+                        ? "Rupture de stock"
+                        : "Stock insuffisant (disponible : " + stockDisponible.stripTrailingZeros().toPlainString() + ")";
+                indisponibles.add(new ArticleIndisponibleDTO(ligne.produitId(), motif));
+                continue;
             }
 
             DevisItemDTO item = new DevisItemDTO();
@@ -105,6 +122,12 @@ public class EcomCheckoutController {
             // le prix plein, voir PrixArticles.getPrixEffectif().
             item.setPrixUnitaire(prixArticles.getPrixEffectif());
             items.add(item);
+        }
+
+        if (!indisponibles.isEmpty()) {
+            throw new ArticlesIndisponiblesException(
+                    "Certains articles de votre panier ne sont plus disponibles. Retirez-les pour continuer.",
+                    indisponibles);
         }
 
         BigDecimal montantHT = items.stream()

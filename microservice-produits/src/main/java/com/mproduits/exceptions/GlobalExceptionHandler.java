@@ -104,6 +104,15 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorDetails, HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(ArticlesIndisponiblesException.class)
+    public ResponseEntity<Map<String, Object>> handleArticlesIndisponibles(ArticlesIndisponiblesException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("success", false);
+        body.put("message", ex.getMessage());
+        body.put("produitsIndisponibles", ex.getArticles());
+        return ResponseEntity.status(HttpStatus.CONFLICT).contentType(MediaType.APPLICATION_JSON).body(body);
+    }
+
     @ExceptionHandler(com.mproduits.security.TenantScopeException.class)
     public ResponseEntity<ErrorDetails> handleTenantScopeException(com.mproduits.security.TenantScopeException ex) {
         ErrorDetails errorDetails = new ErrorDetails(LocalDateTime.now(), ex.getMessage(), "", HttpStatus.FORBIDDEN.value());

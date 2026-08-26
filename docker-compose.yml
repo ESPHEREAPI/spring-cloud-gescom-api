@@ -171,6 +171,15 @@ services:
       APP_JWTSECRET: ${APP_JWTSECRET:?Definissez APP_JWTSECRET dans .env}
       APP_INTERNAL_SERVICE_SECRET: ${APP_INTERNAL_SERVICE_SECRET:?Definissez APP_INTERNAL_SERVICE_SECRET dans .env}
       APP_LICENCE_RSA_PRIVATE_KEY: ${APP_LICENCE_RSA_PRIVATE_KEY:?Definissez APP_LICENCE_RSA_PRIVATE_KEY dans .env}
+      # Email de verification envoye a l'inscription autonome d'une compagnie
+      # (voir CompagnieService.inscriptionAutonome) - MAIL_PASSWORD est un
+      # "mot de passe d'application" Gmail, pas le mot de passe du compte.
+      # FRONTEND_BASE_URL = URL publique du frontend (sert a construire le
+      # lien clique dans l'email), a mettre a jour avec le nom de domaine
+      # definitif des qu'il est disponible (voir CLAUDE.md, section HTTPS).
+      MAIL_USERNAME: ${MAIL_USERNAME:?Definissez MAIL_USERNAME dans .env}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:?Definissez MAIL_PASSWORD dans .env}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:?Definissez FRONTEND_BASE_URL dans .env}
     volumes:
       # La cle privee RSA de licence vit sur l'hote (jamais dans l'image ni le
       # repo) - montee en lecture seule ici. APP_LICENCE_RSA_PRIVATE_KEY dans

@@ -423,7 +423,12 @@ public class UserService implements Serializable {
         } else if (user.getIsActive() == Boolean.FALSE) {
             userDTO = new UserDTO();
             userDTO.setEcheck_connection(Boolean.TRUE);
-            userDTO.setMessageEcheck("The User is Not Active please Contact your Administrator..." + loginRequest.getUserName());
+            // Compte cree par inscription autonome (voir CompagnieService.inscriptionAutonome),
+            // pas encore desactive par un administrateur - message distinct pour
+            // ne pas orienter l'utilisateur vers un administrateur qui n'y peut rien.
+            userDTO.setMessageEcheck("EN_ATTENTE_VERIFICATION".equals(user.getStatut())
+                    ? "Veuillez verifier votre adresse email avant de vous connecter (voir le lien recu par email)."
+                    : "The User is Not Active please Contact your Administrator..." + loginRequest.getUserName());
             // throw new ResourceNotFoundException("User not Exist : " + loginRequest.getUserName());
             return userDTO;
             // throw new ResourceNotFoundException("The User is Not Active please Contact your Administrator..." + loginRequest.getUserName());

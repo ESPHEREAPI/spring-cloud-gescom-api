@@ -53,6 +53,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/auth/login", "/auth/logout", "/actuator/health").permitAll()
+                        // Inscription autonome d'une compagnie (voir CompagnieController) -
+                        // chaque endpoint resout lui-meme la demande a partir de son
+                        // contenu (token, email), jamais d'un utilisateur authentifie.
+                        .requestMatchers(HttpMethod.POST, "/compagnies/self-service", "/compagnies/self-service/renvoyer").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/compagnies/self-service/verify").permitAll()
                         .requestMatchers("/internal/**").hasRole("INTERNAL_SERVICE")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

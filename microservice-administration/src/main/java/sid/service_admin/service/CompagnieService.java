@@ -1,8 +1,12 @@
 package sid.service_admin.service;
 
+import java.time.Duration;
+import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,10 +21,13 @@ import sid.service_admin.exceptions.ConflictException;
 import sid.service_admin.exceptions.ResourceNotFoundException;
 import sid.service_admin.enums.TypeCommerce;
 import sid.service_admin.model.Compagnie;
+import sid.service_admin.model.EmailVerificationToken;
 import sid.service_admin.model.Personne;
 import sid.service_admin.repository.CompagnieRepository;
+import sid.service_admin.repository.EmailVerificationTokenRepository;
 import sid.service_admin.repository.PersonneRepository;
 import sid.service_admin.security.RoleNames;
+import sid.service_admin.security.SignupRateLimiterService;
 
 /**
  * Creation/gestion des compagnies. La creation d'une compagnie cree aussi
@@ -30,22 +37,36 @@ import sid.service_admin.security.RoleNames;
 @Service
 public class CompagnieService {
 
+    private static final String STATUT_EN_ATTENTE_VERIFICATION = "EN_ATTENTE_VERIFICATION";
+    private static final Duration VALIDITE_TOKEN = Duration.ofHours(24);
+
     private final CompagnieRepository compagnieRepository;
     private final PersonneRepository personneRepository;
     private final AdminAccountService adminAccountService;
     private final AuditLogService auditLogService;
     private final SecuriteService securiteService;
     private final UserService userService;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
+    private final EmailService emailService;
+    private final SignupRateLimiterService rateLimiterService;
+
+    @Value("${app.frontend.baseUrl}")
+    private String frontendBaseUrl;
 
     public CompagnieService(CompagnieRepository compagnieRepository, PersonneRepository personneRepository,
             AdminAccountService adminAccountService, AuditLogService auditLogService,
-            SecuriteService securiteService, UserService userService) {
+            SecuriteService securiteService, UserService userService,
+            EmailVerificationTokenRepository emailVerificationTokenRepository, EmailService emailService,
+            SignupRateLimiterService rateLimiterService) {
         this.compagnieRepository = compagnieRepository;
         this.personneRepository = personneRepository;
         this.adminAccountService = adminAccountService;
         this.auditLogService = auditLogService;
         this.securiteService = securiteService;
         this.userService = userService;
+        this.emailVerificationTokenRepository = emailVerificationTokenRepository;
+        this.emailService = emailService;
+        this.rateLimiterService = rateLimiterService;
     }
 
     @Transactional
@@ -89,6 +110,95 @@ public class CompagnieService {
         result.setAdmin(adminResult.getUser());
         result.setGeneratedAdminPassword(adminResult.getGeneratedPassword());
         return result;
+    }
+
+    /**
+     * Inscription autonome : un futur administrateur cree lui-meme sa
+     * compagnie, sans intervention prealable d'un SUPER_ADMIN/SYSTEM_ADMIN.
+     * Reutilise createCompagnieWithAdmin tel quel, puis place l'admin en
+     * attente de verification email (isActive=false, meme porte d'entree
+     * que le blocage "compte desactive" deja verifie a la connexion - voir
+     * UserService.authetification) tant que le lien recu par email n'a pas
+     * ete clique.
+     */
+    @Transactional
+    public void inscriptionAutonome(CreateCompagnieDTO dto, String clientIp) {
+        if (!rateLimiterService.autoriser("inscription:" + clientIp, 3, Duration.ofDays(1))) {
+            throw new BadRequestException("Trop de tentatives d'inscription depuis cette adresse - reessayez plus tard");
+        }
+        if (dto.getAdminPassword() == null || dto.getAdminPassword().isBlank()) {
+            throw new BadRequestException("Choisissez un mot de passe pour votre compte administrateur");
+        }
+
+        CreateCompagnieResultDTO resultat = createCompagnieWithAdmin(dto, "self-service");
+
+        Personne admin = personneRepository.findByUserName(resultat.getAdmin().getUserName())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Administrateur introuvable juste apres son inscription : " + resultat.getAdmin().getUserName()));
+        admin.setIsActive(Boolean.FALSE);
+        admin.setStatut(STATUT_EN_ATTENTE_VERIFICATION);
+        // L'admin a choisi son propre mot de passe dans le formulaire
+        // d'inscription - contrairement au chemin SUPER_ADMIN (mot de passe
+        // auto-genere remis a une tierce personne), rien ne justifie de
+        // forcer un changement des la premiere connexion.
+        admin.setMustChangePassword(Boolean.FALSE);
+        personneRepository.save(admin);
+
+        envoyerNouveauJeton(admin);
+    }
+
+    /** Valide le lien recu par email - active le compte s'il n'a pas deja ete active et si le jeton n'est pas expire. */
+    @Transactional
+    public void verifierEmail(String token) {
+        EmailVerificationToken jeton = emailVerificationTokenRepository.findByToken(token)
+                .orElseThrow(() -> new BadRequestException("Lien de verification invalide"));
+        if (!jeton.isValide()) {
+            throw new BadRequestException("Ce lien de verification est expire ou a deja ete utilise");
+        }
+
+        jeton.setUsed(Boolean.TRUE);
+        emailVerificationTokenRepository.save(jeton);
+
+        Personne admin = jeton.getPersonne();
+        admin.setIsActive(Boolean.TRUE);
+        admin.setStatut(null);
+        personneRepository.save(admin);
+    }
+
+    /**
+     * Renvoie un nouveau lien si le premier a expire. Repond toujours de la
+     * meme facon que l'email corresponde ou non a un compte en attente -
+     * evite de reveler par ce biais quelles adresses sont deja inscrites.
+     */
+    @Transactional
+    public void renvoyerVerification(String email) {
+        if (!rateLimiterService.autoriser("renvoi:" + email, 3, Duration.ofDays(1))) {
+            return;
+        }
+        personneRepository.findByEmail(email)
+                .filter(p -> STATUT_EN_ATTENTE_VERIFICATION.equals(p.getStatut()))
+                .ifPresent(this::envoyerNouveauJeton);
+    }
+
+    /** Invalide les jetons non utilises existants pour cette personne et en envoie un nouveau par email. */
+    private void envoyerNouveauJeton(Personne admin) {
+        emailVerificationTokenRepository.findByPersonne_IdAndUsedFalse(admin.getId())
+                .forEach(ancien -> {
+                    ancien.setUsed(Boolean.TRUE);
+                    emailVerificationTokenRepository.save(ancien);
+                });
+
+        EmailVerificationToken jeton = new EmailVerificationToken();
+        jeton.setPersonne(admin);
+        jeton.setToken(UUID.randomUUID().toString());
+        jeton.setDateCreation(new Date());
+        jeton.setDateExpiration(Date.from(new Date().toInstant().plus(VALIDITE_TOKEN)));
+        jeton.setUsed(Boolean.FALSE);
+        emailVerificationTokenRepository.save(jeton);
+
+        String lien = frontendBaseUrl + "/verification-compagnie?token=" + jeton.getToken();
+        String nomCompagnie = admin.getCompagnie() != null ? admin.getCompagnie().getNom() : "";
+        emailService.envoyerEmailVerification(admin.getEmail(), nomCompagnie, lien);
     }
 
     @Transactional(readOnly = true)

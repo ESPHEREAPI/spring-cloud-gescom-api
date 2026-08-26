@@ -1,6 +1,8 @@
 package sid.service_admin.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -10,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import sid.service_admin.dto.ActivationDTO;
 import sid.service_admin.dto.CompagnieDTO;
@@ -46,6 +49,39 @@ public class CompagnieController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','SYSTEM_ADMIN')")
     public ResponseEntity<CreateCompagnieResultDTO> create(@RequestBody CreateCompagnieDTO dto, Authentication authentication) {
         return ResponseEntity.ok(compagnieService.createCompagnieWithAdmin(dto, authentication.getName()));
+    }
+
+    /**
+     * Inscription autonome (public, sans authentification) : un futur
+     * administrateur cree lui-meme sa compagnie - voir
+     * CompagnieService.inscriptionAutonome. Reste bloque a la connexion
+     * (isActive=false) jusqu'a validation du lien recu par email.
+     */
+    @PostMapping("/self-service")
+    public ResponseEntity<Void> inscriptionAutonome(@RequestBody CreateCompagnieDTO dto, HttpServletRequest request) {
+        compagnieService.inscriptionAutonome(dto, adresseIpClient(request));
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/self-service/verify")
+    public ResponseEntity<Void> verifierEmail(@RequestParam String token) {
+        compagnieService.verifierEmail(token);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/self-service/renvoyer")
+    public ResponseEntity<Void> renvoyerVerification(@RequestBody Map<String, String> body) {
+        compagnieService.renvoyerVerification(body.get("email"));
+        return ResponseEntity.ok().build();
+    }
+
+    /** Derriere la nginx hote (voir CLAUDE.md), l'adresse reelle du client est dans X-Forwarded-For, pas getRemoteAddr(). */
+    private String adresseIpClient(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 
     @GetMapping
